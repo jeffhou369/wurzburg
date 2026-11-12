@@ -98,7 +98,7 @@ func run() error {
 	}
 
 	srv := server.New(cfg, db, clk)
-	mountFeatureModules(srv, db, clk)
+	mountFeatureModules(ctx, srv, db, clk)
 
 	httpServer := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
