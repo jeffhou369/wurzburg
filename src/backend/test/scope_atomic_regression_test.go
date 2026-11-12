@@ -300,7 +300,7 @@ func (e *saEnv) dedupKeys(t *testing.T, f *saFixture) []string {
 	if err != nil {
 		t.Fatalf("查詢去重鍵失敗: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	out := []string{}
 	for rows.Next() {
 		var k string

@@ -139,7 +139,7 @@ func (h *Handler) querySwitches(ctx context.Context, filterID int64) ([]switchRe
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var result []switchResp
 	for rows.Next() {
@@ -171,7 +171,7 @@ func (h *Handler) queryVRFs(ctx context.Context, switchID int64) ([]vrfConfigRes
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []vrfConfigResp
 	for rows.Next() {

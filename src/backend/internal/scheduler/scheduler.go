@@ -308,7 +308,7 @@ func (s *Scheduler) loadEnabledBatches(ctx context.Context) ([]switchBatch, erro
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	batchMap := make(map[int64][]interfaces.VRFReadInput)
 	var order []int64

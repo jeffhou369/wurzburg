@@ -90,7 +90,7 @@ func (s *Service) reloadFromDB(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var entries []Entry
 	for rows.Next() {
@@ -240,7 +240,7 @@ func (s *Service) saveEntries(ctx context.Context, version, filename, importedBy
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	for _, e := range entries {
 		if _, err := stmt.ExecContext(ctx, e.Prefix, e.PrefixLength, e.VendorName, now); err != nil {
@@ -268,7 +268,7 @@ func (s *Service) RecomputeExistingIPVendors(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	type rowUpdate struct {
 		id     int64
@@ -334,7 +334,7 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		auth.WriteError(w, http.StatusUnprocessableEntity, "file_missing", "請選擇要上傳的 OUI 資料檔")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	entries, err := ParseOUI(file)
 	if err != nil {

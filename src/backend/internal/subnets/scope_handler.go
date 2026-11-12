@@ -346,7 +346,7 @@ func loadAffectedRecords(ctx context.Context, tx *sql.Tx, subnetID int64, lock b
 	if err != nil {
 		return nil, fmt.Errorf("查詢 IP 紀錄失敗: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []affectedRecord
 	for rows.Next() {
@@ -460,7 +460,7 @@ func fingerprintRecords(recs []affectedRecord) string {
 		if r.expiresAt.Valid {
 			expires = r.expiresAt.Time.UTC().Format(time.RFC3339Nano)
 		}
-		fmt.Fprintf(h, "%d|%s|%s|%s|%s|%s|%s\n",
+		_, _ = fmt.Fprintf(h, "%d|%s|%s|%s|%s|%s|%s\n",
 			r.id, strconv.Quote(r.ip), quotedNullString(r.mac), owner,
 			strconv.Quote(r.ownerUsername), quotedNullString(r.ownerMail), expires)
 	}
@@ -653,7 +653,7 @@ func (s *ScopeService) handleListSubnets(w http.ResponseWriter, r *http.Request)
 		writeScopeError(w, r, err, "查詢網段失敗")
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	items := make([]map[string]any, 0)
 	for rows.Next() {
@@ -759,7 +759,7 @@ func (s *ScopeService) loadGatewayView(ctx context.Context, id int64) ([]map[str
 	if err != nil {
 		return nil, fmt.Errorf("查詢閘道位址失敗: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := make([]map[string]any, 0)
 	for rows.Next() {
@@ -789,7 +789,7 @@ func (s *ScopeService) loadExclusionView(ctx context.Context, id int64) ([]map[s
 	if err != nil {
 		return nil, fmt.Errorf("查詢排除範圍失敗: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := make([]map[string]any, 0)
 	for rows.Next() {
@@ -843,7 +843,7 @@ func (s *ScopeService) handleListUndetermined(w http.ResponseWriter, r *http.Req
 		writeScopeError(w, r, err, "查詢未定前綴失敗")
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	items := make([]map[string]any, 0)
 	for rows.Next() {

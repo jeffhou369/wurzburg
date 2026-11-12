@@ -63,7 +63,7 @@ func TestFullE2EIntegration13Scenarios(t *testing.T) {
 	if err != nil {
 		t.Fatalf("連線資料庫失敗: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	if err := database.RunMigrations(db, migrations.FS, "."); err != nil {
 		t.Fatalf("套用資料庫遷移失敗: %v", err)
@@ -637,7 +637,7 @@ func TestFullE2EIntegration13Scenarios(t *testing.T) {
 		if err != nil {
 			t.Fatalf("無法解析 Excel 匯出檔: %v", err)
 		}
-		defer xf.Close()
+		defer func() { _ = xf.Close() }()
 
 		// 搜尋備註欄位，確認公式注入開頭加單引號
 		rows, err := xf.GetRows("IP管理表")
@@ -753,7 +753,7 @@ func TestFullE2EIntegration13Scenarios(t *testing.T) {
 		if err != nil {
 			t.Fatalf("查詢稽核紀錄失敗: %v", err)
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 		for rows.Next() {
 			var act, sum, det string
 			if err := rows.Scan(&act, &sum, &det); err == nil {
@@ -777,7 +777,7 @@ func TestFullE2EIntegration13Scenarios(t *testing.T) {
 		// 3. 掃描通知紀錄中的 last_error 與 payload
 		notifRows, err := db.Query(`SELECT COALESCE(last_error, ''), COALESCE(payload_json, '') FROM notification_logs`)
 		if err == nil {
-			defer notifRows.Close()
+			defer func() { _ = notifRows.Close() }()
 			for notifRows.Next() {
 				var le, pj string
 				if err := notifRows.Scan(&le, &pj); err == nil {

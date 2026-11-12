@@ -63,7 +63,7 @@ func (c *ADClient) Authenticate(ctx context.Context, username, password string) 
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", interfaces.ErrAuthUnavailable, err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// 1. 若有指定 BindDN，先以管理帳號 Bind 進行搜尋
 	if c.cfg.BindDN != "" {

@@ -65,7 +65,7 @@ func (h *Handler) handleListLogs(w http.ResponseWriter, r *http.Request) {
 		auth.WriteError(w, http.StatusInternalServerError, "db_error", "查詢稽核紀錄失敗")
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	items := make([]auditLogResponse, 0)
 	for rows.Next() {

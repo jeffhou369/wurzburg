@@ -57,7 +57,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "無法建立輸出檔: %v\n", err)
 			os.Exit(1)
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		outWriter = f
 	}
 

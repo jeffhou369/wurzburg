@@ -315,24 +315,24 @@ func (s *Service) applyVRF(ctx context.Context, w *vrfWork, plan *roundPlan, gra
 	if err != nil {
 		return res, fmt.Errorf("準備 IP 紀錄新增語句失敗: %w", err)
 	}
-	defer insIPStmt.Close()
+	defer func() { _ = insIPStmt.Close() }()
 	insEvtStmt, err := tx.PrepareContext(ctx, `INSERT INTO ip_events (ip_record_id, ip_address, event_type, details, occurred_at) VALUES (?, ?, ?, ?, ?)`)
 	if err != nil {
 		return res, fmt.Errorf("準備事件新增語句失敗: %w", err)
 	}
-	defer insEvtStmt.Close()
+	defer func() { _ = insEvtStmt.Close() }()
 	upsertSightStmt, err := tx.PrepareContext(ctx, `INSERT INTO arp_sightings (ip_record_id, vrf_config_id, switch_id, vrf_name, mac_address, if_index, if_name, arp_type, last_seen_at, missed_rounds, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?) ON DUPLICATE KEY UPDATE mac_address = VALUES(mac_address), if_index = VALUES(if_index), if_name = VALUES(if_name), arp_type = VALUES(arp_type), last_seen_at = VALUES(last_seen_at), missed_rounds = 0, updated_at = VALUES(updated_at)`)
 	if err != nil {
 		return res, fmt.Errorf("準備觀測寫入語句失敗: %w", err)
 	}
-	defer upsertSightStmt.Close()
+	defer func() { _ = upsertSightStmt.Close() }()
 	undetStmt, err := tx.PrepareContext(ctx, `INSERT INTO undetermined_prefixes (ip_address, mac_address, switch_id, vrf_name, if_name, last_seen_at, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE mac_address = VALUES(mac_address), last_seen_at = VALUES(last_seen_at), if_name = VALUES(if_name)`)
 	if err != nil {
 		return res, fmt.Errorf("準備未定前綴寫入語句失敗: %w", err)
 	}
-	defer undetStmt.Close()
+	defer func() { _ = undetStmt.Close() }()
 
 	// 1. 以鎖內快照判定每個位址的歸屬與資格。
 	var eligible []target
@@ -640,34 +640,34 @@ func (s *Service) decideChunk(ctx context.Context, ids []int64, st *roundState, 
 	if err != nil {
 		return fmt.Errorf("準備事件新增語句失敗: %w", err)
 	}
-	defer insEvtStmt.Close()
+	defer func() { _ = insEvtStmt.Close() }()
 	setOfflineStmt, err := tx.PrepareContext(ctx, `UPDATE ip_records SET presence = 'offline', updated_at = ? WHERE id = ?`)
 	if err != nil {
 		return fmt.Errorf("準備離線更新語句失敗: %w", err)
 	}
-	defer setOfflineStmt.Close()
+	defer func() { _ = setOfflineStmt.Close() }()
 	adoptStmt, err := tx.PrepareContext(ctx, `UPDATE ip_records SET mac_address = ?, vendor_name = ?, updated_at = ? WHERE id = ?`)
 	if err != nil {
 		return fmt.Errorf("準備採信 MAC 更新語句失敗: %w", err)
 	}
-	defer adoptStmt.Close()
+	defer func() { _ = adoptStmt.Close() }()
 	upsertConflictStmt, err := tx.PrepareContext(ctx, `INSERT INTO ip_conflicts (ip_record_id, ip_address, adopted_mac, conflict_macs, status, first_detected_at, last_detected_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, 'open', ?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE adopted_mac = VALUES(adopted_mac), conflict_macs = VALUES(conflict_macs), last_detected_at = VALUES(last_detected_at), updated_at = VALUES(updated_at)`)
 	if err != nil {
 		return fmt.Errorf("準備衝突寫入語句失敗: %w", err)
 	}
-	defer upsertConflictStmt.Close()
+	defer func() { _ = upsertConflictStmt.Close() }()
 	resolveStmt, err := tx.PrepareContext(ctx, `UPDATE ip_conflicts SET status = 'resolved', resolution = ?, resolved_by = 'system', resolved_at = ?, updated_at = ? WHERE id = ? AND status = ?`)
 	if err != nil {
 		return fmt.Errorf("準備衝突解消語句失敗: %w", err)
 	}
-	defer resolveStmt.Close()
+	defer func() { _ = resolveStmt.Close() }()
 	absentStmt, err := tx.PrepareContext(ctx, `UPDATE ip_conflicts SET other_mac_absent_rounds = ?, updated_at = ? WHERE id = ? AND status = 'in_progress'`)
 	if err != nil {
 		return fmt.Errorf("準備衝突缺席輪數更新語句失敗: %w", err)
 	}
-	defer absentStmt.Close()
+	defer func() { _ = absentStmt.Close() }()
 
 	// 本輪有被看到的 IP：一次更新為在線並刷新最後看到時間。
 	var observedIDs []int64

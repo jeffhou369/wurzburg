@@ -41,7 +41,7 @@ func TestDatabaseSchemaConstraintsAndSeeder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("連線 MariaDB 失敗: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	if err := database.RunMigrations(db, migrations.FS, "."); err != nil {
 		t.Fatalf("套用遷移失敗: %v", err)

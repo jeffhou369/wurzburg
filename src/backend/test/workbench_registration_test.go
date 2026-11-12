@@ -48,7 +48,7 @@ func TestWorkbenchRegistrationAndExport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("連線資料庫失敗: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	if err := database.RunMigrations(db, migrations.FS, "."); err != nil {
 		t.Fatalf("遷移失敗: %v", err)
@@ -200,7 +200,7 @@ func TestWorkbenchRegistrationAndExport(t *testing.T) {
 		if err != nil {
 			t.Fatalf("解析匯出之 Excel 失敗: %v", err)
 		}
-		defer xf.Close()
+		defer func() { _ = xf.Close() }()
 
 		rows, err := xf.GetRows("IP管理表")
 		if err != nil || len(rows) < 4 { // 標題 + 3 筆資料

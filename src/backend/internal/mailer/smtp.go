@@ -150,31 +150,31 @@ func BuildMultipartAlternativeMIME(from string, msg interfaces.MailMessage) ([]b
 
 	var buf bytes.Buffer
 	encodedSub := mime.QEncoding.Encode("UTF-8", msg.Subject)
-	buf.WriteString(fmt.Sprintf("From: %s\r\n", from))
-	buf.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(msg.To, ", ")))
+	fmt.Fprintf(&buf, "From: %s\r\n", from)
+	fmt.Fprintf(&buf, "To: %s\r\n", strings.Join(msg.To, ", "))
 	if len(msg.Cc) > 0 {
-		buf.WriteString(fmt.Sprintf("Cc: %s\r\n", strings.Join(msg.Cc, ", ")))
+		fmt.Fprintf(&buf, "Cc: %s\r\n", strings.Join(msg.Cc, ", "))
 	}
-	buf.WriteString(fmt.Sprintf("Subject: %s\r\n", encodedSub))
+	fmt.Fprintf(&buf, "Subject: %s\r\n", encodedSub)
 	buf.WriteString("MIME-Version: 1.0\r\n")
-	buf.WriteString(fmt.Sprintf("Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary))
+	fmt.Fprintf(&buf, "Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary)
 	buf.WriteString("\r\n")
 
 	// 1. 純文字部分 (text/plain)
-	buf.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+	fmt.Fprintf(&buf, "--%s\r\n", boundary)
 	buf.WriteString("Content-Type: text/plain; charset=UTF-8\r\n")
 	buf.WriteString("Content-Transfer-Encoding: base64\r\n\r\n")
 	writeBase64Wrapped(&buf, []byte(msg.TextBody))
 	buf.WriteString("\r\n")
 
 	// 2. HTML 部分 (text/html)
-	buf.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+	fmt.Fprintf(&buf, "--%s\r\n", boundary)
 	buf.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
 	buf.WriteString("Content-Transfer-Encoding: base64\r\n\r\n")
 	writeBase64Wrapped(&buf, []byte(msg.HTMLBody))
 	buf.WriteString("\r\n")
 
-	buf.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
+	fmt.Fprintf(&buf, "--%s--\r\n", boundary)
 	return buf.Bytes(), nil
 }
 

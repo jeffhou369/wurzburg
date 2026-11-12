@@ -53,7 +53,7 @@ func runResetPassword(args []string) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	return accounts.ResetAdminPassword(ctx, db, clock.NewRealClock(), username, newPassword, 12)
 }
@@ -88,7 +88,7 @@ func run() error {
 	if err != nil {
 		slog.Warn("目前無法連線至 MariaDB，稍後將於背景重試，伺服器先以降級模式啟動", "error", err)
 	} else {
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 		if err := database.RunMigrations(db, migrations.FS, "."); err != nil {
 			return fmt.Errorf("套用資料庫遷移失敗: %w", err)
 		}
