@@ -137,7 +137,7 @@ export class ChangePasswordPage {
       .subscribe({
         next: () => {
           this.submitting.set(false);
-          void this.router.navigateByUrl('/');
+          void this.router.navigateByUrl('/?wizard=true');
         },
         error: (err) => {
           this.submitting.set(false);

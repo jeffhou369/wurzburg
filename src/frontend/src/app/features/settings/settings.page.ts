@@ -1,19 +1,24 @@
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { Dialog } from '@angular/cdk/dialog';
 import { AuthSettingsComponent } from './auth-settings.component';
+import { CampusSettingsComponent } from './campus-settings.component';
 import { MailSettingsComponent } from './mail-settings.component';
 import { OuiSettingsComponent } from './oui-settings.component';
 import { RetentionSettingsComponent } from './retention-settings.component';
+import { SetupWizardDialogComponent } from './setup-wizard.dialog';
 
 export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
 
 /**
- * 系統設定頁（預留各功能子頁插槽）
+ * 系統設定頁（包含各功能子頁與重新開啟設定精靈入口）
  */
 @Component({
   selector: 'app-settings-page',
   standalone: true,
   imports: [
     AuthSettingsComponent,
+    CampusSettingsComponent,
     MailSettingsComponent,
     OuiSettingsComponent,
     RetentionSettingsComponent,
@@ -75,9 +80,7 @@ export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
     <div class="card">
       @switch (activeTab()) {
         @case ('campus') {
-          <ng-content select="[slot=settings-campus]">
-            <p class="slot-hint">園區顯示名稱、時區與重新開啟設定精靈（Ticket 32）。</p>
-          </ng-content>
+          <app-campus-settings (openWizard)="openSetupWizard()" />
         }
         @case ('auth') {
           <app-auth-settings />
@@ -141,6 +144,21 @@ export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
     `,
   ],
 })
-export class SettingsPage {
+export class SettingsPage implements OnInit {
+  private readonly dialog = inject(Dialog);
+  private readonly route = inject(ActivatedRoute);
   readonly activeTab = signal<SettingsTab>('campus');
+
+  ngOnInit(): void {
+    this.route.queryParams.subscribe((params) => {
+      const tab = params['tab'] as SettingsTab | undefined;
+      if (tab && ['campus', 'auth', 'mail', 'oui', 'retention'].includes(tab)) {
+        this.activeTab.set(tab);
+      }
+    });
+  }
+
+  openSetupWizard(): void {
+    this.dialog.open(SetupWizardDialogComponent, { disableClose: true });
+  }
 }

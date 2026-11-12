@@ -18,6 +18,8 @@ import { SheetContainerComponent } from '../../shared/components/sheet-container
 import { ToastService } from '../../shared/components/toast.service';
 import { AuthService } from '../../core/auth.service';
 import { SidebarBadgesService } from '../../core/sidebar-badges.service';
+import { UnfinishedChecklistComponent } from './unfinished-checklist.component';
+import { SetupWizardDialogComponent } from '../settings/setup-wizard.dialog';
 import type { components } from '../../core/api.types';
 
 type DashboardSummary = components['schemas']['DashboardSummary'];
@@ -36,6 +38,7 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
     EmptyStateComponent,
     IpRecordSheetComponent,
     SheetContainerComponent,
+    UnfinishedChecklistComponent,
     LucideSearch,
     LucideDownload,
     LucideCopy,
@@ -65,7 +68,7 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
     </header>
 
     <section aria-label="尚未完成的設定">
-      <ng-content select="[slot=checklist]" />
+      <app-unfinished-checklist (resumeWizard)="openSetupWizard()" />
     </section>
 
     <!-- 儀表板 KPI 列 (Ticket 16) -->
@@ -969,8 +972,13 @@ export class WorkbenchPage implements OnInit {
     this.selectAllFiltered() ? (this.pagination()?.total_items ?? 0) : this.selectedIds().size,
   );
 
+  protected currentTimezone = 'Asia/Taipei';
+
   ngOnInit(): void {
     this.route.queryParams.subscribe((params) => {
+      if (params['wizard'] === 'true' && this.auth.isAdmin()) {
+        this.openSetupWizard();
+      }
       this.filters.search = params['search'] ?? '';
       this.filters.subnet_id = params['subnet_id'] ?? '';
       this.filters.presence = params['presence'] ?? '';
@@ -984,6 +992,26 @@ export class WorkbenchPage implements OnInit {
 
     this.loadStats();
     this.loadSubnets();
+    this.loadCampus();
+  }
+
+  loadCampus(): void {
+    this.http.get<{ campus_name: string; timezone: string }>('/api/v1/settings/campus').subscribe({
+      next: (res) => {
+        if (res.timezone) {
+          this.currentTimezone = res.timezone;
+        }
+      },
+      error: () => {},
+    });
+  }
+
+  openSetupWizard(): void {
+    const ref = this.dialog.open(SetupWizardDialogComponent, { disableClose: true });
+    ref.closed.subscribe(() => {
+      this.loadStats();
+      this.loadSubnets();
+    });
   }
 
   loadStats(): void {
@@ -1317,10 +1345,21 @@ export class WorkbenchPage implements OnInit {
   }
 
   formatTime(iso: string): string {
-    return new Date(iso).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
+    try {
+      return new Date(iso).toLocaleString('zh-TW', {
+        timeZone: this.currentTimezone,
+        hour12: false,
+      });
+    } catch {
+      return new Date(iso).toLocaleString('zh-TW', { hour12: false });
+    }
   }
 
   formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' });
+    try {
+      return new Date(iso).toLocaleDateString('zh-TW', { timeZone: this.currentTimezone });
+    } catch {
+      return new Date(iso).toLocaleDateString('zh-TW');
+    }
   }
 }

@@ -1,4 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import {
   LucideLayoutDashboard,
@@ -66,7 +67,7 @@ import { ToastContainerComponent } from './toast-container.component';
         <div class="sidebar-header">
           <div class="brand-mark" aria-hidden="true">W</div>
           <div class="brand-text">
-            <div class="brand-name">{{ text.appName }}</div>
+            <div class="brand-name">{{ campusName() }}</div>
             <div class="brand-sub">{{ text.appSubtitle }}</div>
           </div>
         </div>
@@ -426,10 +427,24 @@ import { ToastContainerComponent } from './toast-container.component';
     `,
   ],
 })
-export class ShellLayoutComponent {
+export class ShellLayoutComponent implements OnInit {
+  private readonly http = inject(HttpClient);
   protected readonly text = SHELL_TEXT;
   protected readonly themeService = inject(ThemeService);
   protected readonly auth = inject(AuthService);
   protected readonly badges = inject(SidebarBadgesService);
   protected readonly mobileSidebarOpen = signal(false);
+  protected readonly campusName = signal<string>(SHELL_TEXT.appName);
+
+  ngOnInit(): void {
+    this.http.get<{ campus_name: string }>('/api/v1/settings/campus').subscribe({
+      next: (res) => {
+        if (res.campus_name) {
+          this.campusName.set(res.campus_name);
+          document.title = `[${res.campus_name}] IP 管理系統`;
+        }
+      },
+      error: () => {},
+    });
+  }
 }

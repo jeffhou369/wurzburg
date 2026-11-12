@@ -23,6 +23,7 @@ import (
 	"github.com/jeffhou369/wurzburg/backend/internal/server"
 	"github.com/jeffhou369/wurzburg/backend/internal/subnets"
 	"github.com/jeffhou369/wurzburg/backend/internal/switches"
+	"github.com/jeffhou369/wurzburg/backend/internal/wizard"
 )
 
 // mountFeatureModules 集中掛載所有業務功能模組之路由並啟動排程。
@@ -53,6 +54,7 @@ func mountFeatureModules(ctx context.Context, srv *server.Server, db *sql.DB, cl
 	mailHandler := mailer.NewHandler(db, clk, srv.Settings, srv.Audit, smtpMailer)
 	notifSvc := notifications.NewService(db, clk, srv.Settings, srv.Audit, smtpMailer)
 	notifTracker := notifications.NewSchedulerTracker(notifSvc)
+	wizardHandler := wizard.NewHandler(db, clk, srv.Settings, srv.Audit)
 
 	srv.Mount(
 		accountsHandler,
@@ -67,6 +69,7 @@ func mountFeatureModules(ctx context.Context, srv *server.Server, db *sql.DB, cl
 		dashHandler,
 		ipHandler,
 		mailHandler,
+		wizardHandler,
 	)
 
 	if db != nil {

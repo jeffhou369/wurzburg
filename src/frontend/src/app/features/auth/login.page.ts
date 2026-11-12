@@ -295,6 +295,17 @@ export class LoginPage implements OnInit {
           this.submitting.set(false);
           if (res.user.requires_password_change) {
             void this.router.navigateByUrl('/change-password');
+          } else if (res.user.role === 'admin') {
+            this.http.get<{ completed: boolean }>('/api/v1/settings/wizard').subscribe({
+              next: (wz) => {
+                if (!wz.completed) {
+                  void this.router.navigateByUrl('/?wizard=true');
+                } else {
+                  void this.router.navigateByUrl('/');
+                }
+              },
+              error: () => void this.router.navigateByUrl('/'),
+            });
           } else {
             void this.router.navigateByUrl('/');
           }

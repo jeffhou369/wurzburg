@@ -25,6 +25,15 @@ describe('WorkbenchPage', () => {
     const fixture = TestBed.createComponent(WorkbenchPage);
     fixture.detectChanges();
 
+    httpTesting.expectOne('/api/v1/settings/wizard').flush({
+      completed: true,
+      current_step: 5,
+      unfinished_items: [],
+    });
+    httpTesting.expectOne('/api/v1/settings/campus').flush({
+      campus_name: 'Würzburg',
+      timezone: 'Asia/Taipei',
+    });
     httpTesting.expectOne('/api/v1/dashboard/stats').flush(MOCK_DASHBOARD_SUMMARY);
     httpTesting.expectOne('/api/v1/subnets').flush({ pending_count: 1, items: MOCK_SUBNETS });
     httpTesting
@@ -48,6 +57,15 @@ describe('WorkbenchPage', () => {
     const fixture = TestBed.createComponent(WorkbenchPage);
     fixture.detectChanges();
 
+    httpTesting.expectOne('/api/v1/settings/wizard').flush({
+      completed: true,
+      current_step: 5,
+      unfinished_items: [],
+    });
+    httpTesting.expectOne('/api/v1/settings/campus').flush({
+      campus_name: 'Würzburg',
+      timezone: 'Asia/Taipei',
+    });
     httpTesting.expectOne('/api/v1/dashboard/stats').flush(MOCK_DASHBOARD_SUMMARY);
     httpTesting.expectOne('/api/v1/subnets').flush({ pending_count: 1, items: MOCK_SUBNETS });
     httpTesting
