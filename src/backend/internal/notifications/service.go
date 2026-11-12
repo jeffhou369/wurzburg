@@ -138,7 +138,7 @@ func (s *Service) RunUnregisteredDigest(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("查詢在線未登記 IP 紀錄失敗: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var allOnlineUnreg []unregRecordItem
 	for rows.Next() {
@@ -157,7 +157,7 @@ func (s *Service) RunUnregisteredDigest(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("查詢通知去重狀態失敗: %w", err)
 	}
-	defer stateRows.Close()
+	defer func() { _ = stateRows.Close() }()
 
 	notifiedKeys := make(map[string]bool)
 	for stateRows.Next() {
@@ -294,7 +294,7 @@ func (s *Service) RunUnregisteredDigest(ctx context.Context) (int, error) {
 	if err != nil {
 		return len(newItems), err
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	for _, it := range newItems {
 		dKey := fmt.Sprintf("unreg|%s|%s", it.IPAddress, it.MACAddress)
@@ -374,7 +374,7 @@ func (s *Service) RunWeeklySummary(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("查詢累積未登記 IP 紀錄失敗: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var items []weeklyRecordItem
 	var earliestNotified time.Time
@@ -546,14 +546,14 @@ func (s *Service) RunExpiryReminders(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("查詢登記到期紀錄失敗: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	// 讀取既有到期催認之去重狀態
 	stateRows, err := s.db.QueryContext(ctx, `SELECT dedup_key FROM notification_states WHERE notif_type = 'expiry_reminder' AND is_notified = TRUE`)
 	if err != nil {
 		return 0, fmt.Errorf("查詢到期去重狀態失敗: %w", err)
 	}
-	defer stateRows.Close()
+	defer func() { _ = stateRows.Close() }()
 
 	notifiedKeys := make(map[string]bool)
 	for stateRows.Next() {

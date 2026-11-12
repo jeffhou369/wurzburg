@@ -19,7 +19,7 @@ func TestRADIUSClient_RealUDPExchange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("監聽本機 UDP 失敗: %v", err)
 	}
-	defer pc.Close()
+	defer func() { _ = pc.Close() }()
 
 	udpAddr := pc.LocalAddr().(*net.UDPAddr)
 	sharedSecret := "testing_radius_secret_123"

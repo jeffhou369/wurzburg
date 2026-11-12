@@ -132,7 +132,7 @@ func queryScopeRows(ctx context.Context, q scopeQuerier, query string) ([]scopeR
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []scopeRow
 	for rows.Next() {
@@ -196,7 +196,7 @@ func loadGateways(ctx context.Context, q scopeQuerier, query string, snap *Snaps
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var ip string
 		var subID int64
@@ -213,7 +213,7 @@ func loadExclusions(ctx context.Context, q scopeQuerier, query string, snap *Sna
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var subID int64
 		var sStr, eStr, reason string

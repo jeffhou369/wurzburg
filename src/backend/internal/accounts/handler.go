@@ -408,7 +408,7 @@ func (h *Handler) handleListAdmins(w http.ResponseWriter, r *http.Request) {
 		auth.WriteError(w, http.StatusInternalServerError, "db_error", "查詢管理員失敗")
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var items []map[string]any
 	for rows.Next() {

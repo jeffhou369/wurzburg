@@ -48,7 +48,7 @@ func TestScopeReconciliationAndConflicts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("連線資料庫失敗: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	if err := database.RunMigrations(db, migrations.FS, "."); err != nil {
 		t.Fatalf("遷移失敗: %v", err)

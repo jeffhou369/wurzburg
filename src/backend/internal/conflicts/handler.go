@@ -75,7 +75,7 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 		auth.WriteError(w, http.StatusInternalServerError, "db_error", "查詢衝突清單失敗")
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	items := make([]map[string]any, 0)
 	for rows.Next() {
@@ -172,7 +172,7 @@ func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 		ipRecID,
 	)
 	if err == nil {
-		defer sRows.Close()
+		defer func() { _ = sRows.Close() }()
 		for sRows.Next() {
 			var mac, swName, vrfName, ifName string
 			var fs, ls time.Time

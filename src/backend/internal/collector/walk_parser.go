@@ -31,7 +31,7 @@ func ParseWalkFile(filePath string) (*interfaces.PollOutput, error) {
 	if err != nil {
 		return nil, fmt.Errorf("開啟 walk 檔案失敗: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	return ParseWalk(f)
 }
 

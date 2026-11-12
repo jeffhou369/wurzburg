@@ -46,6 +46,9 @@ services:
       WURZBURG_ADMIN_USERNAME: ${WURZBURG_ADMIN_USERNAME:-}
       WURZBURG_ADMIN_PASSWORD: ${WURZBURG_ADMIN_PASSWORD:-}
       WURZBURG_SECRET_KEY: ${WURZBURG_SECRET_KEY:-}
+      # 可信任的反向代理（IPv4 或 CIDR，逗號分隔）。預設不信任任何代理，客戶端自帶的
+      # X-Forwarded-For／X-Real-IP 一律忽略；啟用 HTTPS 覆寫檔時會自動設為 nginx 的位址。
+      WURZBURG_TRUSTED_PROXIES: ${WURZBURG_TRUSTED_PROXIES:-}
     networks:
       - wurzburg-net
 

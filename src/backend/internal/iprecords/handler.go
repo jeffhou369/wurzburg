@@ -232,7 +232,7 @@ func (h *Handler) queryRecords(ctx context.Context, f FilterParams, userID int64
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	items := make([]ipRecordDTO, 0)
 	for rows.Next() {
@@ -339,7 +339,7 @@ func (h *Handler) handleExportExcel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	xf := excelize.NewFile()
-	defer xf.Close()
+	defer func() { _ = xf.Close() }()
 	sheet := "IP管理表"
 	_ = xf.SetSheetName("Sheet1", sheet)
 
@@ -478,7 +478,7 @@ func (h *Handler) handleGetDetail(w http.ResponseWriter, r *http.Request) {
 		id,
 	)
 	if err == nil {
-		defer sRows.Close()
+		defer func() { _ = sRows.Close() }()
 		for sRows.Next() {
 			var sw, vrf, mac, ifn, typ string
 			var ls time.Time
@@ -502,7 +502,7 @@ func (h *Handler) handleGetDetail(w http.ResponseWriter, r *http.Request) {
 		id,
 	)
 	if err == nil {
-		defer eRows.Close()
+		defer func() { _ = eRows.Close() }()
 		for eRows.Next() {
 			var eid int64
 			var et, det string

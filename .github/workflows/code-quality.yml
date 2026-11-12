@@ -150,7 +150,8 @@ jobs:
       - name: 執行 golangci-lint 檢查
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
-          version: latest
+          # 鎖定版本，避免新版規則讓既有程式碼突然無法通過檢查；升級時一併修正新發現的問題。
+          version: v2.15.0
           working-directory: src/backend
 
   frontend:

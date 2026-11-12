@@ -136,7 +136,7 @@ func TestPrimarySeam_MariaDBAndMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("連線至測試 MariaDB 失敗: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// 2. 測試套用內嵌 Goose 遷移
 	if err := database.RunMigrations(db, migrations.FS, "."); err != nil {

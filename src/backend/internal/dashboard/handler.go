@@ -65,6 +65,10 @@ func (h *Handler) handleGetStats(w http.ResponseWriter, r *http.Request) {
 	if h.db != nil {
 		_ = h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM vrf_read_configs WHERE enabled = TRUE AND last_status = 'failed'`).Scan(&failedVrfCount)
 	}
+	// 單一 VRF 讀取失敗不會讓整輪回傳錯誤，但仍不能顯示為讀取成功。
+	if failedVrfCount > 0 {
+		lastSuccess = false
+	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(map[string]any{

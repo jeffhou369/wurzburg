@@ -5,12 +5,20 @@
 # 啟用後：
 #   - app 不再直接對主機開放 8080 埠，所有連線必須經過 nginx。
 #   - nginx 監聽 80（強制轉址 HTTPS）與 443（TLS 終止），並加上 X-Forwarded-Proto: https。
+#   - nginx 以固定位址連到 app，app 只採信這個位址送來的 X-Real-IP／X-Forwarded-For，
+#     讓登入限流與稽核紀錄看到實際的客戶端 IP。位址所在網段可用 WURZBURG_PROXY_SUBNET 調整，
+#     請避開園區內實際使用的網段。
 
 services:
   app:
     ports: !reset []
     expose:
       - "8080"
+    environment:
+      WURZBURG_TRUSTED_PROXIES: ${WURZBURG_PROXY_NGINX_IP:-172.31.250.2}
+    networks:
+      - wurzburg-net
+      - wurzburg-proxy-net
 
   nginx:
     image: nginx:1.27-alpine
@@ -24,8 +32,18 @@ services:
     environment:
       WURZBURG_HTTPS_PORT: ${WURZBURG_HTTPS_PORT:-443}
     volumes:
-      - ./nginx/wurzburg.conf.template:/etc/nginx/templates/wurzburg.conf.template:ro
+      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ${WURZBURG_TLS_CERT_PATH:-./certs/wurzburg.crt}:/etc/nginx/certs/wurzburg.crt:ro
       - ${WURZBURG_TLS_KEY_PATH:-./certs/wurzburg.key}:/etc/nginx/certs/wurzburg.key:ro
     networks:
-      - wurzburg-net
+      wurzburg-proxy-net:
+        ipv4_address: ${WURZBURG_PROXY_NGINX_IP:-172.31.250.2}
+
+# nginx 與 app 之間的專用網路；只有這兩個容器，資料庫不在其中。
+networks:
+  wurzburg-proxy-net:
+    name: wurzburg-proxy-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${WURZBURG_PROXY_SUBNET:-172.31.250.0/29}

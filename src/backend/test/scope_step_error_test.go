@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 
@@ -64,6 +65,18 @@ func TestReviewRunCycleReportsRealScopeStepFailure(t *testing.T) {
 	}
 	if err := sched.RunCycle(ctx); err != nil {
 		t.Fatalf("故障排除後應恢復正常：%v", err)
+	}
+	checkLastSyncSuccess(true)
+
+	// 單一 VRF 讀取失敗不算本輪失敗（RunCycle 不回傳錯誤），但工作臺不得因此顯示「讀取成功」。
+	col.Errors[vrfID] = errors.New("模擬 SNMP 逾時")
+	if err := sched.RunCycle(ctx); err != nil {
+		t.Fatalf("單一 VRF 讀取失敗不應讓 RunCycle 回傳錯誤：%v", err)
+	}
+	checkLastSyncSuccess(false)
+	delete(col.Errors, vrfID)
+	if err := sched.RunCycle(ctx); err != nil {
+		t.Fatalf("VRF 恢復後應正常：%v", err)
 	}
 	checkLastSyncSuccess(true)
 }
