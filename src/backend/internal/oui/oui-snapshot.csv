@@ -1,0 +1,23 @@
+# 本地 OUI 廠商前綴快照（隨 Würzburg 預設出貨）
+# 來源：IEEE Registration Authority Public MA-L / MA-M / MA-S OUI Registry
+# 快照日期：2026-11-11
+# 格式：前綴(無分隔符大寫十六進位),前綴位元長度(24|28|36),廠商名稱
+00000C,24,Cisco Systems, Inc
+001BD4,24,Cisco Systems, Inc
+70DF2F,24,Cisco Systems, Inc
+00005E,24,ICANN, IANA Department (VRRP)
+005056,24,VMware, Inc.
+000C29,24,VMware, Inc.
+525400,24,QEMU / KVM Virtual NIC
+B827EB,24,Raspberry Pi Foundation
+DCA632,24,Raspberry Pi Trading Ltd
+D83ADD,24,Raspberry Pi Trading Ltd
+D43D7E,24,Micro-Star INT'L CO., LTD.
+3C5282,24,Hewlett Packard
+001E67,24,Intel Corporate
+A483E7,24,Apple, Inc.
+F01898,24,Apple, Inc.
+00155D,24,Microsoft Corporation
+001B21,24,Intel Corporate
+70B3D51,28,IEEE Example 28-bit MA-M Vendor
+70B3D5123,36,IEEE Example 36-bit MA-S Vendor

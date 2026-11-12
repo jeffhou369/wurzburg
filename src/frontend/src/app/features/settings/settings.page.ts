@@ -1,4 +1,6 @@
 import { Component, signal } from '@angular/core';
+import { OuiSettingsComponent } from './oui-settings.component';
+import { RetentionSettingsComponent } from './retention-settings.component';
 
 export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
 
@@ -8,6 +10,7 @@ export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
 @Component({
   selector: 'app-settings-page',
   standalone: true,
+  imports: [OuiSettingsComponent, RetentionSettingsComponent],
   template: `
     <header class="page-header">
       <h1 class="page-title">系統設定</h1>
@@ -80,14 +83,10 @@ export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
           </ng-content>
         }
         @case ('oui') {
-          <ng-content select="[slot=settings-oui]">
-            <p class="slot-hint">本地 OUI 資料匯入與快照版本資訊（Ticket 17）。</p>
-          </ng-content>
+          <app-oui-settings />
         }
         @case ('retention') {
-          <ng-content select="[slot=settings-retention]">
-            <p class="slot-hint">離線自動清除天數與到期政策設定（Ticket 14 / 18）。</p>
-          </ng-content>
+          <app-retention-settings />
         }
       }
     </div>
