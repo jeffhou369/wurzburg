@@ -98,7 +98,9 @@ func (s *Scheduler) handleTrigger(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		bgCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 		defer cancel()
-		_ = s.RunCycle(bgCtx)
+		if err := s.RunCycle(bgCtx); err != nil {
+			slog.Warn("手動觸發的同步輪次執行異常", "error", err)
+		}
 	}()
 
 	w.WriteHeader(http.StatusAccepted)
@@ -196,14 +198,19 @@ func (s *Scheduler) RunCycle(ctx context.Context) error {
 
 	wg.Wait()
 
+	// 單一 VRF 讀取失敗不算本輪失敗（已記入該 VRF 的狀態，並以 failedVRFConfigIDs 交給整併步驟）；
+	// 但管理範圍或狀態整併步驟失敗代表本輪結果沒有正確落地，必須往上傳回，不可只寫日誌。
+	var pipelineErr error
 	if s.pipeline != nil && (len(successOutputs) > 0 || len(failedVRFConfigIDs) > 0) {
 		if err := s.pipeline.Process(ctx, successOutputs, failedVRFConfigIDs); err != nil {
 			slog.ErrorContext(ctx, "處理輪詢讀取管線失敗", "error", err)
+			pipelineErr = fmt.Errorf("處理輪詢讀取管線失敗: %w", err)
 		}
 	}
 
+	// 歷史紀錄清理與管線結果無關，即使管線失敗也照常執行
 	_, _ = s.CleanupOldPollRuns(ctx)
-	return nil
+	return pipelineErr
 }
 
 // pollOneWithRetry 讀取單一 VRF 設定，失敗時立即重試一次（總嘗試次數固定為 2）。

@@ -1,9 +1,11 @@
-import { Component, OnInit, inject, signal, output } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { LucideWand2 } from '@lucide/angular';
 import { ToastService } from '../../shared/components/toast.service';
 import type { components } from '../../core/api.types';
+import { CAMPUS_TEXT } from './settings.i18n';
+import { isValidPublicBaseUrl } from './public-base-url';
 
 type CampusSettings = components['schemas']['CampusSettings'];
 
@@ -15,20 +17,18 @@ type CampusSettings = components['schemas']['CampusSettings'];
     <div class="campus-settings">
       <div class="header-row">
         <div>
-          <h2 class="section-title">園區基本資訊與設定精靈</h2>
-          <p class="section-desc">
-            設定園區識別名稱與顯示時區；名稱將用於側欄標頭與信件主旨，時區用於全系統時間顯示與排程。
-          </p>
+          <h2 class="section-title">{{ text.title }}</h2>
+          <p class="section-desc">{{ text.description }}</p>
         </div>
         <button type="button" class="btn btn-secondary" (click)="openWizard.emit()">
           <svg lucideWand2 [size]="16" [strokeWidth]="2"></svg>
-          <span>重新開啟設定精靈</span>
+          <span>{{ text.reopenWizard }}</span>
         </button>
       </div>
 
-      <form class="form-grid" (ngSubmit)="save()">
+      <form class="form-grid" (ngSubmit)="save()" novalidate>
         <div class="field-group">
-          <label for="campusName">園區顯示名稱 *</label>
+          <label for="campusName">{{ text.campusName.label }}</label>
           <input
             id="campusName"
             name="campusName"
@@ -36,13 +36,13 @@ type CampusSettings = components['schemas']['CampusSettings'];
             required
             class="form-input"
             [(ngModel)]="form.campus_name"
-            placeholder="例如 Würzburg 或 新竹二廠"
+            [placeholder]="text.campusName.placeholder"
           />
-          <span class="field-help">用於側欄標題、首頁工作臺與通知信件主旨之系統識別。</span>
+          <span class="field-help">{{ text.campusName.help }}</span>
         </div>
 
         <div class="field-group">
-          <label for="timezone">園區顯示時區 (IANA Timezone) *</label>
+          <label for="timezone">{{ text.timezone.label }}</label>
           <input
             id="timezone"
             name="timezone"
@@ -50,16 +50,40 @@ type CampusSettings = components['schemas']['CampusSettings'];
             required
             class="form-input font-mono"
             [(ngModel)]="form.timezone"
-            placeholder="Asia/Taipei"
+            [placeholder]="text.timezone.placeholder"
           />
-          <span class="field-help"
-            >例如 Asia/Taipei、UTC 或 America/New_York。資料庫一律儲存 UTC。</span
-          >
+          <span class="field-help">{{ text.timezone.help }}</span>
+        </div>
+
+        <div class="field-group field-wide">
+          <label for="publicBaseUrl">{{ text.publicBaseUrl.label }}</label>
+          <input
+            id="publicBaseUrl"
+            name="publicBaseUrl"
+            type="text"
+            inputmode="url"
+            autocomplete="off"
+            class="form-input font-mono"
+            [class.invalid]="publicBaseUrlInvalid()"
+            [attr.aria-invalid]="publicBaseUrlInvalid() ? 'true' : null"
+            [attr.aria-describedby]="
+              publicBaseUrlInvalid() ? 'publicBaseUrlHelp publicBaseUrlError' : 'publicBaseUrlHelp'
+            "
+            [ngModel]="publicBaseUrl()"
+            (ngModelChange)="onPublicBaseUrlInput($event)"
+            [placeholder]="text.publicBaseUrl.placeholder"
+          />
+          <span class="field-help" id="publicBaseUrlHelp">{{ text.publicBaseUrl.help }}</span>
+          @if (publicBaseUrlInvalid()) {
+            <span class="field-error" id="publicBaseUrlError" role="alert">{{
+              text.publicBaseUrl.invalid
+            }}</span>
+          }
         </div>
 
         <div class="actions">
           <button type="submit" class="btn btn-primary" [disabled]="saving()">
-            {{ saving() ? '儲存中...' : '儲存園區資訊' }}
+            {{ saving() ? text.saving : text.save }}
           </button>
         </div>
       </form>
@@ -99,9 +123,20 @@ type CampusSettings = components['schemas']['CampusSettings'];
           font-weight: 500;
         }
       }
+      .field-wide {
+        grid-column: 1 / -1;
+      }
       .field-help {
         font-size: var(--font-size-caption);
         color: var(--color-text-muted);
+      }
+      .field-error {
+        font-size: var(--font-size-caption);
+        color: var(--color-danger);
+        font-weight: 500;
+      }
+      .form-input.invalid {
+        border-color: var(--color-danger);
       }
       .actions {
         grid-column: 1 / -1;
@@ -116,39 +151,72 @@ export class CampusSettingsComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly toast = inject(ToastService);
 
+  protected readonly text = CAMPUS_TEXT;
   readonly openWizard = output<void>();
 
   protected readonly saving = signal(false);
-  protected form: CampusSettings = {
+  protected form: Pick<CampusSettings, 'campus_name' | 'timezone'> = {
     campus_name: 'Würzburg',
     timezone: 'Asia/Taipei',
   };
 
+  protected readonly publicBaseUrl = signal('');
+  /** 使用者按過儲存後才顯示錯誤，輸入途中不打擾；改動欄位後會即時重新判斷。 */
+  private readonly submitted = signal(false);
+  protected readonly publicBaseUrlInvalid = computed(
+    () => this.submitted() && !isValidPublicBaseUrl(this.publicBaseUrl()),
+  );
+  /** 讀取成功或使用者親自編輯過，才允許在 PUT 帶上公開網址；否則省略（= 保留後端既有值）。 */
+  private publicBaseUrlKnown = false;
+
   ngOnInit(): void {
     this.http.get<CampusSettings>('/api/v1/settings/campus').subscribe({
-      next: (res) => (this.form = res),
+      next: (res) => {
+        this.form = { campus_name: res.campus_name, timezone: res.timezone };
+        this.publicBaseUrl.set(res.public_base_url ?? '');
+        this.publicBaseUrlKnown = true;
+      },
       error: () => {},
     });
   }
 
+  protected onPublicBaseUrlInput(value: string): void {
+    this.publicBaseUrl.set(value ?? '');
+    this.publicBaseUrlKnown = true;
+  }
+
   save(): void {
+    this.submitted.set(true);
     if (!this.form.campus_name.trim() || !this.form.timezone.trim()) return;
+    if (!isValidPublicBaseUrl(this.publicBaseUrl())) return;
+
+    const body: CampusSettings = { ...this.form };
+    if (this.publicBaseUrlKnown) {
+      body.public_base_url = this.publicBaseUrl().trim();
+    }
     this.saving.set(true);
     this.http
-      .put<CampusSettings>('/api/v1/settings/campus', this.form, {
+      .put<CampusSettings>('/api/v1/settings/campus', body, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
       })
       .subscribe({
         next: (res) => {
-          this.form = res;
+          this.form = { campus_name: res.campus_name, timezone: res.timezone };
+          this.publicBaseUrl.set(res.public_base_url ?? '');
+          this.publicBaseUrlKnown = true;
+          this.submitted.set(false);
           this.saving.set(false);
-          this.toast.show('園區設定已儲存', 'success');
+          this.toast.show(this.text.saved, 'success');
           // 更新 document title 與頁面顯示
-          document.title = `[${res.campus_name}] IP 管理系統`;
+          document.title = this.text.documentTitle(res.campus_name);
         },
         error: (err) => {
           this.saving.set(false);
-          this.toast.show('儲存失敗', 'danger', err?.error?.message ?? '請確認時區格式合法');
+          this.toast.show(
+            this.text.saveFailed,
+            'danger',
+            err?.error?.message ?? this.text.saveFailedHint,
+          );
         },
       });
   }

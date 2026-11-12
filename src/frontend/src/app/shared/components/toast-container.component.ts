@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { LucideX, LucideCircleCheck, LucideTriangleAlert, LucideInfo } from '@lucide/angular';
+import { SHELL_TEXT } from '../../core/i18n/shell.i18n';
 import { ToastService } from './toast.service';
 
 @Component({
@@ -36,7 +37,7 @@ import { ToastService } from './toast.service';
             type="button"
             class="toast-close"
             (click)="toastService.dismiss(toast.id)"
-            aria-label="關閉通知"
+            [attr.aria-label]="text.closeToast"
           >
             <svg lucideX [size]="16" [strokeWidth]="2"></svg>
           </button>
@@ -131,4 +132,5 @@ import { ToastService } from './toast.service';
 })
 export class ToastContainerComponent {
   protected readonly toastService = inject(ToastService);
+  protected readonly text = SHELL_TEXT.aria;
 }

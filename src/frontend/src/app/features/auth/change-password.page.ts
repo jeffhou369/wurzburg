@@ -1,8 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { AUTH_TEXT } from './auth.i18n';
+import { AuthService } from '../../core/auth.service';
+import { AuthRedirectService } from '../../core/auth-redirect.service';
 
 @Component({
   selector: 'app-change-password-page',
@@ -108,7 +110,9 @@ import { AUTH_TEXT } from './auth.i18n';
 })
 export class ChangePasswordPage {
   private readonly http = inject(HttpClient);
-  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(AuthService);
+  private readonly redirect = inject(AuthRedirectService);
   protected readonly text = AUTH_TEXT;
   protected readonly submitting = signal(false);
   protected readonly errorMsg = signal<string | null>(null);
@@ -136,12 +140,24 @@ export class ChangePasswordPage {
       )
       .subscribe({
         next: () => {
-          this.submitting.set(false);
-          void this.router.navigateByUrl('/?wizard=true');
+          this.auth.markPasswordChanged();
+          const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+          // 重新整理頁面後記憶體中沒有使用者，先以 /auth/me 還原再依角色導向
+          this.auth.ensureSession().subscribe((user) => {
+            this.submitting.set(false);
+            if (user) {
+              this.redirect.navigateAfterAuth(
+                { ...user, requiresPasswordChange: false },
+                returnUrl,
+              );
+            } else {
+              this.errorMsg.set(this.text.errors.sessionExpired);
+            }
+          });
         },
         error: (err) => {
           this.submitting.set(false);
-          this.errorMsg.set(err?.error?.message ?? '密碼更新失敗');
+          this.errorMsg.set(err?.error?.message ?? this.text.errors.changePasswordFailed);
         },
       });
   }

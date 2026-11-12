@@ -64,18 +64,18 @@
 
     &:hover {
       background-color: var(--color-danger);
-      color: #ffffff;
+      color: var(--color-text-on-danger);
       border-color: var(--color-danger);
     }
   }
 
   &.btn-danger-solid {
     background-color: var(--color-danger);
-    color: #ffffff;
+    color: var(--color-text-on-danger);
     font-weight: 600;
 
     &:hover {
-      background-color: #7f1d1d;
+      background-color: var(--color-danger-strong);
     }
   }
 

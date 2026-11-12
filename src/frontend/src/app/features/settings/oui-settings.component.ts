@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { LucideUpload } from '@lucide/angular';
 import { ToastService } from '../../shared/components/toast.service';
 import type { components } from '../../core/api.types';
+import { OUI_TEXT } from './settings.i18n';
 
 type OUIStatus = components['schemas']['OUIStatus'];
 
@@ -12,37 +13,36 @@ type OUIStatus = components['schemas']['OUIStatus'];
   imports: [LucideUpload],
   template: `
     <div class="oui-section">
-      <h2 class="section-title">本地 OUI 廠商資料庫</h2>
-      <p class="section-desc">MAC 廠商名稱完全於本地資料庫比對，不會對外部網路發送任何查詢請求。</p>
+      <h2 class="section-title">{{ text.title }}</h2>
+      <p class="section-desc">{{ text.description }}</p>
 
       @if (status(); as st) {
         <dl class="info-grid">
           <div class="info-row">
-            <dt>目前快照版本</dt>
+            <dt>{{ text.status.version }}</dt>
             <dd class="font-mono">{{ st.version }}</dd>
           </div>
           <div class="info-row">
-            <dt>資料來源檔名</dt>
+            <dt>{{ text.status.filename }}</dt>
             <dd class="font-mono">{{ st.filename }}</dd>
           </div>
           <div class="info-row">
-            <dt>收錄前綴數量</dt>
+            <dt>{{ text.status.entryCount }}</dt>
             <dd class="font-mono">{{ st.entry_count }}</dd>
           </div>
           <div class="info-row">
-            <dt>匯入者與時間</dt>
+            <dt>{{ text.status.importedBy }}</dt>
             <dd>
-              {{ st.imported_by }}（<span class="font-mono">{{ st.imported_at }}</span
-              >）
+              {{ st.imported_by }}{{ text.status.timeOpen
+              }}<span class="font-mono">{{ st.imported_at }}</span
+              >{{ text.status.timeClose }}
             </dd>
           </div>
         </dl>
       }
 
       <div class="upload-box">
-        <label for="ouiFile" class="upload-label"
-          >上傳並替換 OUI 資料檔（CSV 格式：prefix,bitlen,vendor）</label
-        >
+        <label for="ouiFile" class="upload-label">{{ text.uploadLabel }}</label>
         <div class="upload-controls">
           <input id="ouiFile" type="file" accept=".csv,.txt" (change)="onFileSelected($event)" />
           <button
@@ -52,7 +52,7 @@ type OUIStatus = components['schemas']['OUIStatus'];
             (click)="upload()"
           >
             <svg lucideUpload [size]="16" [strokeWidth]="2"></svg>
-            <span>{{ uploading() ? '匯入中...' : '上傳並重新計算廠商' }}</span>
+            <span>{{ uploading() ? text.uploading : text.upload }}</span>
           </button>
         </div>
       </div>
@@ -112,6 +112,7 @@ type OUIStatus = components['schemas']['OUIStatus'];
 export class OuiSettingsComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly toast = inject(ToastService);
+  protected readonly text = OUI_TEXT;
 
   protected readonly status = signal<OUIStatus | null>(null);
   protected readonly selectedFile = signal<File | null>(null);
@@ -146,15 +147,15 @@ export class OuiSettingsComponent implements OnInit {
           this.status.set(res);
           this.uploading.set(false);
           this.selectedFile.set(null);
-          this.toast.show(
-            'OUI 匯入完成',
-            'success',
-            `已更新 ${res.entry_count} 筆廠商前綴並重算現有紀錄`,
-          );
+          this.toast.show(this.text.imported, 'success', this.text.importedDetail(res.entry_count));
         },
         error: (err) => {
           this.uploading.set(false);
-          this.toast.show('OUI 匯入失敗', 'danger', err?.error?.message ?? '請檢查檔案格式');
+          this.toast.show(
+            this.text.importFailed,
+            'danger',
+            err?.error?.message ?? this.text.importFailedHint,
+          );
         },
       });
   }

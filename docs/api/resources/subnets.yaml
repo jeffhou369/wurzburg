@@ -90,6 +90,35 @@ paths:
         '200':
           description: 已更新
 
+  subnet_cidr_preview:
+    post:
+      tags: [Subnets]
+      summary: 預覽修正 CIDR 將刪除的 IP 紀錄，確認時須將憑證傳入 PUT 網段端點
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cidr]
+              properties:
+                cidr:
+                  type: string
+      responses:
+        '200':
+          description: 預覽結果
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/DeletePreviewResponse'
+
   subnet_state_preview:
     post:
       tags: [Subnets]

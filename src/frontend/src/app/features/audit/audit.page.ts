@@ -3,6 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { LucideChevronDown, LucideChevronUp } from '@lucide/angular';
 import { EmptyStateComponent } from '../../shared/components/empty-state.component';
 import type { components } from '../../core/api.types';
+import { SHELL_TEXT } from '../../core/i18n/shell.i18n';
+import { AUDIT_TEXT } from './audit.i18n';
 
 type AuditLogEntry = components['schemas']['AuditLogEntry'];
 type PaginationMeta = components['schemas']['PaginationMeta'];
@@ -14,28 +16,30 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
   template: `
     <header class="page-header">
       <div>
-        <h1 class="page-title">稽核紀錄</h1>
-        <p class="page-subtitle">追查所有登入、登記變更、網段調整、刪除明細與系統設定歷史</p>
+        <h1 class="page-title">{{ text.title }}</h1>
+        <p class="page-subtitle">{{ text.subtitle }}</p>
       </div>
     </header>
 
     @if (loading()) {
-      <div class="card"><p class="muted-text">正在載入稽核紀錄...</p></div>
+      <div class="card">
+        <p class="muted-text">{{ text.loading }}</p>
+      </div>
     } @else if (items().length === 0) {
-      <app-empty-state title="尚無稽核紀錄" description="目前尚未記錄任何操作事件。" />
+      <app-empty-state [title]="text.empty.title" [description]="text.empty.description" />
     } @else {
       <div class="card table-card">
         <div class="table-wrap">
           <table class="data-table">
             <thead>
               <tr>
-                <th>時間</th>
-                <th>操作者</th>
-                <th>來源 IP</th>
-                <th>動作</th>
-                <th>對象</th>
-                <th>變更摘要</th>
-                <th>明細</th>
+                <th>{{ text.columns.time }}</th>
+                <th>{{ text.columns.actor }}</th>
+                <th>{{ text.columns.sourceIp }}</th>
+                <th>{{ text.columns.action }}</th>
+                <th>{{ text.columns.target }}</th>
+                <th>{{ text.columns.summary }}</th>
+                <th>{{ text.columns.details }}</th>
               </tr>
             </thead>
             <tbody>
@@ -61,9 +65,9 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
                         [attr.aria-expanded]="expandedIds().has(item.id)"
                       >
                         @if (expandedIds().has(item.id)) {
-                          <svg lucideChevronUp [size]="14"></svg> 收合
+                          <svg lucideChevronUp [size]="14"></svg> {{ text.collapse }}
                         } @else {
-                          <svg lucideChevronDown [size]="14"></svg> 展開
+                          <svg lucideChevronDown [size]="14"></svg> {{ text.expand }}
                         }
                       </button>
                     } @else {
@@ -85,9 +89,9 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
 
         @if (pagination(); as pg) {
           <div class="pagination-bar">
-            <span class="muted-text"
-              >共 {{ pg.total_items }} 筆（第 {{ pg.page }} / {{ pg.total_pages || 1 }} 頁）</span
-            >
+            <span class="muted-text">{{
+              pager.summary(pg.total_items, pg.page, pg.total_pages || 1)
+            }}</span>
             <div class="pg-actions">
               <button
                 type="button"
@@ -95,7 +99,7 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
                 [disabled]="pg.page <= 1"
                 (click)="loadPage(pg.page - 1)"
               >
-                上一頁
+                {{ pager.previous }}
               </button>
               <button
                 type="button"
@@ -103,7 +107,7 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
                 [disabled]="pg.page >= pg.total_pages"
                 (click)="loadPage(pg.page + 1)"
               >
-                下一頁
+                {{ pager.next }}
               </button>
             </div>
           </div>
@@ -191,6 +195,8 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
 })
 export class AuditPage implements OnInit {
   private readonly http = inject(HttpClient);
+  protected readonly text = AUDIT_TEXT;
+  protected readonly pager = SHELL_TEXT.pagination;
   protected readonly items = signal<AuditLogEntry[]>([]);
   protected readonly pagination = signal<PaginationMeta | null>(null);
   protected readonly loading = signal(true);

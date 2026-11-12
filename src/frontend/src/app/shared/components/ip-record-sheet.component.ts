@@ -1,4 +1,5 @@
 import { Component, input, output, signal } from '@angular/core';
+import { SHELL_TEXT } from '../../core/i18n/shell.i18n';
 import { SheetContainerComponent } from './sheet-container.component';
 
 export type IpRecordSheetTab = 'registration' | 'observations';
@@ -17,7 +18,7 @@ export type IpRecordSheetTab = 'registration' | 'observations';
   template: `
     <app-sheet-container
       [open]="open()"
-      [title]="ipAddress() ? ipAddress()! : 'IP 紀錄詳情'"
+      [title]="ipAddress() ? ipAddress()! : text.fallbackTitle"
       (closed)="closed.emit()"
     >
       <div class="sheet-tabs" role="tablist">
@@ -29,7 +30,7 @@ export type IpRecordSheetTab = 'registration' | 'observations';
           [attr.aria-selected]="activeTab() === 'registration'"
           (click)="activeTab.set('registration')"
         >
-          登記
+          {{ text.tabRegistration }}
         </button>
         <button
           type="button"
@@ -39,18 +40,18 @@ export type IpRecordSheetTab = 'registration' | 'observations';
           [attr.aria-selected]="activeTab() === 'observations'"
           (click)="activeTab.set('observations')"
         >
-          觀測與歷程
+          {{ text.tabObservations }}
         </button>
       </div>
 
       <div class="tab-panel" role="tabpanel">
         @if (activeTab() === 'registration') {
           <ng-content select="[slot=registration]">
-            <p class="slot-placeholder">此處預留給「登記」功能插槽（Ticket 18）。</p>
+            <p class="slot-placeholder">{{ text.registrationPlaceholder }}</p>
           </ng-content>
         } @else {
           <ng-content select="[slot=observations]">
-            <p class="slot-placeholder">此處預留給「觀測與歷程」功能插槽（Ticket 13）。</p>
+            <p class="slot-placeholder">{{ text.observationsPlaceholder }}</p>
           </ng-content>
         }
       </div>
@@ -93,6 +94,7 @@ export type IpRecordSheetTab = 'registration' | 'observations';
   ],
 })
 export class IpRecordSheetComponent {
+  protected readonly text = SHELL_TEXT.ipRecordSheet;
   readonly open = input<boolean>(false);
   readonly ipAddress = input<string | null>(null);
   readonly closed = output<void>();

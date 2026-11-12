@@ -178,6 +178,9 @@ func TestWizardAndCampusSettings(t *testing.T) {
 		// 模擬完成所有設定：
 		_ = srv.Settings.Set(ctx, "active_auth_source", "ad")
 		_ = srv.Settings.Set(ctx, "smtp_host", "smtp.campus.local")
+		if err := srv.Settings.Set(ctx, "public_base_url", "https://ip.example.test"); err != nil {
+			t.Fatal(err)
+		}
 		_ = srv.Settings.Set(ctx, "smtp_sender", "ip@campus.local")
 		seeder.SeedSwitch("core-gw", "10.0.0.1", "ios-xe", "v3")
 		seeder.SeedSubnet("10.0.0.0/8", "managed", nil)

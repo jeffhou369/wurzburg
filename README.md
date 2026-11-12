@@ -40,11 +40,13 @@ WURZBURG_ADMIN_PASSWORD=YourStrongInitialPassword123!
 ### 2. 建置並啟動服務
 
 ```sh
-# 於專案根目錄執行容器映像檔建置
+# 從前一步的 infra 目錄回到專案根目錄
+cd ..
+# 建置容器映像檔
 docker build -t wurzburg:dev .
 
 # 啟動 MariaDB 資料庫與 Würzburg 應用程式
-docker compose -f infra/docker-compose.yml up -d
+docker compose --env-file infra/.env -f infra/docker-compose.yml up -d --no-build
 ```
 
 ### 3. 登入並走完設定精靈
@@ -54,7 +56,7 @@ docker compose -f infra/docker-compose.yml up -d
 1. 點擊「系統管理員」，以您在環境變數中設定的 `WURZBURG_ADMIN_USERNAME` 與初始密碼登入。
 2. 系統將強制要求修改初始密碼（請設為至少 12 個字元之強密碼）。
 3. 修改完成後將自動開啟五步驟設定精靈：
-   - **步驟 1**：設定園區顯示名稱與時區。
+   - **步驟 1**：設定園區顯示名稱與時區。並於「系統設定 → 園區資訊」設定收件人實際可連線的公開根網址，例如 `https://ip.example.com`；未設定公開網址時系統會停止寄信並提示，不會以 `localhost` 代替。
    - **步驟 2**：設定組織驗證來源（AD 或 RADIUS，可測試連線）。
    - **步驟 3**：設定 SMTP 郵件伺服器與管理員收件清單（可寄出測試信）。
    - **步驟 4**：新增第一台 ARP 來源交換器（可即時測試讀取）。
@@ -68,7 +70,7 @@ docker compose -f infra/docker-compose.yml up -d
 系統預設以 HTTP 啟動。在非信任網路環境中，請掛載選用的 Nginx 容器終止 TLS，保護帳號密碼與機敏憑證：
 
 ```sh
-docker compose -f infra/docker-compose.yml -f infra/docker-compose.https.yml up -d
+docker compose --env-file infra/.env -f infra/docker-compose.yml -f infra/docker-compose.https.yml up -d --no-build
 ```
 
 詳細憑證準備與設定說明請參閱 [infra/HTTPS-README.md](infra/HTTPS-README.md)。

@@ -108,7 +108,7 @@ docker compose -f infra/docker-compose.yml ps
 3. 系統會強制要求修改密碼，請輸入至少 12 個字元的新密碼並送出。
 4. **重要安全性動作**：改完密碼後，請立即開啟伺服器上的 `infra/.env`，將 `WURZBURG_ADMIN_USERNAME` 與 `WURZBURG_ADMIN_PASSWORD` 移除或清空。
 5. 改完密碼後會自動開啟五步驟**初始設定精靈**（可隨時按「稍後再設定」跳過並於首頁「尚未完成的設定」清單繼續）：
-   - **步驟 1 — 園區資訊**：設定顯示名稱與時區。
+   - **步驟 1 — 園區資訊**：設定顯示名稱與時區；通知另需在「系統設定 → 園區資訊」設定公開網址（`public_base_url`），例如 `https://ip.example.com`。網址必須讓收件人實際連線，僅允許 HTTP(S) 根網址，不含帳密、子路徑、查詢參數或片段；正式環境應使用 HTTPS。未設定時三種通知及測試信都不寄送並顯示提示，不使用 `localhost` 或請求 Host 猜測網址。
    - **步驟 2 — 驗證來源**：準備 AD (LDAPS 網址、查詢帳號、Base DN、允許群組) 或 RADIUS (伺服器 IP、連接埠、Shared Secret) 資料並執行測試登入。
    - **步驟 3 — 郵件**：準備 SMTP 主機、連接埠、加密方式、寄件人信箱與系統管理員通知清單，並寄出測試信。
    - **步驟 4 — 第一台交換器**：準備 ARP 來源交換器管理 IP、作業平台（IOS-XE/NX-OS）、SNMP 版本與憑證，新增後點擊「測試讀取」。
@@ -127,7 +127,7 @@ docker compose -f infra/docker-compose.yml ps
 docker compose -f infra/docker-compose.yml -f infra/docker-compose.https.yml --env-file infra/.env up -d
 ```
 
-詳細憑證製作與埠號調整參數請見 [infra/HTTPS-README.md](HTTPS-README.md)。
+詳細憑證製作與埠號調整參數請見 [infra/HTTPS-README.md](../infra/HTTPS-README.md)。
 
 ---
 

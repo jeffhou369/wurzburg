@@ -925,6 +925,50 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/subnets/{id}/cidr/preview': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 預覽修正 CIDR 將刪除的 IP 紀錄，確認時須將憑證傳入 PUT 網段端點 */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: number;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            cidr: string;
+          };
+        };
+      };
+      responses: {
+        /** @description 預覽結果 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['DeletePreviewResponse'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/subnets/{id}/state/preview': {
     parameters: {
       query?: never;
@@ -1184,6 +1228,8 @@ export interface paths {
           presence?: 'online' | 'offline';
           registration?: 'unregistered' | 'registered' | 'expired';
           expiring_soon?: boolean;
+          /** @description 有擁有者且已到期或將於提醒提前天數內到期，可搭配 owner_me 限定自己的待確認登記。 */
+          pending_confirmation?: boolean;
           has_conflict?: boolean;
           owner_me?: boolean;
           sort_by?: 'ip_address' | 'last_seen_at' | 'expires_at' | 'owner_username';
@@ -1234,6 +1280,8 @@ export interface paths {
           presence?: 'online' | 'offline';
           registration?: 'unregistered' | 'registered' | 'expired';
           expiring_soon?: boolean;
+          /** @description 有擁有者且已到期或將於提醒提前天數內到期，可搭配 owner_me 限定自己的待確認登記。 */
+          pending_confirmation?: boolean;
           has_conflict?: boolean;
         };
         header?: never;
@@ -2421,14 +2469,6 @@ export interface components {
       gateways: components['schemas']['SubnetGateway'][];
       exclusions: components['schemas']['ExclusionRange'][];
     };
-    SubnetStateChangeRequest: {
-      /** @enum {string} */
-      state: 'managed' | 'unmanaged';
-      /** @enum {string} */
-      exclude_reason?: 'dhcp' | 'wireless' | 'other';
-      exclude_comment?: string;
-      preview_token?: string;
-    };
     DeletePreviewResponse: {
       /** @description 預覽識別憑證，若資料在確認前變動則失效 */
       preview_token: string;
@@ -2438,6 +2478,14 @@ export interface components {
       owned_ip_records: number;
       /** @description 當刪除筆數大於 0 時為 true */
       requires_confirm: boolean;
+    };
+    SubnetStateChangeRequest: {
+      /** @enum {string} */
+      state: 'managed' | 'unmanaged';
+      /** @enum {string} */
+      exclude_reason?: 'dhcp' | 'wireless' | 'other';
+      exclude_comment?: string;
+      preview_token?: string;
     };
     ExclusionRangeCreateRequest: {
       start_ip: string;
@@ -2639,6 +2687,11 @@ export interface components {
       campus_name: string;
       /** @example Asia/Taipei */
       timezone: string;
+      /**
+       * @description 園區對外 HTTP(S) 根網址，不含帳密、子路徑、查詢參數或片段。空字串表示未設定（停止寄信）；更新時省略則保留既有值。
+       * @example https://ip.example.com
+       */
+      public_base_url?: string;
     };
     AuthSourceSettings: {
       /** @enum {string} */

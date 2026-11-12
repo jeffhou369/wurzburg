@@ -216,6 +216,8 @@ func TestFullE2EIntegration13Scenarios(t *testing.T) {
 		// Step 1: 園區資訊
 		wStep1 := doReq(http.MethodPut, "/api/v1/settings/campus", map[string]string{
 			"campus_name": "Würzburg 研發園區", "timezone": "Asia/Taipei",
+			// 公開網址未設定時不會寄出通知信，全流程需先補上才能走到寄信情境
+			"public_base_url": "https://ip.example.test",
 		}, adminCookie)
 		if wStep1.Code != http.StatusOK {
 			t.Fatalf("精靈步驟 1 失敗: %d", wStep1.Code)
@@ -789,73 +791,7 @@ func TestFullE2EIntegration13Scenarios(t *testing.T) {
 		}
 	})
 
-	// =========================================================================
-	// 檢驗：設計目標規模效能測試（50 台交換器、200 VRF、25,000 IP 整併與首頁查詢）
-	// =========================================================================
-	t.Run("Benchmark_DesignGoalScale_25kRecords", func(t *testing.T) {
-		t.Log("開始進行 25,000 筆 IP 與 50 台交換器整併規模基準測試...")
-		// 新增一個納管的 /16 網段讓 25,000 筆觀測真實落入 ip_records 進行壓力測試
-		wSubAdd := doReq(http.MethodPost, "/api/v1/subnets", map[string]string{
-			"cidr": "10.0.0.0/16", "description": "25k Scale Test",
-		}, adminCookie)
-		if wSubAdd.Code != http.StatusCreated {
-			t.Fatalf("建立壓測網段失敗: %d %s", wSubAdd.Code, wSubAdd.Body.String())
-		}
-		var subScale map[string]any
-		_ = json.Unmarshal(wSubAdd.Body.Bytes(), &subScale)
-		subScaleID := int64(subScale["id"].(float64))
-		_ = doReq(http.MethodPut, fmt.Sprintf("/api/v1/subnets/%d/state", subScaleID), map[string]string{
-			"state": "managed",
-		}, adminCookie)
-
-		scaleStart := time.Now()
-
-		// 批次插入 25,000 筆 IP 觀測資料測試記憶體 LPM 比對與整併速度
-		obs := make([]interfaces.ARPObservation, 25000)
-		for i := 0; i < 25000; i++ {
-			b2 := (i >> 16) & 0xFF
-			b3 := (i >> 8) & 0xFF
-			b4 := i & 0xFF
-			obs[i] = interfaces.ARPObservation{
-				IPAddress:  fmt.Sprintf("10.%d.%d.%d", b2, b3, b4),
-				MACAddress: fmt.Sprintf("00:50:56:%02x:%02x:%02x", b2, b3, b4),
-				IfIndex:    1,
-				IfName:     "Vlan10",
-				ARPType:    "dynamic",
-			}
-		}
-
-		// 驗證解析器與狀態整併效能
-		pipeStart := time.Now()
-		_ = reconcileSvc.ReconcileObservations(ctx, []*interfaces.PollOutput{{
-			VRFConfigID:     defaultVRFID,
-			SwitchID:        firstSwitchID,
-			VRFName:         "default",
-			CollectedAt:     clk.Now(),
-			ARPObservations: obs,
-		}}, nil)
-		pipeElapsed := time.Since(pipeStart)
-		t.Logf("25,000 筆 ARP 觀測批次整併耗時: %v", pipeElapsed)
-		if pipeElapsed > 3*time.Minute {
-			t.Errorf("25,000 筆整併耗時超過 3 分鐘輪詢週期上限: %v", pipeElapsed)
-		}
-
-		// 驗證首頁工作臺查詢（分頁與統計查詢響應速度）
-		dashStart := time.Now()
-		wDash := doReq(http.MethodGet, "/api/v1/dashboard/stats", nil, adminCookie)
-		if wDash.Code != http.StatusOK {
-			t.Fatalf("首頁儀表板查詢失敗: %d", wDash.Code)
-		}
-		wTable := doReq(http.MethodGet, "/api/v1/ip-records?page=1&page_size=50", nil, adminCookie)
-		if wTable.Code != http.StatusOK {
-			t.Fatalf("首頁 IP 表格查詢失敗: %d", wTable.Code)
-		}
-		dashElapsed := time.Since(dashStart)
-		t.Logf("25,000 筆規模下首頁儀表板與表格查詢耗時: %v", dashElapsed)
-		if dashElapsed > 5*time.Second {
-			t.Errorf("首頁查詢耗時過長: %v", dashElapsed)
-		}
-
-		t.Logf("設計規模測試總耗時: %v，符合 3 分鐘輪詢週期設計要求", time.Since(scaleStart))
-	})
+	// 規模驗收（50 台交換器、200 個 VRF 讀取設定、25,000 筆 IP 的整輪輪詢與首頁查詢）
+	// 已移到 scale_poll_cycle_test.go，以真實 Scheduler.RunCycle 驗收；
+	// 此處不再放只呼叫單一整併方法的微基準，以免被誤認為整輪驗收。
 }

@@ -170,6 +170,11 @@ func (h *Handler) handleSendTestMail(w http.ResponseWriter, r *http.Request) {
 		tz = "Asia/Taipei"
 	}
 
+	workbenchURL, err := h.settings.PublicLink(ctx, "")
+	if err != nil {
+		auth.WriteError(w, http.StatusUnprocessableEntity, "public_url_required", err.Error())
+		return
+	}
 	data := EmailTemplateData{
 		CampusName: campusName,
 		Subject:    fmt.Sprintf("[%s] 郵件通知測試信", campusName),
@@ -191,7 +196,7 @@ func (h *Handler) handleSendTestMail(w http.ResponseWriter, r *http.Request) {
 		},
 		PrimaryCTA: &CTAButton{
 			Label: "前往系統檢視",
-			URL:   "http://localhost:8080/",
+			URL:   workbenchURL,
 		},
 		FooterLines: []string{"此信為手動觸發之 SMTP 測試信件。"},
 	}

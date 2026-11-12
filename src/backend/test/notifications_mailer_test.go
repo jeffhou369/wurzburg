@@ -127,6 +127,9 @@ func TestMailerAndNotificationsE2E(t *testing.T) {
 
 	seeder := testutil.NewSeeder(t, db, clk)
 	adminID := seeder.SeedAdmin("admin")
+	if err := srv.Settings.Set(ctx, "public_base_url", "https://ip.example.test"); err != nil {
+		t.Fatal(err)
+	}
 	user1ID := seeder.SeedUser("chen", "user", "ad", "chen@example.com", "陳工程師")
 	user2ID := seeder.SeedUser("lin", "user", "ad", "lin@example.com", "林設計師")
 	subID := seeder.SeedSubnet("10.20.0.0/16", "managed", nil)

@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { LucideTriangleAlert, LucideWand2, LucideChevronRight } from '@lucide/angular';
 import { AuthService } from '../../core/auth.service';
 import type { components } from '../../core/api.types';
+import { CHECKLIST_TEXT } from './unfinished-checklist.i18n';
 
 type UnfinishedItem = components['schemas']['UnfinishedSetupItem'];
 type WizardStatus = components['schemas']['WizardStatus'];
@@ -26,32 +27,32 @@ type WizardStatus = components['schemas']['WizardStatus'];
             ></svg>
             <div>
               <h2 class="checklist-title">
-                系統尚未完成的初始設定（{{ items().length }} 項待處理）
+                {{ text.title(items().length) }}
               </h2>
               <p class="checklist-sub">
-                以下項目將影響使用者登入、資料採集與通知發送；建議依序設定或點擊按鈕開啟設定精靈。
+                {{ text.description }}
               </p>
             </div>
           </div>
           <button type="button" class="btn btn-secondary btn-sm" (click)="resumeWizard.emit()">
             <svg lucideWand2 [size]="14"></svg>
-            <span>開啟設定精靈</span>
+            <span>{{ text.openWizard }}</span>
           </button>
         </div>
 
-        <ul class="items-list" aria-label="未完成設定項目清單">
+        <ul class="items-list" [attr.aria-label]="text.listLabel">
           @for (it of items(); track it.key) {
             <li class="item-row" (click)="navigate(it.route)">
               <div class="item-info">
                 <span class="item-title">{{ it.title }}</span>
-                <span class="item-consequence">影響：{{ it.consequence }}</span>
+                <span class="item-consequence">{{ text.consequence(it.consequence) }}</span>
               </div>
               <button
                 type="button"
                 class="btn btn-ghost btn-sm nav-link-btn"
-                [attr.aria-label]="'前往設定 ' + it.title"
+                [attr.aria-label]="text.goToSettingLabel(it.title)"
               >
-                <span>前往設定</span>
+                <span>{{ text.goToSetting }}</span>
                 <svg lucideChevronRight [size]="14"></svg>
               </button>
             </li>
@@ -113,7 +114,7 @@ type WizardStatus = components['schemas']['WizardStatus'];
         border: 1px solid var(--color-border-default);
         border-radius: var(--radius-md);
         cursor: pointer;
-        transition: background-color var(--motion-subtle);
+        transition: background-color var(--motion-fast) var(--ease-out);
         &:hover {
           background-color: var(--color-surface-hover);
         }
@@ -146,6 +147,7 @@ export class UnfinishedChecklistComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
+  protected readonly text = CHECKLIST_TEXT;
 
   readonly resumeWizard = output<void>();
 

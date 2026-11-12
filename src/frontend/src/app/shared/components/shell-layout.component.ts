@@ -49,7 +49,7 @@ import { ToastContainerComponent } from './toast-container.component';
         class="mobile-menu-toggle btn btn-secondary btn-sm"
         (click)="mobileSidebarOpen.set(!mobileSidebarOpen())"
         [attr.aria-expanded]="mobileSidebarOpen()"
-        aria-label="切換導覽側欄"
+        [attr.aria-label]="text.aria.toggleSidebar"
       >
         @if (mobileSidebarOpen()) {
           <svg lucideX [size]="18" [strokeWidth]="2"></svg>
@@ -72,7 +72,7 @@ import { ToastContainerComponent } from './toast-container.component';
           </div>
         </div>
 
-        <nav class="sidebar-nav" aria-label="主導覽">
+        <nav class="sidebar-nav" [attr.aria-label]="text.aria.mainNav">
           <a
             class="nav-item"
             routerLink="/"
@@ -93,7 +93,10 @@ import { ToastContainerComponent } from './toast-container.component';
             <svg lucideNetwork [size]="18" [strokeWidth]="2"></svg>
             <span class="nav-label">{{ text.nav.subnets }}</span>
             @if (badges.pendingSubnetsCount() > 0) {
-              <span class="nav-badge nav-badge-warning" aria-label="待檢視網段數量">
+              <span
+                class="nav-badge nav-badge-warning"
+                [attr.aria-label]="text.aria.pendingSubnetsCount"
+              >
                 {{ badges.pendingSubnetsCount() }}
               </span>
             }
@@ -120,7 +123,10 @@ import { ToastContainerComponent } from './toast-container.component';
             <svg lucideTriangleAlert [size]="18" [strokeWidth]="2"></svg>
             <span class="nav-label">{{ text.nav.conflicts }}</span>
             @if (badges.openConflictsCount() > 0) {
-              <span class="nav-badge nav-badge-danger" aria-label="未處理衝突數量">
+              <span
+                class="nav-badge nav-badge-danger"
+                [attr.aria-label]="text.aria.openConflictsCount"
+              >
                 {{ badges.openConflictsCount() }}
               </span>
             }
@@ -173,7 +179,7 @@ import { ToastContainerComponent } from './toast-container.component';
 
         <div class="sidebar-footer">
           <div class="user-card">
-            <div class="user-name">{{ auth.currentUser().displayName }}</div>
+            <div class="user-name">{{ auth.currentUser()?.displayName }}</div>
             <div class="user-role">
               {{ auth.isAdmin() ? text.user.adminBadge : text.user.userBadge }}
             </div>
@@ -401,7 +407,7 @@ import { ToastContainerComponent } from './toast-container.component';
           display: block;
           position: fixed;
           inset: 0;
-          background-color: rgba(15, 23, 42, 0.35);
+          background-color: var(--color-overlay-backdrop);
           z-index: 650;
         }
 
@@ -441,7 +447,7 @@ export class ShellLayoutComponent implements OnInit {
       next: (res) => {
         if (res.campus_name) {
           this.campusName.set(res.campus_name);
-          document.title = `[${res.campus_name}] IP 管理系統`;
+          document.title = this.text.documentTitle(res.campus_name);
         }
       },
       error: () => {},

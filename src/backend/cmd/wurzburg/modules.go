@@ -75,5 +75,6 @@ func mountFeatureModules(ctx context.Context, srv *server.Server, db *sql.DB, cl
 	if db != nil {
 		go sched.StartBackgroundLoop(ctx)
 		go notifTracker.StartBackgroundLoop(ctx)
+		go purge.NewMaintenanceScheduler(purgeSvc, clk).StartBackgroundLoop(ctx)
 	}
 }

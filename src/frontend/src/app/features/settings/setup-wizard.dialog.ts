@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { DialogRef } from '@angular/cdk/dialog';
 import { LucideCheck, LucideX, LucideWand2, LucidePlay, LucideRefreshCw } from '@lucide/angular';
 import { ToastService } from '../../shared/components/toast.service';
+import { SETUP_WIZARD_TEXT } from './setup-wizard.i18n';
 import type { components } from '../../core/api.types';
 
 type Subnet = components['schemas']['Subnet'];
@@ -50,20 +51,20 @@ interface SwitchFormData {
       <header class="wizard-header">
         <div class="wizard-header-title">
           <svg lucideWand2 [size]="20" [strokeWidth]="2"></svg>
-          <h2>初始設定精靈</h2>
+          <h2>{{ text.title }}</h2>
         </div>
         <button
           type="button"
           class="close-btn"
           (click)="close()"
-          aria-label="離開精靈（進度自動保存）"
+          [attr.aria-label]="text.closeAria"
         >
           <svg lucideX [size]="20"></svg>
         </button>
       </header>
 
       <!-- 步驟指示列 -->
-      <nav class="steps-nav" aria-label="設定步驟">
+      <nav class="steps-nav" [attr.aria-label]="text.stepsAria">
         @for (s of steps; track s.index) {
           <div
             class="step-item"
@@ -87,14 +88,14 @@ interface SwitchFormData {
         @switch (currentStep()) {
           @case (1) {
             <section class="step-content">
-              <h3 class="step-title">步驟 1：園區基本資訊</h3>
+              <h3 class="step-title">{{ text.step1.title }}</h3>
               <p class="step-desc">
-                設定系統識別名稱與顯示時區。名稱用於側欄與信件，時區用於全系統介面顯示。
+                {{ text.step1.description }}
               </p>
 
               <div class="form-stack">
                 <div class="field-group">
-                  <label for="wzCampus">園區顯示名稱 *</label>
+                  <label for="wzCampus">{{ text.step1.campusName }}</label>
                   <input
                     id="wzCampus"
                     type="text"
@@ -104,7 +105,7 @@ interface SwitchFormData {
                   />
                 </div>
                 <div class="field-group">
-                  <label for="wzTz">顯示時區 (IANA Timezone) *</label>
+                  <label for="wzTz">{{ text.step1.timezone }}</label>
                   <input
                     id="wzTz"
                     type="text"
@@ -112,9 +113,7 @@ interface SwitchFormData {
                     [(ngModel)]="campusForm.timezone"
                     placeholder="Asia/Taipei"
                   />
-                  <span class="field-help"
-                    >例如 Asia/Taipei、UTC 或 America/New_York。內部存儲一律使用 UTC。</span
-                  >
+                  <span class="field-help">{{ text.step1.timezoneHelp }}</span>
                 </div>
               </div>
             </section>
@@ -122,9 +121,9 @@ interface SwitchFormData {
 
           @case (2) {
             <section class="step-content">
-              <h3 class="step-title">步驟 2：一般使用者驗證來源</h3>
+              <h3 class="step-title">{{ text.step2.title }}</h3>
               <p class="step-desc">
-                選擇並設定組織驗證來源（AD 或 RADIUS）。使用者登入後登記自己負責的位址。
+                {{ text.step2.description }}
               </p>
 
               <div class="source-pills">
@@ -149,7 +148,7 @@ interface SwitchFormData {
               @if (authForm.active_source === 'ad') {
                 <div class="form-stack">
                   <div class="field-group">
-                    <label for="wzAdUrl">AD 伺服器網址 *</label>
+                    <label for="wzAdUrl">{{ text.step2.adUrl }}</label>
                     <input
                       id="wzAdUrl"
                       type="text"
@@ -160,7 +159,7 @@ interface SwitchFormData {
                   </div>
                   <div class="field-row">
                     <div class="field-group">
-                      <label for="wzAdBindDn">查詢帳號 DN</label>
+                      <label for="wzAdBindDn">{{ text.step2.adBindDn }}</label>
                       <input
                         id="wzAdBindDn"
                         type="text"
@@ -170,18 +169,18 @@ interface SwitchFormData {
                       />
                     </div>
                     <div class="field-group">
-                      <label for="wzAdBindPass">查詢密碼</label>
+                      <label for="wzAdBindPass">{{ text.step2.adBindPassword }}</label>
                       <input
                         id="wzAdBindPass"
                         type="password"
                         class="form-input"
                         [(ngModel)]="authForm.ad_bind_password"
-                        placeholder="密碼"
+                        [placeholder]="text.placeholders.password"
                       />
                     </div>
                   </div>
                   <div class="field-group">
-                    <label for="wzAdBaseDn">搜尋 Base DN *</label>
+                    <label for="wzAdBaseDn">{{ text.step2.adBaseDn }}</label>
                     <input
                       id="wzAdBaseDn"
                       type="text"
@@ -195,7 +194,7 @@ interface SwitchFormData {
                 <div class="form-stack">
                   <div class="field-row">
                     <div class="field-group">
-                      <label for="wzRadHost">RADIUS 主機 *</label>
+                      <label for="wzRadHost">{{ text.step2.radiusHost }}</label>
                       <input
                         id="wzRadHost"
                         type="text"
@@ -205,7 +204,7 @@ interface SwitchFormData {
                       />
                     </div>
                     <div class="field-group">
-                      <label for="wzRadPort">連接埠</label>
+                      <label for="wzRadPort">{{ text.step2.radiusPort }}</label>
                       <input
                         id="wzRadPort"
                         type="number"
@@ -215,31 +214,31 @@ interface SwitchFormData {
                     </div>
                   </div>
                   <div class="field-group">
-                    <label for="wzRadSecret">共用密碼 (Shared Secret) *</label>
+                    <label for="wzRadSecret">{{ text.step2.radiusSecret }}</label>
                     <input
                       id="wzRadSecret"
                       type="password"
                       class="form-input"
                       [(ngModel)]="authForm.radius_secret"
-                      placeholder="共用金鑰"
+                      [placeholder]="text.step2.radiusSecretPlaceholder"
                     />
                   </div>
                 </div>
               }
 
               <div class="test-box">
-                <div class="test-box-title">連線測試（以一組測試帳密驗證登入）</div>
+                <div class="test-box-title">{{ text.step2.testTitle }}</div>
                 <div class="field-row">
                   <input
                     type="text"
                     class="form-input"
-                    placeholder="測試帳號"
+                    [placeholder]="text.step2.testUsername"
                     [(ngModel)]="authTestUser"
                   />
                   <input
                     type="password"
                     class="form-input"
-                    placeholder="測試密碼"
+                    [placeholder]="text.step2.testPassword"
                     [(ngModel)]="authTestPass"
                   />
                   <button
@@ -248,7 +247,7 @@ interface SwitchFormData {
                     (click)="testAuth()"
                     [disabled]="testingAuth() || !authTestUser"
                   >
-                    {{ testingAuth() ? '驗證中...' : '測試登入' }}
+                    {{ testingAuth() ? text.step2.testRunning : text.step2.testRun }}
                   </button>
                 </div>
                 @if (authTestResult()) {
@@ -262,15 +261,15 @@ interface SwitchFormData {
 
           @case (3) {
             <section class="step-content">
-              <h3 class="step-title">步驟 3：郵件通知設定 (SMTP)</h3>
+              <h3 class="step-title">{{ text.step3.title }}</h3>
               <p class="step-desc">
-                設定系統發送未登記位址彙整、每週總表與到期催認信件的 SMTP 伺服器與管理員收件清單。
+                {{ text.step3.description }}
               </p>
 
               <div class="form-stack">
                 <div class="field-row">
-                  <div class="field-group" style="flex: 2;">
-                    <label for="wzSmtpHost">SMTP 伺服器主機 *</label>
+                  <div class="field-group flex-2">
+                    <label for="wzSmtpHost">{{ text.step3.host }}</label>
                     <input
                       id="wzSmtpHost"
                       type="text"
@@ -279,8 +278,8 @@ interface SwitchFormData {
                       placeholder="smtp.example.com"
                     />
                   </div>
-                  <div class="field-group" style="flex: 1;">
-                    <label for="wzSmtpPort">埠號</label>
+                  <div class="field-group flex-1">
+                    <label for="wzSmtpPort">{{ text.step3.port }}</label>
                     <input
                       id="wzSmtpPort"
                       type="number"
@@ -288,19 +287,19 @@ interface SwitchFormData {
                       [(ngModel)]="mailForm.smtp_port"
                     />
                   </div>
-                  <div class="field-group" style="flex: 1;">
-                    <label for="wzSmtpTls">加密模式</label>
+                  <div class="field-group flex-1">
+                    <label for="wzSmtpTls">{{ text.step3.tlsMode }}</label>
                     <select id="wzSmtpTls" class="form-input" [(ngModel)]="mailForm.smtp_tls_mode">
                       <option value="starttls">STARTTLS</option>
                       <option value="smtps">SMTPS</option>
-                      <option value="none">無加密</option>
+                      <option value="none">{{ text.step3.tlsNone }}</option>
                     </select>
                   </div>
                 </div>
 
                 <div class="field-row">
                   <div class="field-group">
-                    <label for="wzSmtpUser">認證帳號</label>
+                    <label for="wzSmtpUser">{{ text.step3.username }}</label>
                     <input
                       id="wzSmtpUser"
                       type="text"
@@ -309,19 +308,19 @@ interface SwitchFormData {
                     />
                   </div>
                   <div class="field-group">
-                    <label for="wzSmtpPass">認證密碼</label>
+                    <label for="wzSmtpPass">{{ text.step3.password }}</label>
                     <input
                       id="wzSmtpPass"
                       type="password"
                       class="form-input"
                       [(ngModel)]="mailPassword"
-                      placeholder="密碼"
+                      [placeholder]="text.placeholders.password"
                     />
                   </div>
                 </div>
 
                 <div class="field-group">
-                  <label for="wzSender">寄件人信箱 (From) *</label>
+                  <label for="wzSender">{{ text.step3.sender }}</label>
                   <input
                     id="wzSender"
                     type="email"
@@ -332,7 +331,7 @@ interface SwitchFormData {
                 </div>
 
                 <div class="field-group">
-                  <label for="wzAdminRcpts">系統管理員收件清單（多筆請用逗號隔開）*</label>
+                  <label for="wzAdminRcpts">{{ text.step3.adminRecipients }}</label>
                   <input
                     id="wzAdminRcpts"
                     type="text"
@@ -344,12 +343,12 @@ interface SwitchFormData {
               </div>
 
               <div class="test-box">
-                <div class="test-box-title">寄送測試信</div>
+                <div class="test-box-title">{{ text.step3.testTitle }}</div>
                 <div class="field-row">
                   <input
                     type="email"
                     class="form-input"
-                    placeholder="收件信箱"
+                    [placeholder]="text.step3.testRecipient"
                     [(ngModel)]="testMailRecipient"
                   />
                   <button
@@ -358,7 +357,7 @@ interface SwitchFormData {
                     (click)="testMail()"
                     [disabled]="testingMail() || !testMailRecipient"
                   >
-                    {{ testingMail() ? '寄送中...' : '寄出測試信' }}
+                    {{ testingMail() ? text.step3.testRunning : text.step3.testRun }}
                   </button>
                 </div>
                 @if (mailTestResult()) {
@@ -372,16 +371,15 @@ interface SwitchFormData {
 
           @case (4) {
             <section class="step-content">
-              <h3 class="step-title">步驟 4：新增第一台 ARP 來源交換器</h3>
+              <h3 class="step-title">{{ text.step4.title }}</h3>
               <p class="step-desc">
-                新增擔任 L3 閘道的 Cisco 交換器（IOS-XE 或 NX-OS），系統將定時透過 SNMP 讀取其 ARP
-                表與介面位址。
+                {{ text.step4.description }}
               </p>
 
               <div class="form-stack">
                 <div class="field-row">
-                  <div class="field-group" style="flex: 2;">
-                    <label for="wzSwName">交換器名稱 *</label>
+                  <div class="field-group flex-2">
+                    <label for="wzSwName">{{ text.step4.name }}</label>
                     <input
                       id="wzSwName"
                       type="text"
@@ -390,8 +388,8 @@ interface SwitchFormData {
                       placeholder="Core-Switch-01"
                     />
                   </div>
-                  <div class="field-group" style="flex: 2;">
-                    <label for="wzSwIP">管理 IP 位址 *</label>
+                  <div class="field-group flex-2">
+                    <label for="wzSwIP">{{ text.step4.mgmtIp }}</label>
                     <input
                       id="wzSwIP"
                       type="text"
@@ -400,8 +398,8 @@ interface SwitchFormData {
                       placeholder="10.0.0.1"
                     />
                   </div>
-                  <div class="field-group" style="flex: 1;">
-                    <label for="wzSwPlatform">作業平台</label>
+                  <div class="field-group flex-1">
+                    <label for="wzSwPlatform">{{ text.step4.platform }}</label>
                     <select id="wzSwPlatform" class="form-input" [(ngModel)]="switchForm.platform">
                       <option value="ios-xe">IOS-XE</option>
                       <option value="nx-os">NX-OS</option>
@@ -410,27 +408,27 @@ interface SwitchFormData {
                 </div>
 
                 <div class="field-row">
-                  <div class="field-group" style="flex: 1;">
-                    <label for="wzSnmpVer">SNMP 版本</label>
+                  <div class="field-group flex-1">
+                    <label for="wzSnmpVer">{{ text.step4.snmpVersion }}</label>
                     <select id="wzSnmpVer" class="form-input" [(ngModel)]="switchForm.snmp_version">
                       <option value="v2c">SNMP v2c</option>
                       <option value="v3">SNMP v3</option>
                     </select>
                   </div>
                   @if (switchForm.snmp_version === 'v2c') {
-                    <div class="field-group" style="flex: 2;">
-                      <label for="wzCommunity">Community 字串 *</label>
+                    <div class="field-group flex-2">
+                      <label for="wzCommunity">{{ text.step4.community }}</label>
                       <input
                         id="wzCommunity"
                         type="password"
                         class="form-input"
                         [(ngModel)]="switchForm.community"
-                        placeholder="例如 public"
+                        [placeholder]="text.step4.communityPlaceholder"
                       />
                     </div>
                   } @else {
-                    <div class="field-group" style="flex: 2;">
-                      <label for="wzV3User">v3 帳號 (Username) *</label>
+                    <div class="field-group flex-2">
+                      <label for="wzV3User">{{ text.step4.v3Username }}</label>
                       <input
                         id="wzV3User"
                         type="text"
@@ -444,7 +442,7 @@ interface SwitchFormData {
                 @if (switchForm.snmp_version === 'v3') {
                   <div class="field-row">
                     <div class="field-group">
-                      <label for="wzAuthProto">認證協定</label>
+                      <label for="wzAuthProto">{{ text.step4.authProtocol }}</label>
                       <select
                         id="wzAuthProto"
                         class="form-input"
@@ -456,7 +454,7 @@ interface SwitchFormData {
                       </select>
                     </div>
                     <div class="field-group">
-                      <label for="wzAuthPass">認證密碼</label>
+                      <label for="wzAuthPass">{{ text.step4.authPassword }}</label>
                       <input
                         id="wzAuthPass"
                         type="password"
@@ -465,7 +463,7 @@ interface SwitchFormData {
                       />
                     </div>
                     <div class="field-group">
-                      <label for="wzPrivProto">加密協定</label>
+                      <label for="wzPrivProto">{{ text.step4.privProtocol }}</label>
                       <select
                         id="wzPrivProto"
                         class="form-input"
@@ -476,7 +474,7 @@ interface SwitchFormData {
                       </select>
                     </div>
                     <div class="field-group">
-                      <label for="wzPrivPass">加密密碼</label>
+                      <label for="wzPrivPass">{{ text.step4.privPassword }}</label>
                       <input
                         id="wzPrivPass"
                         type="password"
@@ -490,7 +488,7 @@ interface SwitchFormData {
 
               @if (switchCreatedId()) {
                 <div class="test-box">
-                  <div class="test-box-title">測試讀取（確認 SNMP 憑證與連線）</div>
+                  <div class="test-box-title">{{ text.step4.testTitle }}</div>
                   <button
                     type="button"
                     class="btn btn-secondary"
@@ -498,7 +496,7 @@ interface SwitchFormData {
                     [disabled]="testingSwitch()"
                   >
                     <svg lucidePlay [size]="14"></svg>
-                    <span>{{ testingSwitch() ? '讀取中...' : '立即測試讀取' }}</span>
+                    <span>{{ testingSwitch() ? text.step4.testRunning : text.step4.testRun }}</span>
                   </button>
                   @if (switchTestResult()) {
                     <div class="test-feedback" [class.success]="switchTestResult()!.success">
@@ -512,17 +510,15 @@ interface SwitchFormData {
 
           @case (5) {
             <section class="step-content">
-              <h3 class="step-title">步驟 5：檢視並設定納管網段</h3>
+              <h3 class="step-title">{{ text.step5.title }}</h3>
               <p class="step-desc">
-                檢視由交換器介面探索之網段，將需要追蹤的網段設為「納管」，非管理網段（如 DHCP /
-                訪客無線）設為「不納管」。
+                {{ text.step5.description }}
               </p>
 
               @if (step4Skipped()) {
                 <div class="info-banner">
-                  <strong>提醒：</strong>
-                  因為步驟 4
-                  略過了交換器設定，系統目前尚未探索到任何交換器介面位址。您可以直接完成精靈，稍後再於系統中新增。
+                  <strong>{{ text.step5.skippedNoticeTitle }}</strong>
+                  {{ text.step5.skippedNotice }}
                 </div>
               } @else {
                 <div class="sync-actions-row">
@@ -533,13 +529,13 @@ interface SwitchFormData {
                     [disabled]="syncing()"
                   >
                     <svg lucideRefreshCw [size]="14"></svg>
-                    <span>{{ syncing() ? '同步讀取中...' : '觸發同步探索網段' }}</span>
+                    <span>{{ syncing() ? text.step5.syncRunning : text.step5.syncRun }}</span>
                   </button>
                 </div>
 
                 @if (subnets().length === 0) {
                   <p class="muted-text">
-                    目前尚未發現任何網段。您可以點擊「觸發同步探索網段」讀取交換器，或直接結束精靈。
+                    {{ text.step5.noSubnets }}
                   </p>
                 } @else {
                   <div class="subnets-list">
@@ -547,9 +543,9 @@ interface SwitchFormData {
                       <div class="subnet-row card">
                         <div class="subnet-info">
                           <span class="font-mono subnet-cidr">{{ sub.cidr }}</span>
-                          <span class="muted-text font-mono"
-                            >IP 數：{{ sub.ip_count }}，在線：{{ sub.online_count }}</span
-                          >
+                          <span class="muted-text font-mono">{{
+                            text.step5.subnetCounts(sub.ip_count, sub.online_count)
+                          }}</span>
                         </div>
                         <div class="subnet-controls">
                           <select
@@ -557,9 +553,11 @@ interface SwitchFormData {
                             [ngModel]="sub.state"
                             (ngModelChange)="changeSubnetState(sub.id, $event)"
                           >
-                            <option value="pending">待檢視 (pending)</option>
-                            <option value="managed">納管 (managed)</option>
-                            <option value="unmanaged">不納管 (unmanaged)</option>
+                            <option value="pending">{{ text.step5.stateOptions.pending }}</option>
+                            <option value="managed">{{ text.step5.stateOptions.managed }}</option>
+                            <option value="unmanaged">
+                              {{ text.step5.stateOptions.unmanaged }}
+                            </option>
                           </select>
                         </div>
                       </div>
@@ -574,12 +572,14 @@ interface SwitchFormData {
 
       <!-- 操作按鈕列 -->
       <footer class="wizard-footer">
-        <button type="button" class="btn btn-ghost" (click)="close()">離開（保留目前進度）</button>
+        <button type="button" class="btn btn-ghost" (click)="close()">
+          {{ text.footer.leave }}
+        </button>
 
         <div class="footer-actions">
           @if (currentStep() < 5) {
             <button type="button" class="btn btn-secondary" (click)="skipCurrentStep()">
-              稍後再設定（跳過此步）
+              {{ text.footer.skip }}
             </button>
             <button
               type="button"
@@ -587,11 +587,11 @@ interface SwitchFormData {
               (click)="saveAndContinue()"
               [disabled]="savingStep()"
             >
-              {{ savingStep() ? '處理中...' : '儲存並繼續' }}
+              {{ savingStep() ? text.footer.saving : text.footer.saveAndContinue }}
             </button>
           } @else {
             <button type="button" class="btn btn-primary" (click)="finishWizard()">
-              完成精靈，進入系統
+              {{ text.footer.finish }}
             </button>
           }
         </div>
@@ -606,7 +606,7 @@ interface SwitchFormData {
         border-radius: var(--radius-lg);
         width: 100vw;
         max-width: 800px;
-        box-shadow: var(--shadow-xl);
+        box-shadow: var(--shadow-dialog);
         display: flex;
         flex-direction: column;
         max-height: 90vh;
@@ -677,8 +677,8 @@ interface SwitchFormData {
         color: var(--color-text-on-accent);
       }
       .step-item.completed .step-num {
-        background-color: var(--color-online);
-        color: #ffffff;
+        background-color: var(--color-success);
+        color: var(--color-text-on-success);
       }
       .wizard-body {
         padding: 24px;
@@ -710,6 +710,12 @@ interface SwitchFormData {
         flex-direction: column;
         gap: 6px;
         flex: 1;
+        &.flex-1 {
+          flex: 1;
+        }
+        &.flex-2 {
+          flex: 2;
+        }
         label {
           font-size: var(--font-size-meta);
           font-weight: 500;
@@ -754,13 +760,13 @@ interface SwitchFormData {
         padding: 8px 12px;
         border-radius: var(--radius-sm);
         font-size: var(--font-size-meta);
-        background-color: var(--color-conflict-bg);
-        color: var(--color-conflict);
-        border: 1px solid var(--color-conflict-border);
+        background-color: var(--color-danger-subtle);
+        color: var(--color-danger-text);
+        border: 1px solid var(--color-danger-border);
         &.success {
-          background-color: var(--color-online-bg);
-          color: var(--color-online);
-          border-color: var(--color-online-border);
+          background-color: var(--color-success-subtle);
+          color: var(--color-success-text);
+          border-color: var(--color-success-border);
         }
       }
       .info-banner {
@@ -812,13 +818,8 @@ export class SetupWizardDialogComponent implements OnInit {
   private readonly dialogRef = inject(DialogRef);
   private readonly toast = inject(ToastService);
 
-  readonly steps = [
-    { index: 1, label: '園區資訊' },
-    { index: 2, label: '驗證來源' },
-    { index: 3, label: '郵件通知' },
-    { index: 4, label: '第一台交換器' },
-    { index: 5, label: '檢視網段' },
-  ];
+  protected readonly text = SETUP_WIZARD_TEXT;
+  readonly steps = SETUP_WIZARD_TEXT.steps;
 
   protected readonly currentStep = signal(1);
   protected readonly savingStep = signal(false);
@@ -893,7 +894,8 @@ export class SetupWizardDialogComponent implements OnInit {
       });
 
     this.http.get<{ campus_name: string; timezone: string }>('/api/v1/settings/campus').subscribe({
-      next: (res) => (this.campusForm = res),
+      // 只取精靈會編輯的兩個欄位；公開網址不在精靈內，PUT 省略即保留既有值
+      next: (res) => (this.campusForm = { campus_name: res.campus_name, timezone: res.timezone }),
       error: () => {},
     });
   }
@@ -904,16 +906,22 @@ export class SetupWizardDialogComponent implements OnInit {
 
     if (step === 1) {
       this.http
-        .put('/api/v1/settings/campus', this.campusForm, {
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        })
+        .put(
+          '/api/v1/settings/campus',
+          { campus_name: this.campusForm.campus_name, timezone: this.campusForm.timezone },
+          { headers: { 'X-Requested-With': 'XMLHttpRequest' } },
+        )
         .subscribe({
           next: () => {
             this.advanceStep(2);
           },
           error: (err) => {
             this.savingStep.set(false);
-            this.toast.show('儲存失敗', 'danger', err?.error?.message ?? '請確認欄位正確');
+            this.toast.show(
+              this.text.toast.saveFailed,
+              'danger',
+              err?.error?.message ?? this.text.toast.checkFieldsCorrect,
+            );
           },
         });
     } else if (step === 2) {
@@ -925,7 +933,11 @@ export class SetupWizardDialogComponent implements OnInit {
           next: () => this.advanceStep(3),
           error: (err) => {
             this.savingStep.set(false);
-            this.toast.show('儲存失敗', 'danger', err?.error?.message ?? '請確認欄位');
+            this.toast.show(
+              this.text.toast.saveFailed,
+              'danger',
+              err?.error?.message ?? this.text.toast.checkFields,
+            );
           },
         });
     } else if (step === 3) {
@@ -948,13 +960,17 @@ export class SetupWizardDialogComponent implements OnInit {
           next: () => this.advanceStep(4),
           error: (err) => {
             this.savingStep.set(false);
-            this.toast.show('儲存失敗', 'danger', err?.error?.message ?? '請確認欄位');
+            this.toast.show(
+              this.text.toast.saveFailed,
+              'danger',
+              err?.error?.message ?? this.text.toast.checkFields,
+            );
           },
         });
     } else if (step === 4) {
       if (!this.switchForm.name || !this.switchForm.mgmt_ip) {
         this.savingStep.set(false);
-        this.toast.show('請輸入名稱與 IP', 'danger');
+        this.toast.show(this.text.toast.nameAndIpRequired, 'danger');
         return;
       }
       this.http
@@ -971,7 +987,7 @@ export class SetupWizardDialogComponent implements OnInit {
           },
           error: (err) => {
             this.savingStep.set(false);
-            this.toast.show('新增交換器失敗', 'danger', err?.error?.message);
+            this.toast.show(this.text.toast.switchCreateFailed, 'danger', err?.error?.message);
           },
         });
     }
@@ -1015,7 +1031,10 @@ export class SetupWizardDialogComponent implements OnInit {
         },
         error: (err) => {
           this.testingAuth.set(false);
-          this.authTestResult.set({ success: false, message: err?.error?.message ?? '測試失敗' });
+          this.authTestResult.set({
+            success: false,
+            message: err?.error?.message ?? this.text.step2.testFailed,
+          });
         },
       });
   }
@@ -1037,7 +1056,10 @@ export class SetupWizardDialogComponent implements OnInit {
         },
         error: (err) => {
           this.testingMail.set(false);
-          this.mailTestResult.set({ success: false, message: err?.error?.message ?? '測試失敗' });
+          this.mailTestResult.set({
+            success: false,
+            message: err?.error?.message ?? this.text.step3.testFailed,
+          });
         },
       });
   }
@@ -1063,15 +1085,15 @@ export class SetupWizardDialogComponent implements OnInit {
               this.switchTestResult.set({
                 success: tr.is_success,
                 message: tr.is_success
-                  ? `讀取成功，共學得 ${tr.learned_count} 筆 ARP`
-                  : `讀取失敗：${tr.error_class}`,
+                  ? this.text.step4.testSucceeded(tr.learned_count)
+                  : this.text.step4.testReadFailed(tr.error_class),
               });
             },
             error: (err) => {
               this.testingSwitch.set(false);
               this.switchTestResult.set({
                 success: false,
-                message: err?.error?.message ?? '讀取測試失敗',
+                message: err?.error?.message ?? this.text.step4.testRequestFailed,
               });
             },
           });
@@ -1113,10 +1135,11 @@ export class SetupWizardDialogComponent implements OnInit {
       )
       .subscribe({
         next: () => {
-          this.toast.show('網段狀態已更新', 'success');
+          this.toast.show(this.text.toast.subnetStateUpdated, 'success');
           this.loadSubnets();
         },
-        error: (err) => this.toast.show('更新失敗', 'danger', err?.error?.message),
+        error: (err) =>
+          this.toast.show(this.text.toast.subnetStateUpdateFailed, 'danger', err?.error?.message),
       });
   }
 
@@ -1129,7 +1152,7 @@ export class SetupWizardDialogComponent implements OnInit {
       )
       .subscribe({
         next: () => {
-          this.toast.show('初始設定精靈已完成！', 'success');
+          this.toast.show(this.text.toast.wizardCompleted, 'success');
           this.dialogRef.close(true);
         },
         error: () => this.dialogRef.close(true),

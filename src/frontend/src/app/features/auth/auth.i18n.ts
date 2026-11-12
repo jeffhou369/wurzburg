@@ -26,4 +26,9 @@ export const AUTH_TEXT = {
     mismatchError: '兩次輸入的新密碼不相符',
     lengthError: '密碼長度至少需要 12 個字元',
   },
+  errors: {
+    loginFailed: '登入失敗，請檢查帳號密碼',
+    changePasswordFailed: '密碼更新失敗',
+    sessionExpired: '登入工作階段已失效，請重新登入後再試',
+  },
 } as const;

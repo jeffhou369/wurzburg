@@ -236,6 +236,10 @@ components:
         timezone:
           type: string
           example: Asia/Taipei
+        public_base_url:
+          type: string
+          example: https://ip.example.com
+          description: 園區對外 HTTP(S) 根網址，不含帳密、子路徑、查詢參數或片段。空字串表示未設定（停止寄信）；更新時省略則保留既有值。
 
     AuthSourceSettings:
       type: object

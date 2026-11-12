@@ -15,3 +15,6 @@ src/backend/internal/static/dist/*
 src/frontend/node_modules/
 src/frontend/dist/
 src/frontend/.angular/
+
+# 瀏覽器測試的本機快照與工作階段資料
+.playwright-cli/

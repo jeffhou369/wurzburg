@@ -1,6 +1,7 @@
 import { Component, input, output, HostListener } from '@angular/core';
 import { A11yModule } from '@angular/cdk/a11y';
 import { LucideX } from '@lucide/angular';
+import { SHELL_TEXT } from '../../core/i18n/shell.i18n';
 
 @Component({
   selector: 'app-sheet-container',
@@ -24,7 +25,7 @@ import { LucideX } from '@lucide/angular';
               type="button"
               class="btn btn-ghost btn-sm"
               (click)="closed.emit()"
-              aria-label="關閉視窗"
+              [attr.aria-label]="text.closeSheet"
             >
               <svg lucideX [size]="18" [strokeWidth]="2"></svg>
             </button>
@@ -41,7 +42,7 @@ import { LucideX } from '@lucide/angular';
       .sheet-backdrop {
         position: fixed;
         inset: 0;
-        background-color: rgba(15, 23, 42, 0.35);
+        background-color: var(--color-overlay-backdrop);
         z-index: 900;
         display: flex;
         justify-content: flex-end;
@@ -92,6 +93,7 @@ import { LucideX } from '@lucide/angular';
   ],
 })
 export class SheetContainerComponent {
+  protected readonly text = SHELL_TEXT.aria;
   readonly open = input<boolean>(false);
   readonly title = input.required<string>();
   readonly closed = output<void>();

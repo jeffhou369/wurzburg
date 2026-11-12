@@ -14,7 +14,7 @@
 
 ## 儲存庫現況與開發指令
 
-MVP 全功能已實作完成（Go 後端、Angular 20 前端、MariaDB Compose 部署），已通過單元測試、ChromeHeadless 瀏覽器測試及 13 大業務場景端到端整合測試（第 01–34 張工作項目已完成，剩餘第 35、36 張為待人類實機驗證項目）。安裝與維運說明見 `README.md` 與 `docs/install.md`。
+MVP 已具備 Go 後端、Angular 20 前端與 MariaDB Compose 部署，目前進行審查修復與驗收補強。既有 Go 整合測試、race detector 與 Angular 元件測試已通過，但元件測試不等於完整瀏覽器流程，採集器替身的效能亦不等於實體 SNMP 效能；不得只依工作項目的勾選宣稱全部驗收完成。實際測試範圍與待辦見 `docs/task/mvp/33-end-to-end-integration.md`；第 35、36 張仍需人類驗證。安裝與維運說明見 `README.md` 與 `docs/install.md`。
 
 儲存庫目錄名稱含 `ü`，在 shell 指令中路徑要加引號；且使用 Docker Compose 時須以 `name: wurzburg` 或 `COMPOSE_PROJECT_NAME=wurzburg` 避免路徑非 ASCII 字元觸發 buildx gRPC 標頭錯誤。
 

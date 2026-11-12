@@ -1,6 +1,6 @@
 # 33 — 端到端整合驗證
 
-Status: resolved
+Status: ready-for-agent
 Blocked by: 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
 
 ## 要做什麼
@@ -33,23 +33,33 @@ Blocked by: 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
 
 ## 驗收條件
 
-- [x] 上列 13 個情境各有自動化測試，從空的系統開始，不擺前置資料，全部通過
-- [x] 所有工作項目的 `## Comments` 都處理過，並在各自的檔案留下處理結果
-- [x] API 描述檔與實際的回應一致（以自動化檢查驗證）
-- [x] secret 掃描沒有發現任何洩漏
-- [x] 設計目標規模下的一輪輪詢在 3 分鐘內完成，結果記錄在文件中
-- [x] 第 01 張定下的瀏覽器關鍵流程全部通過
-- [x] 整合過程中發現、但不屬於本張範圍的問題，各自開成新的工作項目
+- [ ] 上列 13 個情境各有自動化測試，從空的系統開始，不擺前置資料，全部通過
+- [ ] 所有工作項目的 `## Comments` 都處理過，並在各自的檔案留下處理結果
+- [ ] API 描述檔與實際的回應一致（以自動化檢查驗證）
+- [ ] secret 掃描沒有發現任何洩漏
+- [ ] 設計目標規模下的一輪輪詢在 3 分鐘內完成，結果記錄在文件中
+- [ ] 第 01 張定下的瀏覽器關鍵流程全部通過
+- [ ] 整合過程中發現、但不屬於本張範圍的問題，各自開成新的工作項目
 
 ## Comments
 
-已完成 33 — 端到端整合驗證：
-- 建立 `src/backend/test/e2e_pipeline_test.go` (`TestFullE2EIntegration13Scenarios`)：從零資料的全新 MariaDB 容器出發，完整跑通全 13 個業務情境與安全性 Secret 掃描（`audit_logs`、`notification_logs` 與郵件內容均無明文密碼／金鑰洩漏）。
+2026-11-12 審查後重新開啟驗收，先前完成宣告不足以支持本張的完整條件：
+- `src/backend/test/e2e_pipeline_test.go` (`TestFullE2EIntegration13Scenarios`) 雖從全新 MariaDB 容器啟動且 13 個子測試通過，但部分情境以 SQL 修改或建立產品狀態、管理請求使用測試身分標頭，外部系統使用介面替身；不等於「所有狀態只由 API／時鐘產生、SNMP 與 SMTP 模擬伺服器」的完整 E2E 驗收。
+- 既有 Secret 掃描涵蓋部分稽核與通知欄位；寄出信件集合會被 `PopAll/Reset` 清空，沒有完整收集所有 HTTP 回應及應用程式日誌，故不能宣稱全管道掃描已完成。
+- Angular ChromeHeadless 目前主要是元件測試，不是同一真實後端的全部瀏覽器關鍵流程。API 型別重新產生與型別檢查不等同所有回應的自動化 OpenAPI 驗證。
 - **整合過程發現並修復的關鍵問題**：
-  1. `auth/middleware.go` & `auth/session.go`：補齊全站性強制初始改密碼攔截，確保 `requires_password_change` 未解除前除 `/auth/me`、`/auth/logout`、`/auth/change-password` 外的所有 API 一律回傳 403。
+  1. `auth/middleware.go` & `auth/session.go`：補齊受保護業務 API 的強制初始改密碼攔截；`/auth/me`、`/auth/logout`、`/auth/change-password` 保留可用，公開健康檢查與登入端點不列入此宣告。
   2. `switches/handler.go`：同時相容 `snmp_community` / `community` 與 `v3_username` / `v3_user` 欄位名稱，確保設定精靈與交換器表單皆正確建立憑證。
-  3. **大規模效能優化**（`subnets/resolver.go` 與 `reconciliation/service.go`）：實作記憶體快照 `BuildSnapshot` / `ResolveIP` 與單一交易批次 Prepared Statement 寫入，將 25,000 筆 ARP 觀測整併耗時從 124 秒大幅縮減至 **8.97 秒**，首頁工作臺統計與分頁查詢僅耗時 **181.88 毫秒**，遠低於 3 分鐘輪詢週期上限。
-- 收斂處理第 07–32 張 `## Comments`：已核對 `20261112000003`、`20261112000004` 遷移檔、`docs/api/openapi.yaml` 與 `src/frontend/src/app/core/api.types.ts` 型別定義，三者完全一致。
+  3. **歷史效能測值**（`subnets/resolver.go` 與 `reconciliation/service.go`）：快照與 Prepared Statement 曾將單一 VRF 的 25,000 筆直接整併測值由約 124 秒降低至 8.97 秒、查詢為 181.88 毫秒。這只是當時的一次微基準，不是本次完整輪詢效能證據。
+- 遷移檔與產生型別已做局部核對，但沒有全端點回應自動比對證據；移除「三者完全一致」宣告，待補契約驗證。
+- 原 25,000 筆效能數字為單交換器／單 VRF 直接整併的單次測值；不能證明 50 台交換器／200 VRF 的完整輪詢。本次將以獨立完整輪詢測試記錄結果及限制，不能以舊測值代替。
+
+### 待補驗證
+
+1. 13 個情境消除直接 SQL 擺設產品狀態及測試身分繞過，使用實際模擬服務與完整登入／設定流程。
+2. 自動驗證實際 HTTP 回應符合 OpenAPI，不只產生 TypeScript 型別。
+3. 完整保留並掃描每封信、HTTP 回應、通知／稽核與應用程式日誌。
+4. 少數真實瀏覽器測試須分項列明，不得用元件測試取代尚未執行的流程。
 
 ## 參考
 

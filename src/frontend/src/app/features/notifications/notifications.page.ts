@@ -6,6 +6,8 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
 import { StatusPillComponent } from '../../shared/components/status-pill.component';
 import { ToastService } from '../../shared/components/toast.service';
 import type { components } from '../../core/api.types';
+import { SHELL_TEXT } from '../../core/i18n/shell.i18n';
+import { NOTIFICATIONS_TEXT } from './notifications.i18n';
 
 type NotificationLog = components['schemas']['NotificationLog'];
 type NotificationState = components['schemas']['NotificationState'];
@@ -18,8 +20,8 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
   template: `
     <header class="page-header">
       <div>
-        <h1 class="page-title">通知紀錄</h1>
-        <p class="page-subtitle">檢視未登記彙整、每週總表與到期催認之 SMTP 寄送結果與去重狀態</p>
+        <h1 class="page-title">{{ text.title }}</h1>
+        <p class="page-subtitle">{{ text.subtitle }}</p>
       </div>
     </header>
 
@@ -31,7 +33,7 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
         [class.active]="activeTab() === 'logs'"
         (click)="switchTab('logs')"
       >
-        寄送紀錄
+        {{ text.tabs.logs }}
       </button>
       <button
         type="button"
@@ -40,45 +42,50 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
         [class.active]="activeTab() === 'states'"
         (click)="switchTab('states')"
       >
-        去重通知狀態
+        {{ text.tabs.states }}
       </button>
     </div>
 
     @if (activeTab() === 'logs') {
       <div class="toolbar">
         <div class="filter-group">
-          <label for="statusFilter">狀態篩選：</label>
+          <label for="statusFilter">{{ text.logs.statusFilter }}</label>
           <select
             id="statusFilter"
             class="form-input filter-select"
             [(ngModel)]="statusFilter"
             (ngModelChange)="onStatusChange()"
           >
-            <option value="">全部狀態</option>
-            <option value="sent">成功寄出 (sent)</option>
-            <option value="failed">寄送失敗 (failed)</option>
-            <option value="pending">待處理 (pending)</option>
+            <option value="">{{ text.logs.statusOptions.all }}</option>
+            <option value="sent">{{ text.logs.statusOptions.sent }}</option>
+            <option value="failed">{{ text.logs.statusOptions.failed }}</option>
+            <option value="pending">{{ text.logs.statusOptions.pending }}</option>
           </select>
         </div>
       </div>
 
       @if (loadingLogs()) {
-        <div class="card"><p class="muted-text">正在載入通知寄送紀錄...</p></div>
+        <div class="card">
+          <p class="muted-text">{{ text.logs.loading }}</p>
+        </div>
       } @else if (logs().length === 0) {
-        <app-empty-state title="尚無通知寄送紀錄" description="目前無符合篩選條件的通知紀錄。" />
+        <app-empty-state
+          [title]="text.logs.empty.title"
+          [description]="text.logs.empty.description"
+        />
       } @else {
         <div class="card table-card">
           <div class="table-wrap">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>狀態</th>
-                  <th>種類</th>
-                  <th>收件人</th>
-                  <th>主旨</th>
-                  <th>嘗試次數</th>
-                  <th>失敗原因</th>
-                  <th>寄送 / 建立時間</th>
+                  <th>{{ text.logs.columns.status }}</th>
+                  <th>{{ text.logs.columns.type }}</th>
+                  <th>{{ text.logs.columns.recipient }}</th>
+                  <th>{{ text.logs.columns.subject }}</th>
+                  <th>{{ text.logs.columns.attempts }}</th>
+                  <th>{{ text.logs.columns.lastError }}</th>
+                  <th>{{ text.logs.columns.time }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -86,11 +93,11 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
                   <tr>
                     <td>
                       @if (item.status === 'sent') {
-                        <app-status-pill label="成功" variant="online" />
+                        <app-status-pill [label]="text.logs.status.sent" variant="online" />
                       } @else if (item.status === 'failed') {
-                        <app-status-pill label="失敗" variant="conflict" />
+                        <app-status-pill [label]="text.logs.status.failed" variant="conflict" />
                       } @else {
-                        <app-status-pill label="處理中" variant="offline" />
+                        <app-status-pill [label]="text.logs.status.pending" variant="offline" />
                       }
                     </td>
                     <td>{{ formatNotifType(item.notif_type) }}</td>
@@ -113,9 +120,7 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
 
           @if (logPagination(); as pg) {
             <div class="pagination-bar">
-              <span
-                >第 {{ pg.page }} / {{ pg.total_pages || 1 }} 頁（共 {{ pg.total_items }} 筆）</span
-              >
+              <span>{{ text.pageSummary(pg.page, pg.total_pages || 1, pg.total_items) }}</span>
               <div class="pagination-btns">
                 <button
                   type="button"
@@ -123,7 +128,7 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
                   [disabled]="pg.page <= 1"
                   (click)="loadLogs(pg.page - 1)"
                 >
-                  上一頁
+                  {{ pager.previous }}
                 </button>
                 <button
                   type="button"
@@ -131,7 +136,7 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
                   [disabled]="pg.page >= pg.total_pages"
                   (click)="loadLogs(pg.page + 1)"
                 >
-                  下一頁
+                  {{ pager.next }}
                 </button>
               </div>
             </div>
@@ -140,11 +145,13 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
       }
     } @else {
       @if (loadingStates()) {
-        <div class="card"><p class="muted-text">正在載入通知去重狀態...</p></div>
+        <div class="card">
+          <p class="muted-text">{{ text.states.loading }}</p>
+        </div>
       } @else if (states().length === 0) {
         <app-empty-state
-          title="尚無已通知狀態"
-          description="當未登記在線彙整或到期催認寄送後，其去重追蹤狀態將顯示於此處。"
+          [title]="text.states.empty.title"
+          [description]="text.states.empty.description"
         />
       } @else {
         <div class="card table-card">
@@ -152,11 +159,11 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>去重鍵 (Dedup Key)</th>
-                  <th>通知種類</th>
-                  <th>首次通知時間</th>
-                  <th>最後更新</th>
-                  <th>操作</th>
+                  <th>{{ text.states.columns.dedupKey }}</th>
+                  <th>{{ text.states.columns.type }}</th>
+                  <th>{{ text.states.columns.notifiedAt }}</th>
+                  <th>{{ text.states.columns.updatedAt }}</th>
+                  <th>{{ text.states.columns.actions }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -174,7 +181,11 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
                         (click)="resetState(st.dedup_key)"
                       >
                         <svg lucideRotateCcw [size]="14"></svg>
-                        {{ resettingKey() === st.dedup_key ? '重設中...' : '重設狀態' }}
+                        {{
+                          resettingKey() === st.dedup_key
+                            ? text.states.resetting
+                            : text.states.reset
+                        }}
                       </button>
                     </td>
                   </tr>
@@ -185,10 +196,7 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
 
           @if (statePagination(); as spg) {
             <div class="pagination-bar">
-              <span
-                >第 {{ spg.page }} / {{ spg.total_pages || 1 }} 頁（共
-                {{ spg.total_items }} 筆）</span
-              >
+              <span>{{ text.pageSummary(spg.page, spg.total_pages || 1, spg.total_items) }}</span>
               <div class="pagination-btns">
                 <button
                   type="button"
@@ -196,7 +204,7 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
                   [disabled]="spg.page <= 1"
                   (click)="loadStates(spg.page - 1)"
                 >
-                  上一頁
+                  {{ pager.previous }}
                 </button>
                 <button
                   type="button"
@@ -204,7 +212,7 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
                   [disabled]="spg.page >= spg.total_pages"
                   (click)="loadStates(spg.page + 1)"
                 >
-                  下一頁
+                  {{ pager.next }}
                 </button>
               </div>
             </div>
@@ -275,7 +283,7 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
         word-break: break-word;
       }
       .error-text {
-        color: var(--color-conflict);
+        color: var(--color-danger-text);
         font-size: var(--font-size-caption);
       }
       .muted-text {
@@ -307,6 +315,8 @@ type PaginationMeta = components['schemas']['PaginationMeta'];
 export class NotificationsPage implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly toast = inject(ToastService);
+  protected readonly text = NOTIFICATIONS_TEXT;
+  protected readonly pager = SHELL_TEXT.pagination;
 
   protected readonly activeTab = signal<'logs' | 'states'>('logs');
   protected readonly loadingLogs = signal(true);
@@ -390,29 +400,26 @@ export class NotificationsPage implements OnInit {
       .subscribe({
         next: () => {
           this.resettingKey.set(null);
-          this.toast.show('已重設去重狀態', 'success', `${dedupKey} 下次將重新納入通知`);
+          this.toast.show(
+            this.text.states.resetDone,
+            'success',
+            this.text.states.resetDoneDetail(dedupKey),
+          );
           this.loadStates(this.statePagination()?.page ?? 1);
         },
         error: (err) => {
           this.resettingKey.set(null);
-          this.toast.show('重設失敗', 'danger', err?.error?.message ?? '無法重設狀態');
+          this.toast.show(
+            this.text.states.resetFailed,
+            'danger',
+            err?.error?.message ?? this.text.states.resetFailedHint,
+          );
         },
       });
   }
 
   formatNotifType(t: string): string {
-    switch (t) {
-      case 'unregistered_digest':
-        return '未登記彙整';
-      case 'unregistered_weekly':
-        return '未登記總表';
-      case 'expiry_reminder':
-        return '到期催認';
-      case 'test_mail':
-        return '測試信';
-      default:
-        return t;
-    }
+    return this.text.types[t] ?? t;
   }
 
   formatTime(val?: string | null): string {

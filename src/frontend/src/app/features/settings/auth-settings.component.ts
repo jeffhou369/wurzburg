@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { LucideTriangleAlert } from '@lucide/angular';
 import { ToastService } from '../../shared/components/toast.service';
+import { AUTH_SETTINGS_TEXT } from './auth-settings.i18n';
 
 interface AuthConfigResponse {
   active_source: 'none' | 'ad' | 'radius';
@@ -28,9 +29,9 @@ interface AuthConfigResponse {
   imports: [FormsModule, LucideTriangleAlert],
   template: `
     <div class="auth-settings">
-      <h2 class="section-title">一般使用者驗證來源設定</h2>
+      <h2 class="section-title">{{ text.title }}</h2>
       <p class="section-desc">
-        一個園區同時僅啟用一種外部驗證來源（AD 或 RADIUS），系統管理員帳號不經此路徑驗證。
+        {{ text.description }}
       </p>
 
       @if (
@@ -39,10 +40,8 @@ interface AuthConfigResponse {
         <div class="alert-box alert-warning" role="alert">
           <svg lucideTriangleAlert [size]="18" [strokeWidth]="2"></svg>
           <div>
-            <strong>切換驗證來源警告：</strong>
-            目前共有
-            {{ affectedCount() }}
-            筆登記屬於原驗證來源帳號；更換後原擁有者將無法登入，名下登記需由系統管理員改派。
+            <strong>{{ text.switchWarning.title }}</strong>
+            {{ text.switchWarning.body(affectedCount()) }}
           </div>
         </div>
       }
@@ -52,7 +51,7 @@ interface AuthConfigResponse {
           <input type="radio" name="active_source" value="ad" [(ngModel)]="form.active_source" />
           <div>
             <div class="radio-title">Active Directory (LDAP / LDAPS)</div>
-            <div class="radio-sub">支援群組限制，登入自動帶入信箱與顯示名稱</div>
+            <div class="radio-sub">{{ text.sources.adDescription }}</div>
           </div>
         </label>
 
@@ -65,7 +64,7 @@ interface AuthConfigResponse {
           />
           <div>
             <div class="radio-title">RADIUS (PAP)</div>
-            <div class="radio-sub">僅驗證帳密，使用者登記時自行填寫信箱</div>
+            <div class="radio-sub">{{ text.sources.radiusDescription }}</div>
           </div>
         </label>
       </div>
@@ -73,7 +72,7 @@ interface AuthConfigResponse {
       @if (form.active_source === 'ad') {
         <form class="form-grid" (ngSubmit)="save()">
           <div class="field-group full">
-            <label for="adUrl">伺服器網址（建議 ldaps://）</label>
+            <label for="adUrl">{{ text.ad.url }}</label>
             <input
               id="adUrl"
               name="adUrl"
@@ -87,17 +86,17 @@ interface AuthConfigResponse {
           <div class="field-group full">
             <label class="checkbox-label">
               <input type="checkbox" name="adUseTls" [(ngModel)]="form.ad_use_tls" />
-              <span>啟用 TLS 加密連線（強烈建議生產環境保持勾選）</span>
+              <span>{{ text.ad.useTls }}</span>
             </label>
             @if (!form.ad_use_tls) {
               <div class="alert-box alert-danger">
-                未加密的目錄綁定將以明文傳輸組織密碼，僅供受控實驗室使用。
+                {{ text.ad.plaintextWarning }}
               </div>
             }
           </div>
 
           <div class="field-group">
-            <label for="adBindDn">查詢帳號 Bind DN</label>
+            <label for="adBindDn">{{ text.ad.bindDn }}</label>
             <input
               id="adBindDn"
               name="adBindDn"
@@ -108,9 +107,7 @@ interface AuthConfigResponse {
           </div>
 
           <div class="field-group">
-            <label for="adBindPw"
-              >查詢密碼 {{ hasAdPass() ? '（已設定，留空則保持不變）' : '' }}</label
-            >
+            <label for="adBindPw">{{ text.ad.bindPassword(hasAdPass()) }}</label>
             <input
               id="adBindPw"
               name="adBindPw"
@@ -121,7 +118,7 @@ interface AuthConfigResponse {
           </div>
 
           <div class="field-group">
-            <label for="adBaseDn">搜尋起點 Base DN</label>
+            <label for="adBaseDn">{{ text.ad.baseDn }}</label>
             <input
               id="adBaseDn"
               name="adBaseDn"
@@ -133,7 +130,7 @@ interface AuthConfigResponse {
           </div>
 
           <div class="field-group">
-            <label for="adGroup">允許登入群組 DN（選填，留空則全部允許）</label>
+            <label for="adGroup">{{ text.ad.allowedGroup }}</label>
             <input
               id="adGroup"
               name="adGroup"
@@ -145,7 +142,7 @@ interface AuthConfigResponse {
 
           <div class="actions">
             <button type="submit" class="btn btn-primary" [disabled]="saving()">
-              儲存 AD 設定
+              {{ text.ad.save }}
             </button>
           </div>
         </form>
@@ -154,7 +151,7 @@ interface AuthConfigResponse {
       @if (form.active_source === 'radius') {
         <form class="form-grid" (ngSubmit)="save()">
           <div class="field-group">
-            <label for="radHost">RADIUS 伺服器 IP / 主機名稱</label>
+            <label for="radHost">{{ text.radius.host }}</label>
             <input
               id="radHost"
               name="radHost"
@@ -165,7 +162,7 @@ interface AuthConfigResponse {
           </div>
 
           <div class="field-group">
-            <label for="radPort">驗證埠（預設 1812）</label>
+            <label for="radPort">{{ text.radius.port }}</label>
             <input
               id="radPort"
               name="radPort"
@@ -176,9 +173,7 @@ interface AuthConfigResponse {
           </div>
 
           <div class="field-group">
-            <label for="radSecret"
-              >Shared Secret {{ hasRadiusSecret() ? '（已設定，留空則保持不變）' : '' }}</label
-            >
+            <label for="radSecret">{{ text.radius.secret(hasRadiusSecret()) }}</label>
             <input
               id="radSecret"
               name="radSecret"
@@ -189,7 +184,7 @@ interface AuthConfigResponse {
           </div>
 
           <div class="field-group">
-            <label for="radTimeout">逾時（毫秒）</label>
+            <label for="radTimeout">{{ text.radius.timeout }}</label>
             <input
               id="radTimeout"
               name="radTimeout"
@@ -201,7 +196,7 @@ interface AuthConfigResponse {
 
           <div class="actions">
             <button type="submit" class="btn btn-primary" [disabled]="saving()">
-              儲存 RADIUS 設定
+              {{ text.radius.save }}
             </button>
           </div>
         </form>
@@ -209,19 +204,19 @@ interface AuthConfigResponse {
 
       @if (form.active_source === 'ad' || form.active_source === 'radius') {
         <div class="test-panel">
-          <h3 class="test-title">測試外部驗證連線</h3>
+          <h3 class="test-title">{{ text.test.title }}</h3>
           <div class="test-row">
             <input
               type="text"
               class="form-input"
-              placeholder="測試帳號"
+              [placeholder]="text.test.usernamePlaceholder"
               [(ngModel)]="testUser"
               name="testUser"
             />
             <input
               type="password"
               class="form-input"
-              placeholder="測試密碼"
+              [placeholder]="text.test.passwordPlaceholder"
               [(ngModel)]="testPass"
               name="testPass"
             />
@@ -231,7 +226,7 @@ interface AuthConfigResponse {
               [disabled]="testing()"
               (click)="testConnection()"
             >
-              {{ testing() ? '測試中...' : '測試登入' }}
+              {{ testing() ? text.test.running : text.test.run }}
             </button>
           </div>
         </div>
@@ -347,6 +342,7 @@ interface AuthConfigResponse {
 export class AuthSettingsComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly toast = inject(ToastService);
+  protected readonly text = AUTH_SETTINGS_TEXT;
 
   protected readonly initialSource = signal<'none' | 'ad' | 'radius'>('none');
   protected readonly affectedCount = signal(0);
@@ -413,11 +409,15 @@ export class AuthSettingsComponent implements OnInit {
           this.initialSource.set(res.active_source);
           this.hasAdPass.set(res.ad_has_bind_password);
           this.hasRadiusSecret.set(res.radius_has_secret);
-          this.toast.show('驗證來源設定已儲存', 'success');
+          this.toast.show(this.text.saved, 'success');
         },
         error: (err) => {
           this.saving.set(false);
-          this.toast.show('儲存失敗', 'danger', err?.error?.message ?? '請檢查欄位');
+          this.toast.show(
+            this.text.saveFailed,
+            'danger',
+            err?.error?.message ?? this.text.saveFailedHint,
+          );
         },
       });
   }
@@ -438,14 +438,18 @@ export class AuthSettingsComponent implements OnInit {
             const detail = res.mail
               ? `${res.display_name} (${res.mail})`
               : (res.display_name ?? '');
-            this.toast.show('測試登入成功', 'success', detail);
+            this.toast.show(this.text.test.success, 'success', detail);
           } else {
-            this.toast.show('測試登入失敗', 'danger', res.message);
+            this.toast.show(this.text.test.failure, 'danger', res.message);
           }
         },
         error: (err) => {
           this.testing.set(false);
-          this.toast.show('測試失敗', 'danger', err?.error?.message ?? '連線異常');
+          this.toast.show(
+            this.text.test.error,
+            'danger',
+            err?.error?.message ?? this.text.test.errorHint,
+          );
         },
       });
   }

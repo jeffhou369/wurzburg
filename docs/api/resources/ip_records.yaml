@@ -35,6 +35,11 @@ paths:
           in: query
           schema:
             type: boolean
+        - name: pending_confirmation
+          in: query
+          description: 有擁有者且已到期或將於提醒提前天數內到期，可搭配 owner_me 限定自己的待確認登記。
+          schema:
+            type: boolean
         - name: has_conflict
           in: query
           schema:
@@ -102,6 +107,11 @@ paths:
             enum: [unregistered, registered, expired]
         - name: expiring_soon
           in: query
+          schema:
+            type: boolean
+        - name: pending_confirmation
+          in: query
+          description: 有擁有者且已到期或將於提醒提前天數內到期，可搭配 owner_me 限定自己的待確認登記。
           schema:
             type: boolean
         - name: has_conflict

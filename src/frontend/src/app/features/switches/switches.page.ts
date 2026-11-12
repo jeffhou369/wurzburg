@@ -15,6 +15,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state.compone
 import { ToastService } from '../../shared/components/toast.service';
 import { SheetContainerComponent } from '../../shared/components/sheet-container.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.component';
+import { SWITCHES_TEXT } from './switches.i18n';
 import type { components } from '../../core/api.types';
 
 type SwitchItem = components['schemas']['Switch'];
@@ -38,22 +39,20 @@ type TestReadResult = components['schemas']['TestReadResult'];
   template: `
     <header class="page-header">
       <div>
-        <h1 class="page-title">交換器與 ARP 同步</h1>
-        <p class="page-subtitle">
-          管理 ARP 來源交換器（IOS-XE / NX-OS）、VRF 讀取設定與即時輪詢狀態
-        </p>
+        <h1 class="page-title">{{ text.title }}</h1>
+        <p class="page-subtitle">{{ text.subtitle }}</p>
       </div>
       <div class="header-actions">
         @if (syncInProgress()) {
           <span class="status-pill status-online">
             <span class="status-dot"></span>
-            <span>同步中</span>
+            <span>{{ text.sync.running }}</span>
           </span>
         }
         @if (roundIncomplete()) {
           <span class="status-pill status-unregistered">
             <span class="status-dot"></span>
-            <span>本輪未完成</span>
+            <span>{{ text.sync.roundIncomplete }}</span>
           </span>
         }
         <button
@@ -63,22 +62,21 @@ type TestReadResult = components['schemas']['TestReadResult'];
           [disabled]="syncInProgress()"
         >
           <svg lucideRefreshCw [size]="16" [strokeWidth]="2"></svg>
-          <span>立即同步</span>
+          <span>{{ text.sync.now }}</span>
         </button>
         <button type="button" class="btn btn-primary" (click)="openAddSwitch()">
           <svg lucidePlus [size]="16" [strokeWidth]="2"></svg>
-          <span>新增交換器</span>
+          <span>{{ text.addSwitch }}</span>
         </button>
       </div>
     </header>
 
     @if (loading()) {
-      <div class="card"><p class="muted-text">正在載入交換器設定...</p></div>
+      <div class="card">
+        <p class="muted-text">{{ text.loading }}</p>
+      </div>
     } @else if (switches().length === 0) {
-      <app-empty-state
-        title="尚未新增 ARP 來源交換器"
-        description="新增至少一台擔任 L3 閘道的 Cisco 交換器以開始探索網段與追蹤 IP。"
-      />
+      <app-empty-state [title]="text.empty.title" [description]="text.empty.description" />
     } @else {
       <div class="switch-cards">
         @for (sw of switches(); track sw.id) {
@@ -92,27 +90,27 @@ type TestReadResult = components['schemas']['TestReadResult'];
                 <span class="tag-pill">{{ sw.role_label }}</span>
                 @if (!sw.enabled) {
                   <span class="status-pill status-offline"
-                    ><span class="status-dot"></span><span>已停用</span></span
+                    ><span class="status-dot"></span><span>{{ text.card.disabled }}</span></span
                   >
                 }
               </div>
 
               <div class="sw-actions">
                 <button type="button" class="btn btn-secondary btn-sm" (click)="openAddVRF(sw)">
-                  新增 VRF 設定
+                  {{ text.card.addVrf }}
                 </button>
                 <button
                   type="button"
                   class="btn btn-danger-soft btn-sm"
                   (click)="toggleSwitchEnabled(sw)"
                 >
-                  {{ sw.enabled ? '停止輪詢' : '恢復輪詢' }}
+                  {{ sw.enabled ? text.card.stopPolling : text.card.resumePolling }}
                 </button>
                 <button
                   type="button"
                   class="btn btn-ghost btn-sm"
                   (click)="confirmDeleteSwitch(sw)"
-                  aria-label="刪除交換器"
+                  [attr.aria-label]="text.card.deleteSwitch"
                 >
                   <svg lucideTrash2 [size]="16"></svg>
                 </button>
@@ -122,7 +120,7 @@ type TestReadResult = components['schemas']['TestReadResult'];
             @if (sw.has_v3_warning) {
               <div class="vrf-warning">
                 <svg lucideTriangleAlert [size]="16"></svg>
-                <span>僅設定預設全域 VRF，交換器上非預設 VRF 內的 ARP 位址將不會被看到。</span>
+                <span>{{ text.card.globalVrfOnly }}</span>
               </div>
             }
 
@@ -135,7 +133,7 @@ type TestReadResult = components['schemas']['TestReadResult'];
                       <span class="font-mono vrf-ctx">Context: {{ vrf.snmp_context }}</span>
                     }
                     @if (vrf.has_credential) {
-                      <span class="cred-badge">憑證已設定</span>
+                      <span class="cred-badge">{{ text.card.credentialSet }}</span>
                     }
                   </div>
 
@@ -144,13 +142,13 @@ type TestReadResult = components['schemas']['TestReadResult'];
                       @case ('success') {
                         <span class="status-pill status-online"
                           ><span class="status-dot"></span
-                          ><span>成功（{{ vrf.last_learned_count }} 筆）</span></span
+                          ><span>{{ text.card.success(vrf.last_learned_count) }}</span></span
                         >
                       }
                       @case ('failed') {
                         <span class="status-pill status-conflict"
                           ><span class="status-dot"></span
-                          ><span>失敗：{{ vrf.last_error_class }}</span></span
+                          ><span>{{ text.card.failed(vrf.last_error_class) }}</span></span
                         >
                         @if (vrf.last_error_summary) {
                           <button
@@ -168,12 +166,14 @@ type TestReadResult = components['schemas']['TestReadResult'];
                       }
                       @case ('running') {
                         <span class="status-pill status-online"
-                          ><span class="status-dot"></span><span>同步中</span></span
+                          ><span class="status-dot"></span
+                          ><span>{{ text.sync.running }}</span></span
                         >
                       }
                       @default {
                         <span class="status-pill status-offline"
-                          ><span class="status-dot"></span><span>尚未同步</span></span
+                          ><span class="status-dot"></span
+                          ><span>{{ text.sync.notStarted }}</span></span
                         >
                       }
                     }
@@ -188,7 +188,7 @@ type TestReadResult = components['schemas']['TestReadResult'];
                       (click)="testRead(sw.id, vrf.id)"
                     >
                       <svg lucidePlay [size]="14"></svg>
-                      <span>測試讀取</span>
+                      <span>{{ text.card.testRead }}</span>
                     </button>
 
                     @if (!vrf.is_default) {
@@ -196,7 +196,7 @@ type TestReadResult = components['schemas']['TestReadResult'];
                         type="button"
                         class="btn btn-ghost btn-sm"
                         (click)="deleteVRF(sw.id, vrf.id)"
-                        aria-label="刪除 VRF 設定"
+                        [attr.aria-label]="text.card.deleteVrf"
                       >
                         <svg lucideTrash2 [size]="14"></svg>
                       </button>
@@ -215,12 +215,12 @@ type TestReadResult = components['schemas']['TestReadResult'];
 
     <app-sheet-container
       [open]="addSwitchOpen()"
-      title="新增 ARP 來源交換器"
+      [title]="text.addSwitchForm.title"
       (closed)="addSwitchOpen.set(false)"
     >
       <form class="form-stack" (ngSubmit)="saveNewSwitch()">
         <div class="field-group">
-          <label for="swName">顯示名稱</label>
+          <label for="swName">{{ text.addSwitchForm.name }}</label>
           <input
             id="swName"
             name="swName"
@@ -231,7 +231,7 @@ type TestReadResult = components['schemas']['TestReadResult'];
           />
         </div>
         <div class="field-group">
-          <label for="swIp">管理 IPv4</label>
+          <label for="swIp">{{ text.addSwitchForm.mgmtIp }}</label>
           <input
             id="swIp"
             name="swIp"
@@ -242,7 +242,7 @@ type TestReadResult = components['schemas']['TestReadResult'];
           />
         </div>
         <div class="field-group">
-          <label for="swPlatform">作業系統平台</label>
+          <label for="swPlatform">{{ text.addSwitchForm.platform }}</label>
           <select
             id="swPlatform"
             name="swPlatform"
@@ -254,15 +254,15 @@ type TestReadResult = components['schemas']['TestReadResult'];
           </select>
         </div>
         <div class="field-group">
-          <label for="swVer">SNMP 版本</label>
+          <label for="swVer">{{ text.addSwitchForm.snmpVersion }}</label>
           <select id="swVer" name="swVer" class="form-select" [(ngModel)]="newSw.snmp_version">
-            <option value="v3">SNMPv3（生產建議）</option>
-            <option value="v2c">SNMPv2c（僅限唯讀）</option>
+            <option value="v3">{{ text.addSwitchForm.v3Recommended }}</option>
+            <option value="v2c">{{ text.addSwitchForm.v2cReadOnly }}</option>
           </select>
         </div>
         @if (newSw.snmp_version === 'v2c') {
           <div class="field-group">
-            <label for="swComm">唯讀 Community</label>
+            <label for="swComm">{{ text.addSwitchForm.community }}</label>
             <input
               id="swComm"
               name="swComm"
@@ -274,7 +274,7 @@ type TestReadResult = components['schemas']['TestReadResult'];
           </div>
         } @else {
           <div class="field-group">
-            <label for="v3User">SNMPv3 使用者名稱</label>
+            <label for="v3User">{{ text.addSwitchForm.v3Username }}</label>
             <input
               id="v3User"
               name="v3User"
@@ -285,7 +285,7 @@ type TestReadResult = components['schemas']['TestReadResult'];
             />
           </div>
           <div class="field-group">
-            <label for="v3AuthPass">驗證密語（Auth Passphrase）</label>
+            <label for="v3AuthPass">{{ text.addSwitchForm.authPassphrase }}</label>
             <input
               id="v3AuthPass"
               name="v3AuthPass"
@@ -295,7 +295,7 @@ type TestReadResult = components['schemas']['TestReadResult'];
             />
           </div>
           <div class="field-group">
-            <label for="v3PrivPass">加密密語（Priv Passphrase）</label>
+            <label for="v3PrivPass">{{ text.addSwitchForm.privPassphrase }}</label>
             <input
               id="v3PrivPass"
               name="v3PrivPass"
@@ -307,22 +307,22 @@ type TestReadResult = components['schemas']['TestReadResult'];
         }
         <div class="sheet-actions">
           <button type="button" class="btn btn-secondary" (click)="addSwitchOpen.set(false)">
-            取消
+            {{ text.actions.cancel }}
           </button>
-          <button type="submit" class="btn btn-primary">儲存交換器</button>
+          <button type="submit" class="btn btn-primary">{{ text.addSwitchForm.submit }}</button>
         </div>
       </form>
     </app-sheet-container>
 
     <app-sheet-container
       [open]="addVrfTarget() !== null"
-      title="新增非全域 VRF 讀取設定"
+      [title]="text.addVrfForm.title"
       (closed)="addVrfTarget.set(null)"
     >
       @if (addVrfTarget(); as target) {
         <form class="form-stack" (ngSubmit)="saveNewVRF()">
           <div class="field-group">
-            <label for="vrfName">VRF 顯示名稱</label>
+            <label for="vrfName">{{ text.addVrfForm.name }}</label>
             <input
               id="vrfName"
               name="vrfName"
@@ -334,7 +334,7 @@ type TestReadResult = components['schemas']['TestReadResult'];
           </div>
           @if (target.snmp_version === 'v3') {
             <div class="field-group">
-              <label for="vrfCtx">SNMPv3 Context 名稱</label>
+              <label for="vrfCtx">{{ text.addVrfForm.v3Context }}</label>
               <input
                 id="vrfCtx"
                 name="vrfCtx"
@@ -346,7 +346,7 @@ type TestReadResult = components['schemas']['TestReadResult'];
             </div>
           } @else {
             <div class="field-group">
-              <label for="vrfComm">該 VRF 專屬唯讀 Community</label>
+              <label for="vrfComm">{{ text.addVrfForm.community }}</label>
               <input
                 id="vrfComm"
                 name="vrfComm"
@@ -359,9 +359,9 @@ type TestReadResult = components['schemas']['TestReadResult'];
           }
           <div class="sheet-actions">
             <button type="button" class="btn btn-secondary" (click)="addVrfTarget.set(null)">
-              取消
+              {{ text.actions.cancel }}
             </button>
-            <button type="submit" class="btn btn-primary">新增 VRF</button>
+            <button type="submit" class="btn btn-primary">{{ text.addVrfForm.submit }}</button>
           </div>
         </form>
       }
@@ -525,6 +525,7 @@ export class SwitchesPage implements OnInit {
   private readonly dialog = inject(Dialog);
   private readonly toast = inject(ToastService);
 
+  protected readonly text = SWITCHES_TEXT;
   protected readonly switches = signal<SwitchItem[]>([]);
   protected readonly loading = signal(true);
   protected readonly syncInProgress = signal(false);
@@ -588,9 +589,10 @@ export class SwitchesPage implements OnInit {
       .subscribe({
         next: () => {
           this.syncInProgress.set(true);
-          this.toast.show('已觸發立即同步', 'info');
+          this.toast.show(this.text.toast.syncTriggered, 'info');
         },
-        error: (err) => this.toast.show('無法觸發同步', 'warning', err?.error?.message),
+        error: (err) =>
+          this.toast.show(this.text.toast.syncTriggerFailed, 'warning', err?.error?.message),
       });
   }
 
@@ -617,9 +619,10 @@ export class SwitchesPage implements OnInit {
         next: () => {
           this.addSwitchOpen.set(false);
           this.loadSwitches();
-          this.toast.show('交換器新增成功', 'success');
+          this.toast.show(this.text.toast.switchCreated, 'success');
         },
-        error: (err) => this.toast.show('新增交換器失敗', 'danger', err?.error?.message),
+        error: (err) =>
+          this.toast.show(this.text.toast.switchCreateFailed, 'danger', err?.error?.message),
       });
   }
 
@@ -639,9 +642,10 @@ export class SwitchesPage implements OnInit {
         next: () => {
           this.addVrfTarget.set(null);
           this.loadSwitches();
-          this.toast.show('VRF 讀取設定已新增', 'success');
+          this.toast.show(this.text.toast.vrfCreated, 'success');
         },
-        error: (err) => this.toast.show('新增失敗', 'danger', err?.error?.message),
+        error: (err) =>
+          this.toast.show(this.text.toast.vrfCreateFailed, 'danger', err?.error?.message),
       });
   }
 
@@ -653,9 +657,10 @@ export class SwitchesPage implements OnInit {
       .subscribe({
         next: () => {
           this.loadSwitches();
-          this.toast.show('VRF 讀取設定已刪除', 'info');
+          this.toast.show(this.text.toast.vrfDeleted, 'info');
         },
-        error: (err) => this.toast.show('刪除失敗', 'danger', err?.error?.message),
+        error: (err) =>
+          this.toast.show(this.text.toast.vrfDeleteFailed, 'danger', err?.error?.message),
       });
   }
 
@@ -674,16 +679,17 @@ export class SwitchesPage implements OnInit {
       )
       .subscribe({
         next: () => this.loadSwitches(),
-        error: (err) => this.toast.show('更新失敗', 'danger', err?.error?.message),
+        error: (err) =>
+          this.toast.show(this.text.toast.updateFailed, 'danger', err?.error?.message),
       });
   }
 
   confirmDeleteSwitch(sw: SwitchItem): void {
     const ref = this.dialog.open<boolean>(ConfirmDialogComponent, {
       data: {
-        title: `確認刪除交換器「${sw.name}」`,
-        message: '刪除交換器會立即移除其名下的 ARP 觀測來源，是否確定刪除？',
-        confirmLabel: '確認刪除',
+        title: this.text.deleteDialog.title(sw.name),
+        message: this.text.deleteDialog.message,
+        confirmLabel: this.text.deleteDialog.confirm,
         danger: true,
       },
     });
@@ -696,7 +702,7 @@ export class SwitchesPage implements OnInit {
           .subscribe({
             next: () => {
               this.loadSwitches();
-              this.toast.show('交換器已刪除', 'info');
+              this.toast.show(this.text.toast.switchDeleted, 'info');
             },
           });
       }
@@ -714,15 +720,20 @@ export class SwitchesPage implements OnInit {
         next: (res) => {
           if (res.success) {
             this.toast.show(
-              '測試讀取成功',
+              this.text.toast.testReadSucceeded,
               'success',
-              `讀取到 ${res.arp_count} 筆 ARP、${res.subnet_count} 個介面網段`,
+              this.text.toast.testReadCounts(res.arp_count, res.subnet_count),
             );
           } else {
-            this.toast.show(`測試讀取失敗 (${res.error_class})`, 'danger', res.error_summary);
+            this.toast.show(
+              this.text.toast.testReadFailed(res.error_class),
+              'danger',
+              res.error_summary,
+            );
           }
         },
-        error: (err) => this.toast.show('測試執行失敗', 'danger', err?.error?.message),
+        error: (err) =>
+          this.toast.show(this.text.toast.testRunFailed, 'danger', err?.error?.message),
       });
   }
 

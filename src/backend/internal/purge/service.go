@@ -12,6 +12,7 @@ import (
 	"github.com/jeffhou369/wurzburg/backend/internal/auth"
 	"github.com/jeffhou369/wurzburg/backend/internal/clock"
 	"github.com/jeffhou369/wurzburg/backend/internal/settings"
+	"github.com/jeffhou369/wurzburg/backend/internal/subnets"
 )
 
 // Service 負責清除過期未登記離線紀錄與管理保留天數政策。
@@ -48,12 +49,15 @@ func (s *Service) RunAutoPurge(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := subnets.NewResolver(s.db).LockScope(ctx, tx); err != nil {
+		return 0, err
+	}
 
 	// 1. 先找出所有符合清除條件的紀錄 IP，同步清理其通知去重狀態
 	rows, err := tx.QueryContext(
 		ctx,
 		`SELECT id, ip_address FROM ip_records
-		 WHERE presence = 'offline' AND registration = 'unregistered' AND owner_user_id IS NULL AND last_seen_at <= ?`,
+		 WHERE presence = 'offline' AND registration = 'unregistered' AND owner_user_id IS NULL AND last_seen_at <= ? ORDER BY id FOR UPDATE`,
 		cutoff,
 	)
 	if err != nil {
@@ -66,18 +70,28 @@ func (s *Service) RunAutoPurge(ctx context.Context) (int, error) {
 	var targets []target
 	for rows.Next() {
 		var t target
-		if err := rows.Scan(&t.id, &t.ip); err == nil {
-			targets = append(targets, t)
+		if err := rows.Scan(&t.id, &t.ip); err != nil {
+			_ = rows.Close()
+			return 0, err
 		}
+		targets = append(targets, t)
 	}
-	_ = rows.Close()
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return 0, err
+	}
+	if err := rows.Close(); err != nil {
+		return 0, err
+	}
 
 	if len(targets) == 0 {
 		return 0, nil
 	}
 
 	for _, t := range targets {
-		_, _ = tx.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE CONCAT('unreg|', ?, '|%')`, t.ip)
+		if _, err := tx.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE CONCAT('unreg|', ?, '|%') OR dedup_key LIKE CONCAT('expiry|', ?, '|%')`, t.ip, t.ip); err != nil {
+			return 0, err
+		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM ip_records WHERE id = ?`, t.id); err != nil {
 			return 0, err
 		}

@@ -52,18 +52,19 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 }
 
 type FilterParams struct {
-	Search       string `json:"search"`
-	SubnetID     int64  `json:"subnet_id"`
-	SwitchID     int64  `json:"switch_id"`
-	Presence     string `json:"presence"`
-	Registration string `json:"registration"`
-	ExpiringSoon bool   `json:"expiring_soon"`
-	HasConflict  bool   `json:"has_conflict"`
-	OwnerMe      bool   `json:"owner_me"`
-	SortBy       string `json:"sort_by"`
-	SortDir      string `json:"sort_dir"`
-	Page         int    `json:"page"`
-	PageSize     int    `json:"page_size"`
+	Search              string `json:"search"`
+	SubnetID            int64  `json:"subnet_id"`
+	SwitchID            int64  `json:"switch_id"`
+	Presence            string `json:"presence"`
+	Registration        string `json:"registration"`
+	ExpiringSoon        bool   `json:"expiring_soon"`
+	PendingConfirmation bool   `json:"pending_confirmation"`
+	HasConflict         bool   `json:"has_conflict"`
+	OwnerMe             bool   `json:"owner_me"`
+	SortBy              string `json:"sort_by"`
+	SortDir             string `json:"sort_dir"`
+	Page                int    `json:"page"`
+	PageSize            int    `json:"page_size"`
 }
 
 func parseFiltersFromRequest(r *http.Request) FilterParams {
@@ -80,18 +81,19 @@ func parseFiltersFromRequest(r *http.Request) FilterParams {
 	switchID, _ := strconv.ParseInt(q.Get("switch_id"), 10, 64)
 
 	return FilterParams{
-		Search:       strings.TrimSpace(q.Get("search")),
-		SubnetID:     subnetID,
-		SwitchID:     switchID,
-		Presence:     q.Get("presence"),
-		Registration: q.Get("registration"),
-		ExpiringSoon: q.Get("expiring_soon") == "true",
-		HasConflict:  q.Get("has_conflict") == "true",
-		OwnerMe:      q.Get("owner_me") == "true",
-		SortBy:       q.Get("sort_by"),
-		SortDir:      q.Get("sort_dir"),
-		Page:         page,
-		PageSize:     pageSize,
+		Search:              strings.TrimSpace(q.Get("search")),
+		SubnetID:            subnetID,
+		SwitchID:            switchID,
+		Presence:            q.Get("presence"),
+		Registration:        q.Get("registration"),
+		ExpiringSoon:        q.Get("expiring_soon") == "true",
+		PendingConfirmation: q.Get("pending_confirmation") == "true",
+		HasConflict:         q.Get("has_conflict") == "true",
+		OwnerMe:             q.Get("owner_me") == "true",
+		SortBy:              q.Get("sort_by"),
+		SortDir:             q.Get("sort_dir"),
+		Page:                page,
+		PageSize:            pageSize,
 	}
 }
 
@@ -130,6 +132,11 @@ func (h *Handler) buildWhereClause(f FilterParams, userID int64, now time.Time, 
 		threshold := now.Add(time.Duration(advanceDays) * 24 * time.Hour)
 		clauses = append(clauses, `r.owner_user_id IS NOT NULL AND r.expires_at IS NOT NULL AND r.expires_at > ? AND r.expires_at <= ?`)
 		args = append(args, now, threshold)
+	}
+	if f.PendingConfirmation {
+		threshold := now.AddDate(0, 0, advanceDays)
+		clauses = append(clauses, `r.owner_user_id IS NOT NULL AND r.expires_at IS NOT NULL AND r.expires_at <= ?`)
+		args = append(args, threshold)
 	}
 	if f.HasConflict {
 		clauses = append(clauses, `EXISTS (SELECT 1 FROM ip_conflicts c WHERE c.ip_record_id = r.id AND c.status IN ('open', 'in_progress'))`)
@@ -912,16 +919,9 @@ func (h *Handler) handleBatchReassign(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// 若目標帳號具備目錄信箱則更新，否則保留原本聯絡信箱
-		if targetMail != "" {
-			_, _ = h.db.ExecContext(ctx, `UPDATE ip_records SET owner_user_id = ?, owner_mail = ?, updated_at = ? WHERE id = ?`, targetID, targetMail, now, id)
-		} else {
-			_, _ = h.db.ExecContext(ctx, `UPDATE ip_records SET owner_user_id = ?, updated_at = ? WHERE id = ?`, targetID, now, id)
-		}
-
-		if h.audit != nil {
-			h.audit.Log(ctx, u.Username, u.Role, r.RemoteAddr, "registration.reassign", "ip_record", ipAddr,
-				fmt.Sprintf("將 %s 改派予 %s", ipAddr, req.TargetUsername), map[string]any{"batch": isBatch, "target_username": req.TargetUsername})
+		if err := h.reassignOne(ctx, id, targetID, targetMail, req.TargetUsername, u, r.RemoteAddr, now, isBatch); err != nil {
+			results = append(results, batchItemResult{IPRecordID: id, IPAddress: ipAddr, Success: false, Reason: "改派未完成，資料已保留，請稍後重試"})
+			continue
 		}
 		results = append(results, batchItemResult{IPRecordID: id, IPAddress: ipAddr, Success: true})
 	}

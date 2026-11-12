@@ -8,6 +8,9 @@ import { IpRecordSheetComponent } from '../../shared/components/ip-record-sheet.
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.component';
 import { AuthService } from '../../core/auth.service';
 import { SidebarBadgesService } from '../../core/sidebar-badges.service';
+import { SHELL_TEXT } from '../../core/i18n/shell.i18n';
+import { STATUS_TEXT } from '../../core/i18n/status.i18n';
+import { SHOWCASE_TEXT } from './showcase.i18n';
 
 @Component({
   selector: 'app-showcase-page',
@@ -23,99 +26,91 @@ import { SidebarBadgesService } from '../../core/sidebar-badges.service';
   ],
   template: `
     <header class="page-header">
-      <h1 class="page-title">設計系統與基礎元件展示</h1>
+      <h1 class="page-title">{{ text.title }}</h1>
       <p class="page-subtitle">
-        驗證 EasyCLIProxyAPI 淺色主題 Token、無障礙對比、狀態膠囊、表格灰階與 CDK 浮層
+        {{ text.subtitle }}
       </p>
     </header>
 
     <div class="showcase-grid">
       <section class="card">
-        <h2 class="section-title">1. 按鈕規範（Buttons）</h2>
+        <h2 class="section-title">{{ text.buttons.title }}</h2>
         <div class="row-wrap">
           <button type="button" class="btn btn-primary">
             <svg lucidePlus [size]="16" [strokeWidth]="2"></svg>
-            主要操作（新增登記）
+            {{ text.buttons.primary }}
           </button>
           <button type="button" class="btn btn-secondary">
             <svg lucideRefreshCw [size]="16" [strokeWidth]="2"></svg>
-            次要操作（立即同步）
+            {{ text.buttons.secondary }}
           </button>
-          <button type="button" class="btn btn-ghost">幽靈按鈕（檢視明細）</button>
-          <button type="button" class="btn btn-danger-soft">柔和危險（停止同步）</button>
+          <button type="button" class="btn btn-ghost">{{ text.buttons.ghost }}</button>
+          <button type="button" class="btn btn-danger-soft">{{ text.buttons.dangerSoft }}</button>
           <button type="button" class="btn btn-danger-solid" (click)="openDeleteDialog()">
             <svg lucideTrash2 [size]="16" [strokeWidth]="2"></svg>
-            實心危險（刪除確認）
+            {{ text.buttons.dangerSolid }}
           </button>
         </div>
       </section>
 
       <section class="card">
-        <h2 class="section-title">2. 狀態燈號與膠囊（不可僅靠顏色）</h2>
+        <h2 class="section-title">{{ text.pills.title }}</h2>
         <div class="row-wrap">
-          <app-status-pill variant="online" label="在線" />
-          <app-status-pill variant="offline" label="離線" />
-          <app-status-pill variant="unregistered" label="未登記" />
-          <app-status-pill variant="registered" label="已登記" />
-          <app-status-pill variant="expiring" label="即將到期" />
-          <app-status-pill variant="expired" label="已到期" />
-          <app-status-pill variant="conflict" label="衝突" />
+          <app-status-pill variant="online" [label]="status.online" />
+          <app-status-pill variant="offline" [label]="status.offline" />
+          <app-status-pill variant="unregistered" [label]="status.unregistered" />
+          <app-status-pill variant="registered" [label]="status.registered" />
+          <app-status-pill variant="expiring" [label]="status.expiring" />
+          <app-status-pill variant="expired" [label]="status.expired" />
+          <app-status-pill variant="conflict" [label]="status.conflict" />
         </div>
       </section>
 
       <section class="card">
-        <h2 class="section-title">3. 互動測試（CDK 浮層、Toast、角色與側欄徽章）</h2>
+        <h2 class="section-title">{{ text.interactions.title }}</h2>
         <div class="row-wrap">
           <button type="button" class="btn btn-secondary" (click)="sheetOpen.set(true)">
-            開啟右側 IP Sheet
+            {{ text.interactions.openSheet }}
           </button>
-          <button
-            type="button"
-            class="btn btn-secondary"
-            (click)="
-              toast.show('同步完成', 'success', '已成功自 core-sw-01 讀取 1,240 筆 ARP 紀錄')
-            "
-          >
-            觸發成功 Toast
+          <button type="button" class="btn btn-secondary" (click)="showSuccessToast()">
+            {{ text.interactions.successToast }}
           </button>
-          <button
-            type="button"
-            class="btn btn-secondary"
-            (click)="
-              toast.show('偵測到新 MAC 衝突', 'danger', '10.10.10.50 同時出現兩個不同的 MAC 位址')
-            "
-          >
-            觸發衝突 Toast
+          <button type="button" class="btn btn-secondary" (click)="showConflictToast()">
+            {{ text.interactions.conflictToast }}
           </button>
           <button type="button" class="btn btn-secondary" (click)="toggleRole()">
-            切換檢視身分（目前：{{ auth.isAdmin() ? '系統管理員' : '一般使用者' }}）
+            {{
+              text.interactions.toggleRole(
+                auth.isAdmin() ? shell.user.adminBadge : shell.user.userBadge
+              )
+            }}
           </button>
           <button type="button" class="btn btn-secondary" (click)="toggleBadges()">
-            切換側欄提示計數
+            {{ text.interactions.toggleBadges }}
           </button>
         </div>
       </section>
 
       <section class="card">
-        <h2 class="section-title">4. 表格外框與離線灰階樣式</h2>
+        <h2 class="section-title">{{ text.table.title }}</h2>
         <div class="table-wrap">
           <table class="data-table">
             <thead>
               <tr>
-                <th>狀態</th>
-                <th>IP 位址</th>
-                <th>MAC 位址</th>
-                <th>網段</th>
-                <th>擁有者</th>
-                <th>動作</th>
+                <th>{{ text.table.columns.status }}</th>
+                <th>{{ text.table.columns.ipAddress }}</th>
+                <th>{{ text.table.columns.macAddress }}</th>
+                <th>{{ text.table.columns.subnet }}</th>
+                <th>{{ text.table.columns.owner }}</th>
+                <th>{{ text.table.columns.actions }}</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td>
                   <div class="status-combo">
-                    <app-status-pill variant="online" label="在線" />
-                    <app-status-pill variant="unregistered" label="未登記" />
+                    <app-status-pill variant="online" [label]="status.online" />
+                    <app-status-pill variant="unregistered" [label]="status.unregistered" />
                   </div>
                 </td>
                 <td class="font-mono">10.10.10.50</td>
@@ -123,7 +118,11 @@ import { SidebarBadgesService } from '../../core/sidebar-badges.service';
                 <td class="font-mono">10.10.10.0/24</td>
                 <td>—</td>
                 <td>
-                  <button type="button" class="btn btn-ghost btn-sm" aria-label="複製 IP">
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-sm"
+                    [attr.aria-label]="text.table.copyIp"
+                  >
                     <svg lucideCopy [size]="14" [strokeWidth]="2"></svg>
                   </button>
                 </td>
@@ -131,8 +130,8 @@ import { SidebarBadgesService } from '../../core/sidebar-badges.service';
               <tr class="row-offline">
                 <td>
                   <div class="status-combo">
-                    <app-status-pill variant="offline" label="離線" />
-                    <app-status-pill variant="expired" label="已到期" />
+                    <app-status-pill variant="offline" [label]="status.offline" />
+                    <app-status-pill variant="expired" [label]="status.expired" />
                   </div>
                 </td>
                 <td class="font-mono">10.10.10.88</td>
@@ -140,7 +139,11 @@ import { SidebarBadgesService } from '../../core/sidebar-badges.service';
                 <td class="font-mono">10.10.10.0/24</td>
                 <td>chen@example.com</td>
                 <td>
-                  <button type="button" class="btn btn-ghost btn-sm" aria-label="複製 IP">
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-sm"
+                    [attr.aria-label]="text.table.copyIp"
+                  >
                     <svg lucideCopy [size]="14" [strokeWidth]="2"></svg>
                   </button>
                 </td>
@@ -151,10 +154,10 @@ import { SidebarBadgesService } from '../../core/sidebar-badges.service';
       </section>
 
       <section class="card">
-        <h2 class="section-title">5. 空狀態（Empty State）</h2>
+        <h2 class="section-title">{{ text.empty.title }}</h2>
         <app-empty-state
-          title="沒有待處理的未登記 IP"
-          description="所有納管網段內在線裝置皆已完成負責人登記。"
+          [title]="text.empty.emptyTitle"
+          [description]="text.empty.emptyDescription"
         />
       </section>
     </div>
@@ -165,10 +168,10 @@ import { SidebarBadgesService } from '../../core/sidebar-badges.service';
       (closed)="sheetOpen.set(false)"
     >
       <div slot="registration">
-        <p>這裡是預留的登記表單插槽（展示狀態）。</p>
+        <p>{{ text.sheet.registration }}</p>
       </div>
       <div slot="observations">
-        <p>這裡是預留的觀測與歷程插槽（展示狀態）。</p>
+        <p>{{ text.sheet.observations }}</p>
       </div>
     </app-ip-record-sheet>
   `,
@@ -250,23 +253,45 @@ export class ShowcasePage {
   protected readonly auth = inject(AuthService);
   protected readonly badges = inject(SidebarBadgesService);
   protected readonly sheetOpen = signal(false);
+  protected readonly text = SHOWCASE_TEXT;
+  protected readonly status = STATUS_TEXT;
+  protected readonly shell = SHELL_TEXT;
 
   openDeleteDialog(): void {
     const ref = this.dialog.open<boolean>(ConfirmDialogComponent, {
       data: {
-        title: '確認將網段改為不納管',
-        message:
-          '此變更將直接刪除該網段下 42 筆 IP 紀錄（其中 12 筆已登記），且無法復原。是否繼續？',
-        confirmLabel: '確認刪除',
+        title: this.text.deleteDialog.title,
+        message: this.text.deleteDialog.message,
+        confirmLabel: this.text.deleteDialog.confirm,
         danger: true,
       },
     });
 
     ref.closed.subscribe((confirmed) => {
       if (confirmed) {
-        this.toast.show('已確認刪除操作', 'warning', '明細已寫入稽核紀錄');
+        this.toast.show(
+          this.text.deleteDialog.toastTitle,
+          'warning',
+          this.text.deleteDialog.toastDetail,
+        );
       }
     });
+  }
+
+  showSuccessToast(): void {
+    this.toast.show(
+      this.text.interactions.successToastTitle,
+      'success',
+      this.text.interactions.successToastDetail,
+    );
+  }
+
+  showConflictToast(): void {
+    this.toast.show(
+      this.text.interactions.conflictToastTitle,
+      'danger',
+      this.text.interactions.conflictToastDetail,
+    );
   }
 
   toggleRole(): void {

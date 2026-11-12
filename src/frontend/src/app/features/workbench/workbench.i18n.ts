@@ -1,0 +1,148 @@
+import { STATUS_TEXT } from '../../core/i18n/status.i18n';
+
+/**
+ * 工作臺（IP 總覽）的繁體中文（台灣）介面文字。
+ * 沿用 auth.i18n.ts 的 `as const` 寫法：含變數的字串用函式；狀態用語共用 STATUS_TEXT，
+ * 分頁列與取消按鈕共用 SHELL_TEXT。
+ */
+export const WORKBENCH_TEXT = {
+  title: 'IP 總覽',
+  subtitle: '納管網段內所有 IPv4 位址之即時狀態、ARP 觀測與登記管理',
+  sync: {
+    running: '同步中',
+    succeeded: '最近同步成功',
+    failed: '同步有失敗項目',
+  },
+  aria: {
+    unfinishedSettings: '尚未完成的設定',
+    dashboard: '統計儀表板',
+    selectPage: '選取本頁全部',
+    selectRow: (ip: string) => `選取 ${ip}`,
+    copyIp: '複製 IP',
+  },
+  kpi: {
+    managedTotal: { label: '納管 IP 總數', sub: (count: number) => `監控 ${count} 台交換器` },
+    online: { label: STATUS_TEXT.online, sub: '交換器 ARP 表中尚有紀錄' },
+    offline: { label: STATUS_TEXT.offline, sub: '保留歷史紀錄未刪除' },
+    unregisteredOnline: { label: '未登記（在線）', sub: '待負責人完成登記' },
+    expired: { label: STATUS_TEXT.expired, sub: '超過一年待重新確認' },
+    conflicts: { label: 'MAC 衝突', sub: '需管理員裁決項目' },
+  },
+  toolbar: {
+    searchPlaceholder: '搜尋 IP、MAC、擁有者、主機名稱或備註...',
+    apply: '套用查詢',
+    exportExcel: (total: number) => `匯出 Excel (${total})`,
+  },
+  filters: {
+    allSubnets: '全部網段',
+    allPresence: '全部在線狀態',
+    allRegistration: '全部登記狀態',
+    expiringSoon: STATUS_TEXT.expiring,
+    hasConflict: '有衝突',
+    ownerMe: '我的登記',
+    pendingConfirmation: '待重新確認',
+  },
+  batchBar: {
+    allFiltered: (total: number) => `已全選目前篩選結果共 ${total} 筆`,
+    clear: '取消全選',
+    pageSelected: (count: number) => `已選取本頁 ${count} 筆`,
+    selectAllFiltered: (total: number) => `全選符合篩選的全部 ${total} 筆`,
+    register: '批次登記',
+    confirm: '批次重新確認',
+    release: '批次釋放',
+    reassign: '批次改派',
+  },
+  empty: {
+    title: '查無符合條件的 IP 紀錄',
+    description: '嘗試調整搜尋條件或至網段管理確認已納管的網段。',
+  },
+  columns: {
+    status: '狀態',
+    ipAddress: 'IP 位址',
+    macAddress: 'MAC 位址',
+    vendor: '廠商',
+    deviceType: '裝置類型',
+    subnetSwitch: '網段 / 交換器',
+    owner: '擁有者',
+    expiresAt: '到期日',
+    lastSeen: '最後見到',
+    actions: '動作',
+  },
+  detail: {
+    mac: 'MAC：',
+    vendor: '廠商：',
+    subnet: '網段：',
+    state: '狀態：',
+  },
+  form: {
+    ownerMail: '擁有者信箱（必填，到期催認寄送至此）',
+    deviceType: '裝置類型（自填）',
+    hostname: '主機名稱',
+    notes: '備註',
+    notesPublic: '（注意：所有登入者都看得到）',
+    ownerUsername: '指定擁有者帳號（選填，留空則登記給自己）',
+    confirm: '重新確認（延長一年）',
+    release: '釋放',
+    register: '完成登記',
+    save: '儲存變更',
+    reassignLabel: '改派擁有者帳號（僅系統管理員）',
+    reassignPlaceholder: '輸入目標帳號名稱',
+    reassign: '改派',
+  },
+  readonly: {
+    ownedPrefix: '此 IP 紀錄已由 ',
+    ownedSuffix: (ownerMail: string | null | undefined) =>
+      `（${ownerMail ?? ''}）登記。僅擁有者本人可編輯；若須調整或釋放，請聯絡系統管理員。`,
+    deviceType: '裝置類型',
+    hostname: '主機名稱',
+    notes: '備註',
+    expiresAt: '到期日',
+  },
+  observations: {
+    explainerTitle: '關於「在線」狀態：',
+    explainerBody:
+      '「在線」代表交換器的 ARP table 中目前仍有此位址。實體裝置關機或拔線後，須等待交換器自身的 ARP 逾時到期（如 IOS-XE 預設約 4 小時、NX-OS 約 25 分鐘）並經過寬限輪數後才會轉為離線。',
+    sourcesTitle: (count: number) => `目前觀測來源 (${count})`,
+    noSources: '目前無任何交換器觀測到此位址。',
+    sightingLine: (mac: string, lastSeen: string) => `MAC: ${mac} · 末見: ${lastSeen}`,
+    historyTitle: '變更歷程',
+  },
+  batchRegister: {
+    title: '批次登記未登記之 IP 紀錄',
+    hint: '填寫之欄位將套用至所選範圍內所有尚未登記的位址（已有擁有者之項目將自動略過並回報）。',
+    ownerMail: '擁有者信箱（必填）',
+    deviceType: '裝置類型（選填）',
+    notes: '備註（所有登入者都看得到）',
+    submit: '執行批次登記',
+  },
+  batchReassign: {
+    title: '批次改派擁有者',
+    target: '目標擁有者帳號',
+    submit: '確認批次改派',
+  },
+  releaseDialog: {
+    title: '確認批次釋放登記',
+    message: (count: number) =>
+      `即將針對所選的 ${count} 筆位址釋放登記（權限不符者將自動略過）。是否繼續？`,
+    confirm: '確認批次釋放',
+  },
+  toast: {
+    registerSucceeded: '登記成功',
+    registerFailed: '登記失敗',
+    saveSucceeded: '變更已儲存',
+    saveFailed: '儲存失敗',
+    confirmed: '已延長有效期一年',
+    released: '已釋放登記',
+    actionFailed: '操作失敗',
+    reassigned: '已改派擁有者',
+    reassignFailed: '改派失敗',
+    batchDone: '批次作業完成',
+    batchFailed: '批次作業失敗',
+    batchRegisterDone: '批次登記完成',
+    batchRegisterFailed: '批次登記失敗',
+    batchReassignDone: '批次改派完成',
+    batchReassignFailed: '批次改派失敗',
+    batchResult: (succeeded: number, skipped: number) => `成功 ${succeeded} 筆，略過 ${skipped} 筆`,
+    ipCopied: '已複製 IP 位址',
+  },
+} as const;

@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { LucideTriangleAlert } from '@lucide/angular';
+import { SHELL_TEXT } from '../../core/i18n/shell.i18n';
 
 export interface ConfirmDialogData {
   title: string;
@@ -27,14 +28,14 @@ export interface ConfirmDialogData {
       <p class="dialog-message">{{ data.message }}</p>
       <div class="dialog-actions">
         <button type="button" class="btn btn-secondary" (click)="dialogRef.close(false)">
-          {{ data.cancelLabel ?? '取消' }}
+          {{ data.cancelLabel ?? text.cancel }}
         </button>
         <button
           type="button"
           [class]="data.danger ? 'btn btn-danger-solid' : 'btn btn-primary'"
           (click)="dialogRef.close(true)"
         >
-          {{ data.confirmLabel ?? '確認' }}
+          {{ data.confirmLabel ?? text.confirm }}
         </button>
       </div>
     </div>
@@ -87,4 +88,5 @@ export interface ConfirmDialogData {
 export class ConfirmDialogComponent {
   readonly dialogRef = inject(DialogRef<boolean>);
   readonly data = inject<ConfirmDialogData>(DIALOG_DATA);
+  protected readonly text = SHELL_TEXT.actions;
 }

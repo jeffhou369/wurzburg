@@ -17,8 +17,12 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
 import { SheetContainerComponent } from '../../shared/components/sheet-container.component';
 import { ToastService } from '../../shared/components/toast.service';
 import { AuthService } from '../../core/auth.service';
+import { sanitizeReturnUrl } from '../../core/safe-return-url';
 import { SidebarBadgesService } from '../../core/sidebar-badges.service';
+import { SHELL_TEXT } from '../../core/i18n/shell.i18n';
+import { STATUS_TEXT } from '../../core/i18n/status.i18n';
 import { UnfinishedChecklistComponent } from './unfinished-checklist.component';
+import { WORKBENCH_TEXT } from './workbench.i18n';
 import { SetupWizardDialogComponent } from '../settings/setup-wizard.dialog';
 import type { components } from '../../core/api.types';
 
@@ -48,17 +52,17 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
   template: `
     <header class="page-header">
       <div>
-        <h1 class="page-title">IP 總覽</h1>
-        <p class="page-subtitle">納管網段內所有 IPv4 位址之即時狀態、ARP 觀測與登記管理</p>
+        <h1 class="page-title">{{ text.title }}</h1>
+        <p class="page-subtitle">{{ text.subtitle }}</p>
       </div>
       @if (stats(); as st) {
         <div class="sync-header-badge">
           @if (st.sync_in_progress) {
-            <app-status-pill variant="online" label="同步中" />
+            <app-status-pill variant="online" [label]="text.sync.running" />
           } @else if (st.last_sync_success) {
-            <app-status-pill variant="online" label="最近同步成功" />
+            <app-status-pill variant="online" [label]="text.sync.succeeded" />
           } @else {
-            <app-status-pill variant="conflict" label="同步有失敗項目" />
+            <app-status-pill variant="conflict" [label]="text.sync.failed" />
           }
           @if (st.last_sync_at) {
             <span class="font-mono muted-text">{{ formatTime(st.last_sync_at) }}</span>
@@ -67,42 +71,42 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
       }
     </header>
 
-    <section aria-label="尚未完成的設定">
+    <section [attr.aria-label]="text.aria.unfinishedSettings">
       <app-unfinished-checklist (resumeWizard)="openSetupWizard()" />
     </section>
 
     <!-- 儀表板 KPI 列 (Ticket 16) -->
     @if (stats(); as st) {
-      <section class="kpi-grid" aria-label="統計儀表板">
+      <section class="kpi-grid" [attr.aria-label]="text.aria.dashboard">
         <div class="card kpi-card">
-          <div class="kpi-label">納管 IP 總數</div>
+          <div class="kpi-label">{{ text.kpi.managedTotal.label }}</div>
           <div class="kpi-value font-mono">{{ st.managed_total }}</div>
-          <div class="kpi-sub">監控 {{ st.switches_count }} 台交換器</div>
+          <div class="kpi-sub">{{ text.kpi.managedTotal.sub(st.switches_count) }}</div>
         </div>
         <div class="card kpi-card">
-          <div class="kpi-label">在線</div>
+          <div class="kpi-label">{{ text.kpi.online.label }}</div>
           <div class="kpi-value font-mono text-success">{{ st.online_count }}</div>
-          <div class="kpi-sub">交換器 ARP 表中尚有紀錄</div>
+          <div class="kpi-sub">{{ text.kpi.online.sub }}</div>
         </div>
         <div class="card kpi-card">
-          <div class="kpi-label">離線</div>
+          <div class="kpi-label">{{ text.kpi.offline.label }}</div>
           <div class="kpi-value font-mono text-muted">{{ st.offline_count }}</div>
-          <div class="kpi-sub">保留歷史紀錄未刪除</div>
+          <div class="kpi-sub">{{ text.kpi.offline.sub }}</div>
         </div>
         <div class="card kpi-card">
-          <div class="kpi-label">未登記（在線）</div>
+          <div class="kpi-label">{{ text.kpi.unregisteredOnline.label }}</div>
           <div class="kpi-value font-mono text-warning">{{ st.unregistered_online_count }}</div>
-          <div class="kpi-sub">待負責人完成登記</div>
+          <div class="kpi-sub">{{ text.kpi.unregisteredOnline.sub }}</div>
         </div>
         <div class="card kpi-card">
-          <div class="kpi-label">已到期</div>
+          <div class="kpi-label">{{ text.kpi.expired.label }}</div>
           <div class="kpi-value font-mono text-danger">{{ st.expired_count }}</div>
-          <div class="kpi-sub">超過一年待重新確認</div>
+          <div class="kpi-sub">{{ text.kpi.expired.sub }}</div>
         </div>
         <div class="card kpi-card">
-          <div class="kpi-label">MAC 衝突</div>
+          <div class="kpi-label">{{ text.kpi.conflicts.label }}</div>
           <div class="kpi-value font-mono text-danger">{{ st.open_conflicts_count }}</div>
-          <div class="kpi-sub">需管理員裁決項目</div>
+          <div class="kpi-sub">{{ text.kpi.conflicts.sub }}</div>
         </div>
       </section>
     }
@@ -115,7 +119,7 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
           <input
             type="search"
             class="form-input search-input"
-            placeholder="搜尋 IP、MAC、擁有者、主機名稱或備註..."
+            [placeholder]="text.toolbar.searchPlaceholder"
             [(ngModel)]="filters.search"
             (keyup.enter)="applyFilters(1)"
           />
@@ -123,11 +127,11 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
         <div class="toolbar-buttons">
           <button type="button" class="btn btn-secondary" (click)="applyFilters(1)">
             <svg lucideRefreshCw [size]="16"></svg>
-            <span>套用查詢</span>
+            <span>{{ text.toolbar.apply }}</span>
           </button>
           <button type="button" class="btn btn-primary" (click)="exportExcel()">
             <svg lucideDownload [size]="16"></svg>
-            <span>匯出 Excel ({{ pagination()?.total_items ?? 0 }})</span>
+            <span>{{ text.toolbar.exportExcel(pagination()?.total_items ?? 0) }}</span>
           </button>
         </div>
       </div>
@@ -138,7 +142,7 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
           [(ngModel)]="filters.subnet_id"
           (change)="applyFilters(1)"
         >
-          <option value="">全部網段</option>
+          <option value="">{{ text.filters.allSubnets }}</option>
           @for (sub of subnets(); track sub.id) {
             <option [value]="sub.id">{{ sub.cidr }}</option>
           }
@@ -148,31 +152,39 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
           [(ngModel)]="filters.presence"
           (change)="applyFilters(1)"
         >
-          <option value="">全部在線狀態</option>
-          <option value="online">在線</option>
-          <option value="offline">離線</option>
+          <option value="">{{ text.filters.allPresence }}</option>
+          <option value="online">{{ status.online }}</option>
+          <option value="offline">{{ status.offline }}</option>
         </select>
         <select
           class="form-select filter-select"
           [(ngModel)]="filters.registration"
           (change)="applyFilters(1)"
         >
-          <option value="">全部登記狀態</option>
-          <option value="unregistered">未登記</option>
-          <option value="registered">已登記</option>
-          <option value="expired">已到期</option>
+          <option value="">{{ text.filters.allRegistration }}</option>
+          <option value="unregistered">{{ status.unregistered }}</option>
+          <option value="registered">{{ status.registered }}</option>
+          <option value="expired">{{ status.expired }}</option>
         </select>
         <label class="filter-chip" [class.active]="filters.expiring_soon">
           <input type="checkbox" [(ngModel)]="filters.expiring_soon" (change)="applyFilters(1)" />
-          <span>即將到期</span>
+          <span>{{ text.filters.expiringSoon }}</span>
         </label>
         <label class="filter-chip" [class.active]="filters.has_conflict">
           <input type="checkbox" [(ngModel)]="filters.has_conflict" (change)="applyFilters(1)" />
-          <span>有衝突</span>
+          <span>{{ text.filters.hasConflict }}</span>
         </label>
         <label class="filter-chip" [class.active]="filters.owner_me">
           <input type="checkbox" [(ngModel)]="filters.owner_me" (change)="applyFilters(1)" />
-          <span>我的登記</span>
+          <span>{{ text.filters.ownerMe }}</span>
+        </label>
+        <label class="filter-chip" [class.active]="filters.pending_confirmation">
+          <input
+            type="checkbox"
+            [(ngModel)]="filters.pending_confirmation"
+            (change)="applyFilters(1)"
+          />
+          <span>{{ text.filters.pendingConfirmation }}</span>
         </label>
       </div>
     </section>
@@ -183,19 +195,19 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
         <div class="batch-info">
           <svg lucideCheckSquare [size]="16"></svg>
           @if (selectAllFiltered()) {
-            <span>已全選目前篩選結果共 {{ pagination()?.total_items ?? 0 }} 筆</span>
+            <span>{{ text.batchBar.allFiltered(pagination()?.total_items ?? 0) }}</span>
             <button type="button" class="btn btn-ghost btn-sm" (click)="clearSelection()">
-              取消全選
+              {{ text.batchBar.clear }}
             </button>
           } @else {
-            <span>已選取本頁 {{ selectedIds().size }} 筆</span>
+            <span>{{ text.batchBar.pageSelected(selectedIds().size) }}</span>
             @if ((pagination()?.total_items ?? 0) > items().length) {
               <button
                 type="button"
                 class="btn btn-ghost btn-sm"
                 (click)="selectAllFiltered.set(true)"
               >
-                全選符合篩選的全部 {{ pagination()?.total_items }} 筆
+                {{ text.batchBar.selectAllFiltered(pagination()?.total_items ?? 0) }}
               </button>
             }
           }
@@ -206,17 +218,17 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
             class="btn btn-primary btn-sm"
             (click)="batchRegisterOpen.set(true)"
           >
-            批次登記
+            {{ text.batchBar.register }}
           </button>
           <button type="button" class="btn btn-secondary btn-sm" (click)="executeBatch('confirm')">
-            批次重新確認
+            {{ text.batchBar.confirm }}
           </button>
           <button
             type="button"
             class="btn btn-danger-soft btn-sm"
             (click)="confirmBatchAction('release')"
           >
-            批次釋放
+            {{ text.batchBar.release }}
           </button>
           @if (auth.isAdmin()) {
             <button
@@ -224,7 +236,7 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
               class="btn btn-secondary btn-sm"
               (click)="batchReassignOpen.set(true)"
             >
-              批次改派
+              {{ text.batchBar.reassign }}
             </button>
           }
         </div>
@@ -233,10 +245,7 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
 
     <!-- IP 主列表 (Ticket 15) -->
     @if (items().length === 0 && !loading()) {
-      <app-empty-state
-        title="查無符合條件的 IP 紀錄"
-        description="嘗試調整搜尋條件或至網段管理確認已納管的網段。"
-      />
+      <app-empty-state [title]="text.empty.title" [description]="text.empty.description" />
     } @else {
       <div class="card table-card">
         <div class="table-wrap">
@@ -248,19 +257,27 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
                     type="checkbox"
                     [checked]="allCurrentPageSelected()"
                     (change)="toggleSelectPage($event)"
-                    aria-label="選取本頁全部"
+                    [attr.aria-label]="text.aria.selectPage"
                   />
                 </th>
-                <th>狀態</th>
-                <th class="sortable" (click)="toggleSort('ip_address')">IP 位址</th>
-                <th>MAC 位址</th>
-                <th>廠商</th>
-                <th>裝置類型</th>
-                <th>網段 / 交換器</th>
-                <th class="sortable" (click)="toggleSort('owner_username')">擁有者</th>
-                <th class="sortable" (click)="toggleSort('expires_at')">到期日</th>
-                <th class="sortable" (click)="toggleSort('last_seen_at')">最後見到</th>
-                <th>動作</th>
+                <th>{{ text.columns.status }}</th>
+                <th class="sortable" (click)="toggleSort('ip_address')">
+                  {{ text.columns.ipAddress }}
+                </th>
+                <th>{{ text.columns.macAddress }}</th>
+                <th>{{ text.columns.vendor }}</th>
+                <th>{{ text.columns.deviceType }}</th>
+                <th>{{ text.columns.subnetSwitch }}</th>
+                <th class="sortable" (click)="toggleSort('owner_username')">
+                  {{ text.columns.owner }}
+                </th>
+                <th class="sortable" (click)="toggleSort('expires_at')">
+                  {{ text.columns.expiresAt }}
+                </th>
+                <th class="sortable" (click)="toggleSort('last_seen_at')">
+                  {{ text.columns.lastSeen }}
+                </th>
+                <th>{{ text.columns.actions }}</th>
               </tr>
             </thead>
             <tbody>
@@ -275,26 +292,26 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
                       type="checkbox"
                       [checked]="selectAllFiltered() || selectedIds().has(item.id)"
                       (change)="toggleRow(item.id)"
-                      [attr.aria-label]="'選取 ' + item.ip_address"
+                      [attr.aria-label]="text.aria.selectRow(item.ip_address)"
                     />
                   </td>
                   <td>
                     <div class="status-combo">
                       @if (item.has_conflict) {
-                        <app-status-pill variant="conflict" label="衝突" />
+                        <app-status-pill variant="conflict" [label]="status.conflict" />
                       }
                       <app-status-pill
                         [variant]="item.presence === 'online' ? 'online' : 'offline'"
-                        [label]="item.presence === 'online' ? '在線' : '離線'"
+                        [label]="item.presence === 'online' ? status.online : status.offline"
                       />
                       @if (item.registration === 'unregistered') {
-                        <app-status-pill variant="unregistered" label="未登記" />
+                        <app-status-pill variant="unregistered" [label]="status.unregistered" />
                       } @else if (item.registration === 'expired') {
-                        <app-status-pill variant="expired" label="已到期" />
+                        <app-status-pill variant="expired" [label]="status.expired" />
                       } @else if (item.expiring_soon) {
-                        <app-status-pill variant="expiring" label="即將到期" />
+                        <app-status-pill variant="expiring" [label]="status.expiring" />
                       } @else {
-                        <app-status-pill variant="registered" label="已登記" />
+                        <app-status-pill variant="registered" [label]="status.registered" />
                       }
                     </div>
                   </td>
@@ -323,7 +340,7 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
                       type="button"
                       class="btn btn-ghost btn-sm"
                       (click)="copyIP(item.ip_address)"
-                      aria-label="複製 IP"
+                      [attr.aria-label]="text.aria.copyIp"
                     >
                       <svg lucideCopy [size]="14"></svg>
                     </button>
@@ -336,9 +353,9 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
 
         @if (pagination(); as pg) {
           <div class="pagination-bar">
-            <span class="muted-text"
-              >共 {{ pg.total_items }} 筆（第 {{ pg.page }} / {{ pg.total_pages || 1 }} 頁）</span
-            >
+            <span class="muted-text">{{
+              pager.summary(pg.total_items, pg.page, pg.total_pages || 1)
+            }}</span>
             <div class="pg-actions">
               <button
                 type="button"
@@ -346,7 +363,7 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
                 [disabled]="pg.page <= 1"
                 (click)="applyFilters(pg.page - 1)"
               >
-                上一頁
+                {{ pager.previous }}
               </button>
               <button
                 type="button"
@@ -354,7 +371,7 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
                 [disabled]="pg.page >= pg.total_pages"
                 (click)="applyFilters(pg.page + 1)"
               >
-                下一頁
+                {{ pager.next }}
               </button>
             </div>
           </div>
@@ -372,19 +389,27 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
         @if (selectedDetail(); as d) {
           <div class="readonly-meta">
             <div>
-              <strong>MAC：</strong><span class="font-mono">{{ d.mac_address }}</span>
+              <strong>{{ text.detail.mac }}</strong><span class="font-mono">{{
+                d.mac_address
+              }}</span>
             </div>
-            <div><strong>廠商：</strong>{{ d.vendor_name }}</div>
             <div>
-              <strong>網段：</strong><span class="font-mono">{{ d.subnet_cidr }}</span>
+              <strong>{{ text.detail.vendor }}</strong>{{ d.vendor_name }}
             </div>
-            <div><strong>狀態：</strong>{{ d.state_label }}</div>
+            <div>
+              <strong>{{ text.detail.subnet }}</strong><span class="font-mono">{{
+                d.subnet_cidr
+              }}</span>
+            </div>
+            <div>
+              <strong>{{ text.detail.state }}</strong>{{ d.state_label }}
+            </div>
           </div>
 
           @if (d.registration === 'unregistered' || d.can_edit) {
             <form class="form-stack" (ngSubmit)="saveRegistration(d)">
               <div class="field-group">
-                <label for="regMail">擁有者信箱（必填，到期催認寄送至此）</label>
+                <label for="regMail">{{ text.form.ownerMail }}</label>
                 <input
                   id="regMail"
                   name="regMail"
@@ -395,7 +420,7 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
                 />
               </div>
               <div class="field-group">
-                <label for="regType">裝置類型（自填）</label>
+                <label for="regType">{{ text.form.deviceType }}</label>
                 <input
                   id="regType"
                   name="regType"
@@ -405,7 +430,7 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
                 />
               </div>
               <div class="field-group">
-                <label for="regHost">主機名稱</label>
+                <label for="regHost">{{ text.form.hostname }}</label>
                 <input
                   id="regHost"
                   name="regHost"
@@ -416,7 +441,8 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
               </div>
               <div class="field-group">
                 <label for="regNotes"
-                  >備註 <span class="public-note">（注意：所有登入者都看得到）</span></label
+                  >{{ text.form.notes }}
+                  <span class="public-note">{{ text.form.notesPublic }}</span></label
                 >
                 <textarea
                   id="regNotes"
@@ -428,7 +454,7 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
               </div>
               @if (d.registration === 'unregistered' && auth.isAdmin()) {
                 <div class="field-group">
-                  <label for="regOwnerUser">指定擁有者帳號（選填，留空則登記給自己）</label>
+                  <label for="regOwnerUser">{{ text.form.ownerUsername }}</label>
                   <input
                     id="regOwnerUser"
                     name="regOwnerUser"
@@ -446,60 +472,60 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
                     class="btn btn-secondary"
                     (click)="singleAction(d.id, 'confirm')"
                   >
-                    重新確認（延長一年）
+                    {{ text.form.confirm }}
                   </button>
                   <button
                     type="button"
                     class="btn btn-danger-soft"
                     (click)="singleAction(d.id, 'release')"
                   >
-                    釋放
+                    {{ text.form.release }}
                   </button>
                 }
                 <button type="submit" class="btn btn-primary">
-                  {{ d.registration === 'unregistered' ? '完成登記' : '儲存變更' }}
+                  {{ d.registration === 'unregistered' ? text.form.register : text.form.save }}
                 </button>
               </div>
             </form>
 
             @if (d.registration !== 'unregistered' && auth.isAdmin()) {
               <div class="reassign-box">
-                <label for="reassignTarget">改派擁有者帳號（僅系統管理員）</label>
+                <label for="reassignTarget">{{ text.form.reassignLabel }}</label>
                 <div class="reassign-row">
                   <input
                     id="reassignTarget"
                     type="text"
                     class="form-input"
-                    placeholder="輸入目標帳號名稱"
+                    [placeholder]="text.form.reassignPlaceholder"
                     [(ngModel)]="reassignTargetUser"
                   />
                   <button type="button" class="btn btn-secondary" (click)="reassignSingle(d.id)">
-                    改派
+                    {{ text.form.reassign }}
                   </button>
                 </div>
               </div>
             }
           } @else {
             <div class="readonly-notice">
-              此 IP 紀錄已由 <strong>{{ d.owner_display_name || d.owner_username }}</strong>（{{
-                d.owner_mail
-              }}）登記。僅擁有者本人可編輯；若須調整或釋放，請聯絡系統管理員。
+              {{ text.readonly.ownedPrefix
+              }}<strong>{{ d.owner_display_name || d.owner_username }}</strong
+              >{{ text.readonly.ownedSuffix(d.owner_mail) }}
             </div>
             <dl class="readonly-fields">
               <div>
-                <dt>裝置類型</dt>
+                <dt>{{ text.readonly.deviceType }}</dt>
                 <dd>{{ d.device_type || '—' }}</dd>
               </div>
               <div>
-                <dt>主機名稱</dt>
+                <dt>{{ text.readonly.hostname }}</dt>
                 <dd class="font-mono">{{ d.hostname || '—' }}</dd>
               </div>
               <div>
-                <dt>備註</dt>
+                <dt>{{ text.readonly.notes }}</dt>
                 <dd>{{ d.notes || '—' }}</dd>
               </div>
               <div>
-                <dt>到期日</dt>
+                <dt>{{ text.readonly.expiresAt }}</dt>
                 <dd class="font-mono">{{ d.expires_at ? formatDate(d.expires_at) : '—' }}</dd>
               </div>
             </dl>
@@ -510,15 +536,13 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
       <div slot="observations" class="obs-slot">
         @if (selectedDetail(); as d) {
           <div class="online-explainer">
-            <strong>關於「在線」狀態：</strong>
-            「在線」代表交換器的 ARP table
-            中目前仍有此位址。實體裝置關機或拔線後，須等待交換器自身的 ARP 逾時到期（如 IOS-XE
-            預設約 4 小時、NX-OS 約 25 分鐘）並經過寬限輪數後才會轉為離線。
+            <strong>{{ text.observations.explainerTitle }}</strong>
+            {{ text.observations.explainerBody }}
           </div>
 
-          <h3 class="sub-title">目前觀測來源 ({{ d.sightings.length }})</h3>
+          <h3 class="sub-title">{{ text.observations.sourcesTitle(d.sightings.length) }}</h3>
           @if (d.sightings.length === 0) {
-            <p class="muted-text">目前無任何交換器觀測到此位址。</p>
+            <p class="muted-text">{{ text.observations.noSources }}</p>
           } @else {
             <ul class="obs-list">
               @for (s of d.sightings; track s.switch_name + s.vrf_name) {
@@ -528,14 +552,14 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
                     <span class="font-mono">{{ s.if_name }}</span>)
                   </div>
                   <div class="font-mono muted-text">
-                    MAC: {{ s.mac_address }} · 末見: {{ formatTime(s.last_seen_at) }}
+                    {{ text.observations.sightingLine(s.mac_address, formatTime(s.last_seen_at)) }}
                   </div>
                 </li>
               }
             </ul>
           }
 
-          <h3 class="sub-title">變更歷程</h3>
+          <h3 class="sub-title">{{ text.observations.historyTitle }}</h3>
           <ul class="event-list">
             @for (e of d.events; track e.id) {
               <li>
@@ -552,15 +576,13 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
     <!-- 批次登記 Sheet -->
     <app-sheet-container
       [open]="batchRegisterOpen()"
-      title="批次登記未登記之 IP 紀錄"
+      [title]="text.batchRegister.title"
       (closed)="batchRegisterOpen.set(false)"
     >
       <form class="form-stack" (ngSubmit)="submitBatchRegister()">
-        <p class="muted-text">
-          填寫之欄位將套用至所選範圍內所有尚未登記的位址（已有擁有者之項目將自動略過並回報）。
-        </p>
+        <p class="muted-text">{{ text.batchRegister.hint }}</p>
         <div class="field-group">
-          <label for="bMail">擁有者信箱（必填）</label>
+          <label for="bMail">{{ text.batchRegister.ownerMail }}</label>
           <input
             id="bMail"
             name="bMail"
@@ -571,7 +593,7 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
           />
         </div>
         <div class="field-group">
-          <label for="bType">裝置類型（選填）</label>
+          <label for="bType">{{ text.batchRegister.deviceType }}</label>
           <input
             id="bType"
             name="bType"
@@ -581,7 +603,7 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
           />
         </div>
         <div class="field-group">
-          <label for="bNotes">備註（所有登入者都看得到）</label>
+          <label for="bNotes">{{ text.batchRegister.notes }}</label>
           <textarea
             id="bNotes"
             name="bNotes"
@@ -592,9 +614,9 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
         </div>
         <div class="sheet-actions">
           <button type="button" class="btn btn-secondary" (click)="batchRegisterOpen.set(false)">
-            取消
+            {{ actions.cancel }}
           </button>
-          <button type="submit" class="btn btn-primary">執行批次登記</button>
+          <button type="submit" class="btn btn-primary">{{ text.batchRegister.submit }}</button>
         </div>
       </form>
     </app-sheet-container>
@@ -602,12 +624,12 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
     <!-- 批次改派 Sheet -->
     <app-sheet-container
       [open]="batchReassignOpen()"
-      title="批次改派擁有者"
+      [title]="text.batchReassign.title"
       (closed)="batchReassignOpen.set(false)"
     >
       <form class="form-stack" (ngSubmit)="submitBatchReassign()">
         <div class="field-group">
-          <label for="bTarget">目標擁有者帳號</label>
+          <label for="bTarget">{{ text.batchReassign.target }}</label>
           <input
             id="bTarget"
             name="bTarget"
@@ -619,9 +641,9 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
         </div>
         <div class="sheet-actions">
           <button type="button" class="btn btn-secondary" (click)="batchReassignOpen.set(false)">
-            取消
+            {{ actions.cancel }}
           </button>
-          <button type="submit" class="btn btn-primary">確認批次改派</button>
+          <button type="submit" class="btn btn-primary">{{ text.batchReassign.submit }}</button>
         </div>
       </form>
     </app-sheet-container>
@@ -932,6 +954,11 @@ export class WorkbenchPage implements OnInit {
   protected readonly auth = inject(AuthService);
   private readonly badges = inject(SidebarBadgesService);
 
+  protected readonly text = WORKBENCH_TEXT;
+  protected readonly status = STATUS_TEXT;
+  protected readonly pager = SHELL_TEXT.pagination;
+  protected readonly actions = SHELL_TEXT.actions;
+
   protected readonly stats = signal<DashboardSummary | null>(null);
   protected readonly subnets = signal<Subnet[]>([]);
   protected readonly items = signal<IPRecordSummary[]>([]);
@@ -952,6 +979,7 @@ export class WorkbenchPage implements OnInit {
     expiring_soon: false,
     has_conflict: false,
     owner_me: false,
+    pending_confirmation: false,
     sort_by: 'ip_address',
     sort_dir: 'asc',
     page: 1,
@@ -977,7 +1005,7 @@ export class WorkbenchPage implements OnInit {
   ngOnInit(): void {
     this.route.queryParams.subscribe((params) => {
       if (params['wizard'] === 'true' && this.auth.isAdmin()) {
-        this.openSetupWizard();
+        this.openSetupWizard(params['returnUrl']);
       }
       this.filters.search = params['search'] ?? '';
       this.filters.subnet_id = params['subnet_id'] ?? '';
@@ -986,6 +1014,7 @@ export class WorkbenchPage implements OnInit {
       this.filters.expiring_soon = params['expiring_soon'] === 'true';
       this.filters.has_conflict = params['has_conflict'] === 'true';
       this.filters.owner_me = params['owner_me'] === 'true';
+      this.filters.pending_confirmation = params['pending_confirmation'] === 'true';
       this.filters.page = Number(params['page'] ?? 1);
       this.loadRecords();
     });
@@ -1006,11 +1035,25 @@ export class WorkbenchPage implements OnInit {
     });
   }
 
-  openSetupWizard(): void {
+  /**
+   * 開啟設定精靈。returnUrl 為登入或改密碼前原本要去的站內網址：
+   * 精靈結束後回到該處；沒有的話移除網址上的 wizard 參數，避免之後切換篩選又重開精靈。
+   */
+  openSetupWizard(rawReturnUrl?: unknown): void {
+    const returnUrl = sanitizeReturnUrl(rawReturnUrl);
     const ref = this.dialog.open(SetupWizardDialogComponent, { disableClose: true });
     ref.closed.subscribe(() => {
       this.loadStats();
       this.loadSubnets();
+      if (returnUrl !== '/') {
+        void this.router.navigateByUrl(returnUrl);
+      } else if (this.route.snapshot.queryParamMap.get('wizard')) {
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { wizard: null, returnUrl: null },
+          queryParamsHandling: 'merge',
+        });
+      }
     });
   }
 
@@ -1047,6 +1090,7 @@ export class WorkbenchPage implements OnInit {
         expiring_soon: this.filters.expiring_soon ? 'true' : null,
         has_conflict: this.filters.has_conflict ? 'true' : null,
         owner_me: this.filters.owner_me ? 'true' : null,
+        pending_confirmation: this.filters.pending_confirmation ? 'true' : null,
         page: page > 1 ? page : null,
       },
     });
@@ -1071,6 +1115,7 @@ export class WorkbenchPage implements OnInit {
     if (this.filters.expiring_soon) p = p.set('expiring_soon', 'true');
     if (this.filters.has_conflict) p = p.set('has_conflict', 'true');
     if (this.filters.owner_me) p = p.set('owner_me', 'true');
+    if (this.filters.pending_confirmation) p = p.set('pending_confirmation', 'true');
     p = p.set('sort_by', this.filters.sort_by).set('sort_dir', this.filters.sort_dir);
     return p;
   }
@@ -1103,7 +1148,8 @@ export class WorkbenchPage implements OnInit {
       next: (res) => {
         this.selectedDetail.set(res);
         this.regForm = {
-          owner_mail: res.owner_mail || this.auth.currentUser()?.username + '@wurzburg.local' || '',
+          // 不憑空組出信箱：沿用既有登記信箱，其次是目前帳號的信箱，否則留白讓使用者填寫
+          owner_mail: res.owner_mail || this.auth.currentUser()?.mail || '',
           device_type: res.device_type || '',
           hostname: res.hostname || '',
           notes: res.notes || '',
@@ -1132,15 +1178,16 @@ export class WorkbenchPage implements OnInit {
         .subscribe({
           next: (res) => {
             if (res.succeeded_count > 0) {
-              this.toast.show('登記成功', 'success');
+              this.toast.show(this.text.toast.registerSucceeded, 'success');
               this.openDetail(d.id);
               this.loadRecords();
               this.loadStats();
             } else {
-              this.toast.show('登記失敗', 'danger', res.results[0]?.reason);
+              this.toast.show(this.text.toast.registerFailed, 'danger', res.results[0]?.reason);
             }
           },
-          error: (err) => this.toast.show('登記失敗', 'danger', err?.error?.message),
+          error: (err) =>
+            this.toast.show(this.text.toast.registerFailed, 'danger', err?.error?.message),
         });
     } else {
       this.http
@@ -1158,9 +1205,10 @@ export class WorkbenchPage implements OnInit {
           next: (res) => {
             this.selectedDetail.set(res);
             this.loadRecords();
-            this.toast.show('變更已儲存', 'success');
+            this.toast.show(this.text.toast.saveSucceeded, 'success');
           },
-          error: (err) => this.toast.show('儲存失敗', 'danger', err?.error?.message),
+          error: (err) =>
+            this.toast.show(this.text.toast.saveFailed, 'danger', err?.error?.message),
         });
     }
   }
@@ -1175,12 +1223,15 @@ export class WorkbenchPage implements OnInit {
       .subscribe({
         next: (res) => {
           if (res.succeeded_count > 0) {
-            this.toast.show(action === 'confirm' ? '已延長有效期一年' : '已釋放登記', 'success');
+            this.toast.show(
+              action === 'confirm' ? this.text.toast.confirmed : this.text.toast.released,
+              'success',
+            );
             this.openDetail(id);
             this.loadRecords();
             this.loadStats();
           } else {
-            this.toast.show('操作失敗', 'danger', res.results[0]?.reason);
+            this.toast.show(this.text.toast.actionFailed, 'danger', res.results[0]?.reason);
           }
         },
       });
@@ -1198,14 +1249,15 @@ export class WorkbenchPage implements OnInit {
         next: (res) => {
           if (res.succeeded_count > 0) {
             this.reassignTargetUser = '';
-            this.toast.show('已改派擁有者', 'success');
+            this.toast.show(this.text.toast.reassigned, 'success');
             this.openDetail(id);
             this.loadRecords();
           } else {
-            this.toast.show('改派失敗', 'danger', res.results[0]?.reason);
+            this.toast.show(this.text.toast.reassignFailed, 'danger', res.results[0]?.reason);
           }
         },
-        error: (err) => this.toast.show('改派失敗', 'danger', err?.error?.message),
+        error: (err) =>
+          this.toast.show(this.text.toast.reassignFailed, 'danger', err?.error?.message),
       });
   }
 
@@ -1252,6 +1304,7 @@ export class WorkbenchPage implements OnInit {
           expiring_soon: this.filters.expiring_soon,
           has_conflict: this.filters.has_conflict,
           owner_me: this.filters.owner_me,
+          pending_confirmation: this.filters.pending_confirmation,
         },
       };
     }
@@ -1261,9 +1314,9 @@ export class WorkbenchPage implements OnInit {
   confirmBatchAction(action: 'release'): void {
     const ref = this.dialog.open<boolean>(ConfirmDialogComponent, {
       data: {
-        title: '確認批次釋放登記',
-        message: `即將針對所選的 ${this.selectedCount()} 筆位址釋放登記（權限不符者將自動略過）。是否繼續？`,
-        confirmLabel: '確認批次釋放',
+        title: this.text.releaseDialog.title,
+        message: this.text.releaseDialog.message(this.selectedCount()),
+        confirmLabel: this.text.releaseDialog.confirm,
         danger: true,
       },
     });
@@ -1283,12 +1336,12 @@ export class WorkbenchPage implements OnInit {
           this.loadRecords();
           this.loadStats();
           this.toast.show(
-            '批次作業完成',
+            this.text.toast.batchDone,
             'success',
-            `成功 ${res.succeeded_count} 筆，略過 ${res.skipped_count} 筆`,
+            this.text.toast.batchResult(res.succeeded_count, res.skipped_count),
           );
         },
-        error: (err) => this.toast.show('批次作業失敗', 'danger', err?.error?.message),
+        error: (err) => this.toast.show(this.text.toast.batchFailed, 'danger', err?.error?.message),
       });
   }
 
@@ -1306,12 +1359,13 @@ export class WorkbenchPage implements OnInit {
           this.loadRecords();
           this.loadStats();
           this.toast.show(
-            '批次登記完成',
+            this.text.toast.batchRegisterDone,
             'success',
-            `成功 ${res.succeeded_count} 筆，略過 ${res.skipped_count} 筆`,
+            this.text.toast.batchResult(res.succeeded_count, res.skipped_count),
           );
         },
-        error: (err) => this.toast.show('批次登記失敗', 'danger', err?.error?.message),
+        error: (err) =>
+          this.toast.show(this.text.toast.batchRegisterFailed, 'danger', err?.error?.message),
       });
   }
 
@@ -1328,19 +1382,20 @@ export class WorkbenchPage implements OnInit {
           this.clearSelection();
           this.loadRecords();
           this.toast.show(
-            '批次改派完成',
+            this.text.toast.batchReassignDone,
             'success',
-            `成功 ${res.succeeded_count} 筆，略過 ${res.skipped_count} 筆`,
+            this.text.toast.batchResult(res.succeeded_count, res.skipped_count),
           );
         },
-        error: (err) => this.toast.show('批次改派失敗', 'danger', err?.error?.message),
+        error: (err) =>
+          this.toast.show(this.text.toast.batchReassignFailed, 'danger', err?.error?.message),
       });
   }
 
   copyIP(ip: string): void {
     if (navigator?.clipboard) {
       void navigator.clipboard.writeText(ip);
-      this.toast.show('已複製 IP 位址', 'info', ip);
+      this.toast.show(this.text.toast.ipCopied, 'info', ip);
     }
   }
 

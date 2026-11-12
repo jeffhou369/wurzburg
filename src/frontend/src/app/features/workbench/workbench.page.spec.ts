@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideRouter } from '@angular/router';
 import { WorkbenchPage } from './workbench.page';
 import { MOCK_DASHBOARD_SUMMARY, MOCK_IP_RECORDS, MOCK_SUBNETS } from '../../core/mock-api';
+import { AuthService } from '../../core/auth.service';
 
 describe('WorkbenchPage', () => {
   let httpTesting: HttpTestingController;
@@ -21,7 +22,35 @@ describe('WorkbenchPage', () => {
     httpTesting.verify();
   });
 
+  /** 以下情境檢視的是系統管理員畫面（含設定精靈未完成清單），因此明確以管理員登入。 */
+  const signInAsAdmin = () =>
+    TestBed.inject(AuthService).currentUser.set({
+      id: '1',
+      username: 'admin',
+      displayName: '系統管理員',
+      role: 'admin',
+      authSource: 'local',
+      requiresPasswordChange: false,
+    });
+
+  it('一般使用者與未登入狀態都不應查詢設定精靈狀態（僅系統管理員需要）', () => {
+    const auth = TestBed.inject(AuthService);
+    auth.currentUser.set({
+      id: '2',
+      username: 'alice',
+      displayName: 'Alice',
+      role: 'user',
+      authSource: 'ad',
+      requiresPasswordChange: false,
+    });
+    const fixture = TestBed.createComponent(WorkbenchPage);
+    fixture.detectChanges();
+    expect(httpTesting.match('/api/v1/settings/wizard').length).toBe(0);
+    httpTesting.match(() => true);
+  });
+
   it('應該載入儀表板統計與 IP 表格，並將離線列呈現為灰階', () => {
+    signInAsAdmin();
     const fixture = TestBed.createComponent(WorkbenchPage);
     fixture.detectChanges();
 
@@ -54,6 +83,7 @@ describe('WorkbenchPage', () => {
   });
 
   it('勾選多筆後應顯示批次操作列並可執行批次重新確認', () => {
+    signInAsAdmin();
     const fixture = TestBed.createComponent(WorkbenchPage);
     fixture.detectChanges();
 

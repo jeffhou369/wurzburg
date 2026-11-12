@@ -7,6 +7,7 @@ import { ToastService } from '../../shared/components/toast.service';
 import { SidebarBadgesService } from '../../core/sidebar-badges.service';
 import { AuthService } from '../../core/auth.service';
 import type { components } from '../../core/api.types';
+import { CONFLICTS_TEXT } from './conflicts.i18n';
 
 type ConflictSummary = components['schemas']['ConflictSummary'];
 type ConflictDetail = components['schemas']['ConflictDetail'];
@@ -18,28 +19,25 @@ type ConflictDetail = components['schemas']['ConflictDetail'];
   template: `
     <header class="page-header">
       <div>
-        <h1 class="page-title">MAC 衝突告警</h1>
-        <p class="page-subtitle">檢視並裁決同一位址出現多個 MAC 或已登記位址變更 MAC 之情形</p>
+        <h1 class="page-title">{{ text.title }}</h1>
+        <p class="page-subtitle">{{ text.subtitle }}</p>
       </div>
     </header>
 
     @if (items().length === 0) {
-      <app-empty-state
-        title="目前無衝突紀錄"
-        description="所有納管網段的 IP 與 MAC 對應關係皆一致。"
-      />
+      <app-empty-state [title]="text.empty.title" [description]="text.empty.description" />
     } @else {
       <div class="card table-card">
         <div class="table-wrap">
           <table class="data-table">
             <thead>
               <tr>
-                <th>狀態</th>
-                <th>IP 位址</th>
-                <th>採信 MAC</th>
-                <th>觀測到的 MAC</th>
-                <th>擁有者</th>
-                <th>最近發現</th>
+                <th>{{ text.columns.status }}</th>
+                <th>{{ text.columns.ipAddress }}</th>
+                <th>{{ text.columns.adoptedMac }}</th>
+                <th>{{ text.columns.observedMacs }}</th>
+                <th>{{ text.columns.owner }}</th>
+                <th>{{ text.columns.lastDetected }}</th>
               </tr>
             </thead>
             <tbody>
@@ -49,17 +47,19 @@ type ConflictDetail = components['schemas']['ConflictDetail'];
                     @switch (c.status) {
                       @case ('open') {
                         <span class="status-pill status-conflict"
-                          ><span class="status-dot"></span><span>未處理</span></span
+                          ><span class="status-dot"></span><span>{{ text.status.open }}</span></span
                         >
                       }
                       @case ('in_progress') {
                         <span class="status-pill status-unregistered"
-                          ><span class="status-dot"></span><span>處理中</span></span
+                          ><span class="status-dot"></span
+                          ><span>{{ text.status.inProgress }}</span></span
                         >
                       }
                       @default {
                         <span class="status-pill status-online"
-                          ><span class="status-dot"></span><span>已解消</span></span
+                          ><span class="status-dot"></span
+                          ><span>{{ text.status.resolved }}</span></span
                         >
                       }
                     }
@@ -67,7 +67,7 @@ type ConflictDetail = components['schemas']['ConflictDetail'];
                   <td class="font-mono">{{ c.ip_address }}</td>
                   <td class="font-mono">{{ c.adopted_mac }}</td>
                   <td class="font-mono">{{ c.conflict_macs.join(', ') }}</td>
-                  <td>{{ c.owner_username || '未登記' }}</td>
+                  <td>{{ c.owner_username || text.unregistered }}</td>
                   <td class="font-mono">{{ formatTime(c.last_detected_at) }}</td>
                 </tr>
               }
@@ -79,20 +79,24 @@ type ConflictDetail = components['schemas']['ConflictDetail'];
 
     <app-sheet-container
       [open]="selected() !== null"
-      [title]="selected() ? '衝突裁決：' + selected()!.ip_address : '衝突詳細資料'"
+      [title]="selected() ? text.sheet.title(selected()!.ip_address) : text.sheet.fallbackTitle"
       (closed)="selected.set(null)"
     >
       @if (selected(); as d) {
         <div class="detail-stack">
           <div class="info-box">
             <div>
-              <strong>採信 MAC：</strong> <span class="font-mono">{{ d.adopted_mac }}</span>
+              <strong>{{ text.sheet.adoptedMac }}</strong>
+              <span class="font-mono">{{ d.adopted_mac }}</span>
             </div>
-            <div><strong>擁有者：</strong> {{ d.owner_username || '未登記（並存衝突）' }}</div>
+            <div>
+              <strong>{{ text.sheet.owner }}</strong>
+              {{ d.owner_username || text.sheet.ownerCoexist }}
+            </div>
           </div>
 
           <div>
-            <h3 class="sub-title">觀測來源明細</h3>
+            <h3 class="sub-title">{{ text.sheet.sources }}</h3>
             @for (src of d.sources; track src.mac_address + src.switch_name) {
               <div class="source-row">
                 <div class="font-mono">{{ src.mac_address }}</div>
@@ -105,7 +109,7 @@ type ConflictDetail = components['schemas']['ConflictDetail'];
 
           @if (auth.isAdmin() && d.status !== 'resolved') {
             <form class="resolve-form" (ngSubmit)="submitResolution(d.id)">
-              <h3 class="sub-title">裁決處置</h3>
+              <h3 class="sub-title">{{ text.resolve.title }}</h3>
               <div class="radio-stack">
                 @if (d.has_owner) {
                   <label class="radio-item">
@@ -115,7 +119,7 @@ type ConflictDetail = components['schemas']['ConflictDetail'];
                       value="adopt_new_keep_reg"
                       [(ngModel)]="resolveForm.resolution"
                     />
-                    <span>採信新的 MAC，保留既有登記（擁有者更換設備）</span>
+                    <span>{{ text.resolve.adoptNewKeepReg }}</span>
                   </label>
                   <label class="radio-item">
                     <input
@@ -124,7 +128,7 @@ type ConflictDetail = components['schemas']['ConflictDetail'];
                       value="adopt_new_release_reg"
                       [(ngModel)]="resolveForm.resolution"
                     />
-                    <span>採信新的 MAC，並釋放登記（位址已轉由他人使用）</span>
+                    <span>{{ text.resolve.adoptNewReleaseReg }}</span>
                   </label>
                 } @else {
                   <label class="radio-item">
@@ -134,7 +138,7 @@ type ConflictDetail = components['schemas']['ConflictDetail'];
                       value="adopt_new_keep_reg"
                       [(ngModel)]="resolveForm.resolution"
                     />
-                    <span>採信新的 MAC</span>
+                    <span>{{ text.resolve.adoptNew }}</span>
                   </label>
                 }
                 <label class="radio-item">
@@ -144,13 +148,13 @@ type ConflictDetail = components['schemas']['ConflictDetail'];
                     value="keep_adopted"
                     [(ngModel)]="resolveForm.resolution"
                   />
-                  <span>維持原本的 MAC（進入處理中，等待錯誤裝置撤除）</span>
+                  <span>{{ text.resolve.keepAdopted }}</span>
                 </label>
               </div>
 
               @if (resolveForm.resolution !== 'keep_adopted') {
                 <div class="field-group">
-                  <label for="adoptedMacSelect">選擇採信之 MAC</label>
+                  <label for="adoptedMacSelect">{{ text.resolve.pickMac }}</label>
                   <select
                     id="adoptedMacSelect"
                     name="adoptedMac"
@@ -165,7 +169,7 @@ type ConflictDetail = components['schemas']['ConflictDetail'];
               }
 
               <div class="field-group">
-                <label for="resolveNote">處置說明（選填）</label>
+                <label for="resolveNote">{{ text.resolve.note }}</label>
                 <textarea
                   id="resolveNote"
                   name="resolveNote"
@@ -175,7 +179,7 @@ type ConflictDetail = components['schemas']['ConflictDetail'];
                 ></textarea>
               </div>
 
-              <button type="submit" class="btn btn-primary">套用裁決</button>
+              <button type="submit" class="btn btn-primary">{{ text.resolve.submit }}</button>
             </form>
           }
         </div>
@@ -282,6 +286,7 @@ export class ConflictsPage implements OnInit {
   private readonly toast = inject(ToastService);
   protected readonly badges = inject(SidebarBadgesService);
   protected readonly auth = inject(AuthService);
+  protected readonly text = CONFLICTS_TEXT;
 
   protected readonly items = signal<ConflictSummary[]>([]);
   protected readonly selected = signal<ConflictDetail | null>(null);
@@ -331,9 +336,9 @@ export class ConflictsPage implements OnInit {
         next: () => {
           this.selected.set(null);
           this.loadConflicts();
-          this.toast.show('衝突裁決已套用', 'success');
+          this.toast.show(this.text.resolve.applied, 'success');
         },
-        error: (err) => this.toast.show('裁決失敗', 'danger', err?.error?.message),
+        error: (err) => this.toast.show(this.text.resolve.failed, 'danger', err?.error?.message),
       });
   }
 

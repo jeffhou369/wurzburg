@@ -66,17 +66,24 @@ func (h *Handler) handleGetCampus(w http.ResponseWriter, r *http.Request) {
 		tz = "Asia/Taipei"
 	}
 
+	publicURL, err := h.settings.Get(ctx, "public_base_url")
+	if err != nil {
+		auth.WriteError(w, http.StatusInternalServerError, "settings_error", "讀取園區設定失敗")
+		return
+	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"campus_name": campus,
-		"timezone":    tz,
+		"campus_name":     campus,
+		"timezone":        tz,
+		"public_base_url": publicURL,
 	})
 }
 
 func (h *Handler) handleUpdateCampus(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		CampusName string `json:"campus_name"`
-		Timezone   string `json:"timezone"`
+		CampusName    string  `json:"campus_name"`
+		Timezone      string  `json:"timezone"`
+		PublicBaseURL *string `json:"public_base_url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		auth.WriteError(w, http.StatusBadRequest, "bad_request", "無效的請求格式")
@@ -95,9 +102,20 @@ func (h *Handler) handleUpdateCampus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	values := map[string]string{"campus_name": req.CampusName, "timezone": req.Timezone}
+	if req.PublicBaseURL != nil {
+		normalized, err := settings.NormalizePublicBaseURL(*req.PublicBaseURL)
+		if err != nil {
+			auth.WriteError(w, http.StatusUnprocessableEntity, "invalid_public_url", err.Error())
+			return
+		}
+		values["public_base_url"] = normalized
+	}
 	ctx := r.Context()
-	_ = h.settings.Set(ctx, "campus_name", req.CampusName)
-	_ = h.settings.Set(ctx, "timezone", req.Timezone)
+	if err := h.settings.SetMany(ctx, values); err != nil {
+		auth.WriteError(w, http.StatusInternalServerError, "settings_error", "儲存園區設定失敗")
+		return
+	}
 
 	u := auth.UserFromContext(ctx)
 	if h.audit != nil && u != nil {
@@ -181,6 +199,11 @@ func (h *Handler) evaluateWizardStatus(r *http.Request) WizardStatus {
 			Title:       "尚未設定郵件",
 			Consequence: "三種通知都寄不出去",
 			Route:       "/settings?tab=mail",
+		})
+	} else if _, err := h.settings.PublicLink(ctx, ""); err != nil {
+		items = append(items, UnfinishedSetupItem{
+			Key: "mail", Title: "尚未設定通知公開網址",
+			Consequence: "三種通知都寄不出去", Route: "/settings?tab=campus",
 		})
 	}
 

@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ToastService } from '../../shared/components/toast.service';
 import type { components } from '../../core/api.types';
+import { SHELL_TEXT } from '../../core/i18n/shell.i18n';
+import { RETENTION_TEXT } from './settings.i18n';
 
 type RetentionPolicy = components['schemas']['RetentionPolicySettings'];
 
@@ -12,14 +14,14 @@ type RetentionPolicy = components['schemas']['RetentionPolicySettings'];
   imports: [FormsModule],
   template: `
     <div class="retention-section">
-      <h2 class="section-title">自動清除與保存天數政策</h2>
+      <h2 class="section-title">{{ text.title }}</h2>
       <p class="section-desc">
-        設定離線判定輪數、未登記離線紀錄自動清除天數，以及登記有效期與到期催認規則。
+        {{ text.description }}
       </p>
 
       <form class="form-grid" (ngSubmit)="save()">
         <div class="field-group">
-          <label for="autoPurgeDays">未登記離線紀錄自動清除天數（0 代表停用）</label>
+          <label for="autoPurgeDays">{{ text.autoPurgeDays }}</label>
           <input
             id="autoPurgeDays"
             name="autoPurgeDays"
@@ -28,11 +30,11 @@ type RetentionPolicy = components['schemas']['RetentionPolicySettings'];
             class="form-input"
             [(ngModel)]="form.auto_purge_days"
           />
-          <span class="field-help">已登記或已到期的 IP 紀錄不論離線多久皆不會被自動清除。</span>
+          <span class="field-help">{{ text.autoPurgeDaysHelp }}</span>
         </div>
 
         <div class="field-group">
-          <label for="graceRounds">離線判定寬限輪數</label>
+          <label for="graceRounds">{{ text.graceRounds }}</label>
           <input
             id="graceRounds"
             name="graceRounds"
@@ -44,7 +46,7 @@ type RetentionPolicy = components['schemas']['RetentionPolicySettings'];
         </div>
 
         <div class="field-group">
-          <label for="validDays">登記有效天數</label>
+          <label for="validDays">{{ text.validDays }}</label>
           <input
             id="validDays"
             name="validDays"
@@ -56,7 +58,7 @@ type RetentionPolicy = components['schemas']['RetentionPolicySettings'];
         </div>
 
         <div class="field-group">
-          <label for="advanceDays">到期前提前提醒天數</label>
+          <label for="advanceDays">{{ text.advanceDays }}</label>
           <input
             id="advanceDays"
             name="advanceDays"
@@ -68,7 +70,7 @@ type RetentionPolicy = components['schemas']['RetentionPolicySettings'];
         </div>
 
         <div class="field-group">
-          <label for="intervalDays">逾期後復催間隔天數</label>
+          <label for="intervalDays">{{ text.intervalDays }}</label>
           <input
             id="intervalDays"
             name="intervalDays"
@@ -80,7 +82,7 @@ type RetentionPolicy = components['schemas']['RetentionPolicySettings'];
         </div>
 
         <div class="field-group">
-          <label for="maxReminders">復催次數上限</label>
+          <label for="maxReminders">{{ text.maxReminders }}</label>
           <input
             id="maxReminders"
             name="maxReminders"
@@ -93,7 +95,7 @@ type RetentionPolicy = components['schemas']['RetentionPolicySettings'];
 
         <div class="actions">
           <button type="submit" class="btn btn-primary" [disabled]="saving()">
-            {{ saving() ? '儲存中...' : '儲存政策設定' }}
+            {{ saving() ? actions.saving : text.save }}
           </button>
         </div>
       </form>
@@ -141,6 +143,8 @@ type RetentionPolicy = components['schemas']['RetentionPolicySettings'];
 export class RetentionSettingsComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly toast = inject(ToastService);
+  protected readonly text = RETENTION_TEXT;
+  protected readonly actions = SHELL_TEXT.actions;
 
   protected readonly saving = signal(false);
   protected form: RetentionPolicy = {
@@ -169,11 +173,15 @@ export class RetentionSettingsComponent implements OnInit {
         next: (res) => {
           this.form = res;
           this.saving.set(false);
-          this.toast.show('政策已更新', 'success');
+          this.toast.show(this.text.saved, 'success');
         },
         error: (err) => {
           this.saving.set(false);
-          this.toast.show('儲存失敗', 'danger', err?.error?.message ?? '請檢查輸入數值');
+          this.toast.show(
+            this.text.saveFailed,
+            'danger',
+            err?.error?.message ?? this.text.saveFailedHint,
+          );
         },
       });
   }

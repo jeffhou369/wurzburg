@@ -114,6 +114,10 @@ func (s *Service) RunUnregisteredDigest(ctx context.Context) (int, error) {
 
 	loc, tzName := s.getLocation(ctx)
 	campusName := s.getCampusName(ctx)
+	workbenchURL, urlErr := s.settings.PublicLink(ctx, "presence=online&registration=unregistered")
+	if urlErr != nil {
+		return 0, urlErr
+	}
 	adminRecipients := s.getAdminRecipients(ctx)
 	if len(adminRecipients) == 0 {
 		return 0, errors.New("尚未設定系統管理員通知收件清單，略過未登記彙整寄送")
@@ -241,7 +245,7 @@ func (s *Service) RunUnregisteredDigest(ctx context.Context) (int, error) {
 		TruncatedNote: truncNote,
 		PrimaryCTA: &mailer.CTAButton{
 			Label: "前往檢視在線未登記清單",
-			URL:   "http://localhost:8080/?presence=online&registration=unregistered",
+			URL:   workbenchURL,
 		},
 		FooterLines: []string{
 			"您之所以收到此信，是因為您的信箱位於「系統管理員收件清單」中。",
@@ -330,6 +334,10 @@ func (s *Service) RunWeeklySummary(ctx context.Context) (int, error) {
 
 	loc, tzName := s.getLocation(ctx)
 	campusName := s.getCampusName(ctx)
+	workbenchURL, urlErr := s.settings.PublicLink(ctx, "presence=online&registration=unregistered")
+	if urlErr != nil {
+		return 0, urlErr
+	}
 	adminRecipients := s.getAdminRecipients(ctx)
 	if len(adminRecipients) == 0 {
 		return 0, errors.New("尚未設定系統管理員通知收件清單，略過未登記總表寄送")
@@ -442,7 +450,7 @@ func (s *Service) RunWeeklySummary(ctx context.Context) (int, error) {
 		TruncatedNote: truncNote,
 		PrimaryCTA: &mailer.CTAButton{
 			Label: "前往檢視在線未登記清單",
-			URL:   "http://localhost:8080/?presence=online&registration=unregistered",
+			URL:   workbenchURL,
 		},
 		FooterLines: []string{
 			"您之所以收到此信，是因為您的信箱位於「系統管理員收件清單」中。",
@@ -507,6 +515,10 @@ func (s *Service) RunExpiryReminders(ctx context.Context) (int, error) {
 
 	loc, tzName := s.getLocation(ctx)
 	campusName := s.getCampusName(ctx)
+	workbenchURL, urlErr := s.settings.PublicLink(ctx, "owner_me=true&pending_confirmation=true")
+	if urlErr != nil {
+		return 0, urlErr
+	}
 	adminRecipients := s.getAdminRecipients(ctx)
 
 	advanceDays := 14
@@ -701,11 +713,11 @@ func (s *Service) RunExpiryReminders(ctx context.Context) (int, error) {
 			Rows:    displayRows,
 			PrimaryCTA: &mailer.CTAButton{
 				Label: "登入後重新確認，延長一年",
-				URL:   "http://localhost:8080/workbench?filter=my_pending_confirmation",
+				URL:   workbenchURL,
 			},
 			SecondaryLink: &mailer.CTAButton{
 				Label: "若已不使用，請登入後釋放",
-				URL:   "http://localhost:8080/workbench",
+				URL:   workbenchURL,
 			},
 			FooterLines: []string{
 				"您之所以收到此信，是因為您的信箱被填寫為上述位址之擁有者聯絡信箱。",

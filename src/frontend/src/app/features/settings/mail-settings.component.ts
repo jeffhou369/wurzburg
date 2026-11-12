@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ToastService } from '../../shared/components/toast.service';
 import type { components } from '../../core/api.types';
+import { SHELL_TEXT } from '../../core/i18n/shell.i18n';
+import { MAIL_TEXT } from './mail-settings.i18n';
 
 type MailSettings = components['schemas']['MailSettings'];
 
@@ -12,14 +14,14 @@ type MailSettings = components['schemas']['MailSettings'];
   imports: [FormsModule],
   template: `
     <div class="mail-settings">
-      <h2 class="section-title">SMTP 與郵件通知設定</h2>
+      <h2 class="section-title">{{ text.title }}</h2>
       <p class="section-desc">
-        設定通知郵件發送伺服器、加密方式、系統管理員收件清單與每週未登記總表寄送排程。
+        {{ text.description }}
       </p>
 
       <form class="form-grid" (ngSubmit)="save()">
         <div class="field-group full">
-          <label for="smtpHost">SMTP 伺服器主機 *</label>
+          <label for="smtpHost">{{ text.smtpHost.label }}</label>
           <input
             id="smtpHost"
             name="smtpHost"
@@ -27,12 +29,12 @@ type MailSettings = components['schemas']['MailSettings'];
             required
             class="form-input"
             [(ngModel)]="form.smtp_host"
-            placeholder="例如 smtp.example.com"
+            [placeholder]="text.smtpHost.placeholder"
           />
         </div>
 
         <div class="field-group">
-          <label for="smtpPort">埠號 (Port) *</label>
+          <label for="smtpPort">{{ text.smtpPort }}</label>
           <input
             id="smtpPort"
             name="smtpPort"
@@ -46,40 +48,42 @@ type MailSettings = components['schemas']['MailSettings'];
         </div>
 
         <div class="field-group">
-          <label for="tlsMode">連線加密方式 *</label>
+          <label for="tlsMode">{{ text.tlsMode.label }}</label>
           <select id="tlsMode" name="tlsMode" class="form-input" [(ngModel)]="form.smtp_tls_mode">
-            <option value="starttls">STARTTLS（預設，連接 587）</option>
-            <option value="smtps">SMTPS（直連 SSL/TLS，連接 465）</option>
-            <option value="none">無加密（僅限內部信任網路，連接 25）</option>
+            <option value="starttls">{{ text.tlsMode.starttls }}</option>
+            <option value="smtps">{{ text.tlsMode.smtps }}</option>
+            <option value="none">{{ text.tlsMode.none }}</option>
           </select>
         </div>
 
         <div class="field-group">
-          <label for="smtpUser">認證帳號（若無需認證可留空）</label>
+          <label for="smtpUser">{{ text.smtpUser.label }}</label>
           <input
             id="smtpUser"
             name="smtpUser"
             type="text"
             class="form-input"
             [(ngModel)]="form.smtp_username"
-            placeholder="例如 no-reply@example.com"
+            [placeholder]="text.smtpUser.placeholder"
           />
         </div>
 
         <div class="field-group">
-          <label for="smtpPass">認證密碼</label>
+          <label for="smtpPass">{{ text.smtpPass.label }}</label>
           <input
             id="smtpPass"
             name="smtpPass"
             type="password"
             class="form-input"
             [(ngModel)]="passwordInput"
-            [placeholder]="form.has_password ? '已設定（保留原密碼請留空）' : '請輸入密碼'"
+            [placeholder]="
+              form.has_password ? text.smtpPass.placeholderKeep : text.smtpPass.placeholderNew
+            "
           />
         </div>
 
         <div class="field-group">
-          <label for="senderAddress">寄件人信箱 (From) *</label>
+          <label for="senderAddress">{{ text.senderAddress }}</label>
           <input
             id="senderAddress"
             name="senderAddress"
@@ -92,7 +96,7 @@ type MailSettings = components['schemas']['MailSettings'];
         </div>
 
         <div class="field-group">
-          <label for="weeklyCron">未登記總表寄送排程 (Cron) *</label>
+          <label for="weeklyCron">{{ text.weeklyCron.label }}</label>
           <input
             id="weeklyCron"
             name="weeklyCron"
@@ -102,11 +106,11 @@ type MailSettings = components['schemas']['MailSettings'];
             [(ngModel)]="form.weekly_summary_cron"
             placeholder="0 9 * * 1"
           />
-          <span class="field-help">預設每週一 09:00（園區時區），格式為 5 欄位標準 Cron</span>
+          <span class="field-help">{{ text.weeklyCron.help }}</span>
         </div>
 
         <div class="field-group full">
-          <label for="adminRecipients">系統管理員通知收件清單（每行一個信箱）*</label>
+          <label for="adminRecipients">{{ text.adminRecipients.label }}</label>
           <textarea
             id="adminRecipients"
             name="adminRecipients"
@@ -115,29 +119,27 @@ type MailSettings = components['schemas']['MailSettings'];
             [(ngModel)]="recipientsText"
             placeholder="admin1@example.com&#10;admin2@example.com"
           ></textarea>
-          <span class="field-help"
-            >未登記彙整、未登記累積總表與到期催認最終提醒將寄送至此清單。</span
-          >
+          <span class="field-help">{{ text.adminRecipients.help }}</span>
         </div>
 
         <div class="actions">
           <button type="submit" class="btn btn-primary" [disabled]="saving()">
-            {{ saving() ? '儲存中...' : '儲存郵件設定' }}
+            {{ saving() ? actions.saving : text.save }}
           </button>
         </div>
       </form>
 
       <div class="test-section">
-        <h3 class="test-title">寄送測試信</h3>
+        <h3 class="test-title">{{ text.test.title }}</h3>
         <p class="test-desc">
-          寄送一封驗證信件至指定信箱，確認 SMTP 連線與 HTML/純文字排版格式正常。
+          {{ text.test.description }}
         </p>
 
         <div class="test-form">
           <input
             type="email"
             class="form-input"
-            placeholder="請輸入測試收件人信箱"
+            [placeholder]="text.test.recipientPlaceholder"
             [(ngModel)]="testRecipient"
             [disabled]="testingMail()"
           />
@@ -147,7 +149,7 @@ type MailSettings = components['schemas']['MailSettings'];
             (click)="sendTestMail()"
             [disabled]="testingMail() || !testRecipient.trim()"
           >
-            {{ testingMail() ? '寄送中...' : '寄出測試信' }}
+            {{ testingMail() ? text.test.sending : text.test.send }}
           </button>
         </div>
 
@@ -157,7 +159,7 @@ type MailSettings = components['schemas']['MailSettings'];
             [class.success]="testResult()!.success"
             [class.error]="!testResult()!.success"
           >
-            <strong>{{ testResult()!.success ? '寄送成功' : '寄送失敗' }}：</strong>
+            <strong>{{ text.test.resultLabel(testResult()!.success) }}</strong>
             {{ testResult()!.message }}
           </div>
         }
@@ -234,14 +236,14 @@ type MailSettings = components['schemas']['MailSettings'];
         font-size: var(--font-size-meta);
         line-height: 1.4;
         &.success {
-          background-color: var(--color-online-bg);
-          color: var(--color-online);
-          border: 1px solid var(--color-online-border);
+          background-color: var(--color-success-subtle);
+          color: var(--color-success-text);
+          border: 1px solid var(--color-success-border);
         }
         &.error {
-          background-color: var(--color-conflict-bg);
-          color: var(--color-conflict);
-          border: 1px solid var(--color-conflict-border);
+          background-color: var(--color-danger-subtle);
+          color: var(--color-danger-text);
+          border: 1px solid var(--color-danger-border);
         }
       }
     `,
@@ -250,6 +252,8 @@ type MailSettings = components['schemas']['MailSettings'];
 export class MailSettingsComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly toast = inject(ToastService);
+  protected readonly text = MAIL_TEXT;
+  protected readonly actions = SHELL_TEXT.actions;
 
   protected readonly saving = signal(false);
   protected readonly testingMail = signal(false);
@@ -309,11 +313,15 @@ export class MailSettingsComponent implements OnInit {
           this.form = res;
           this.passwordInput = '';
           this.saving.set(false);
-          this.toast.show('郵件設定已儲存', 'success');
+          this.toast.show(this.text.saved, 'success');
         },
         error: (err) => {
           this.saving.set(false);
-          this.toast.show('儲存失敗', 'danger', err?.error?.message ?? '請檢查輸入欄位');
+          this.toast.show(
+            this.text.saveFailed,
+            'danger',
+            err?.error?.message ?? this.text.saveFailedHint,
+          );
         },
       });
   }
@@ -334,16 +342,16 @@ export class MailSettingsComponent implements OnInit {
           this.testingMail.set(false);
           this.testResult.set(res);
           if (res.success) {
-            this.toast.show('測試信已寄出', 'success');
+            this.toast.show(this.text.test.sent, 'success');
           } else {
-            this.toast.show('寄送失敗', 'danger', res.message);
+            this.toast.show(this.text.test.failed, 'danger', res.message);
           }
         },
         error: (err) => {
           this.testingMail.set(false);
-          const msg = err?.error?.message ?? '測試信寄送失敗，請確認 SMTP 設定與網路連線';
+          const msg = err?.error?.message ?? this.text.test.failedHint;
           this.testResult.set({ success: false, message: msg });
-          this.toast.show('寄送失敗', 'danger', msg);
+          this.toast.show(this.text.test.failed, 'danger', msg);
         },
       });
   }

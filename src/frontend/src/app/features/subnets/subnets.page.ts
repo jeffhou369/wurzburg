@@ -9,6 +9,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.c
 import { ToastService } from '../../shared/components/toast.service';
 import { SidebarBadgesService } from '../../core/sidebar-badges.service';
 import { AuthService } from '../../core/auth.service';
+import { SUBNETS_TEXT } from './subnets.i18n';
 import type { components } from '../../core/api.types';
 
 type Subnet = components['schemas']['Subnet'];
@@ -23,13 +24,13 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
   template: `
     <header class="page-header">
       <div>
-        <h1 class="page-title">網段管理</h1>
-        <p class="page-subtitle">檢視並決定發現網段的納管狀態與排除範圍（DHCP / 無線 / 其他）</p>
+        <h1 class="page-title">{{ text.title }}</h1>
+        <p class="page-subtitle">{{ text.subtitle }}</p>
       </div>
       @if (auth.isAdmin()) {
         <button type="button" class="btn btn-primary" (click)="addModalOpen.set(true)">
           <svg lucidePlus [size]="16" [strokeWidth]="2"></svg>
-          <span>手動新增網段</span>
+          <span>{{ text.addManual }}</span>
         </button>
       }
     </header>
@@ -41,7 +42,7 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
         [class.active]="stateFilter() === ''"
         (click)="setFilter('')"
       >
-        全部
+        {{ text.filters.all }}
       </button>
       <button
         type="button"
@@ -49,7 +50,7 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
         [class.active]="stateFilter() === 'pending'"
         (click)="setFilter('pending')"
       >
-        待檢視 ({{ badges.pendingSubnetsCount() }})
+        {{ text.filters.pending(badges.pendingSubnetsCount()) }}
       </button>
       <button
         type="button"
@@ -57,7 +58,7 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
         [class.active]="stateFilter() === 'managed'"
         (click)="setFilter('managed')"
       >
-        納管
+        {{ text.filters.managed }}
       </button>
       <button
         type="button"
@@ -65,15 +66,12 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
         [class.active]="stateFilter() === 'unmanaged'"
         (click)="setFilter('unmanaged')"
       >
-        不納管
+        {{ text.filters.unmanaged }}
       </button>
     </div>
 
     @if (subnets().length === 0) {
-      <app-empty-state
-        title="尚無網段資料"
-        description="待交換器讀取介面位址後自動出現，或由系統管理員手動新增。"
-      />
+      <app-empty-state [title]="text.empty.title" [description]="text.empty.description" />
     } @else {
       <div class="subnet-grid">
         @for (s of subnets(); track s.id) {
@@ -83,29 +81,29 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
               @switch (s.state) {
                 @case ('pending') {
                   <span class="status-pill status-unregistered"
-                    ><span class="status-dot"></span><span>待檢視</span></span
+                    ><span class="status-dot"></span><span>{{ text.state.pending }}</span></span
                   >
                 }
                 @case ('managed') {
                   <span class="status-pill status-online"
-                    ><span class="status-dot"></span><span>納管</span></span
+                    ><span class="status-dot"></span><span>{{ text.state.managed }}</span></span
                   >
                 }
                 @default {
                   <span class="status-pill status-offline"
                     ><span class="status-dot"></span
-                    ><span>不納管 ({{ s.exclude_reason }})</span></span
+                    ><span>{{ text.state.unmanaged(s.exclude_reason) }}</span></span
                   >
                 }
               }
             </div>
             @if (s.source_missing) {
-              <div class="source-warn">來源已消失</div>
+              <div class="source-warn">{{ text.card.sourceMissing }}</div>
             }
             <p class="subnet-desc">{{ s.description || '—' }}</p>
             <div class="subnet-meta font-mono">
-              <span>已記錄 {{ s.ip_count }} 筆</span>
-              <span>在線 {{ s.online_count }} 筆</span>
+              <span>{{ text.card.recorded(s.ip_count) }}</span>
+              <span>{{ text.card.online(s.online_count) }}</span>
             </div>
           </article>
         }
@@ -114,20 +112,20 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
 
     @if (undetermined().length > 0) {
       <section class="card undetermined-section">
-        <h2 class="section-title">未定前綴清單（{{ undetermined().length }}）</h2>
+        <h2 class="section-title">{{ text.undetermined.title(undetermined().length) }}</h2>
         <p class="section-desc">
-          下列 ARP 觀測的位址不落在任何已知網段內，請確認並手動建立對應 CIDR。
+          {{ text.undetermined.description }}
         </p>
         <div class="table-wrap">
           <table class="data-table">
             <thead>
               <tr>
-                <th>IP 位址</th>
-                <th>MAC 位址</th>
-                <th>交換器</th>
-                <th>VRF</th>
-                <th>介面</th>
-                <th>最後見到</th>
+                <th>{{ text.undetermined.columns.ipAddress }}</th>
+                <th>{{ text.undetermined.columns.macAddress }}</th>
+                <th>{{ text.undetermined.columns.switchName }}</th>
+                <th>{{ text.undetermined.columns.vrf }}</th>
+                <th>{{ text.undetermined.columns.interface }}</th>
+                <th>{{ text.undetermined.columns.lastSeen }}</th>
               </tr>
             </thead>
             <tbody>
@@ -149,14 +147,16 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
 
     <app-sheet-container
       [open]="selectedDetail() !== null"
-      [title]="selectedDetail() ? '網段詳情：' + selectedDetail()!.cidr : '網段詳情'"
+      [title]="
+        selectedDetail() ? text.detail.titleWithCidr(selectedDetail()!.cidr) : text.detail.title
+      "
       (closed)="selectedDetail.set(null)"
     >
       @if (selectedDetail(); as d) {
         <div class="detail-stack">
           @if (auth.isAdmin()) {
             <div class="detail-block">
-              <h3>網段納管狀態</h3>
+              <h3>{{ text.detail.stateHeading }}</h3>
               <div class="state-actions">
                 <button
                   type="button"
@@ -164,28 +164,28 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
                   (click)="changeState(d, 'managed')"
                   [disabled]="d.state === 'managed'"
                 >
-                  設為納管
+                  {{ text.detail.setManaged }}
                 </button>
                 <select class="form-select reason-select" [(ngModel)]="unmanageReason">
-                  <option value="dhcp">DHCP 網段</option>
-                  <option value="wireless">無線網段</option>
-                  <option value="other">其他原因</option>
+                  <option value="dhcp">{{ text.detail.reasons.dhcp }}</option>
+                  <option value="wireless">{{ text.detail.reasons.wireless }}</option>
+                  <option value="other">{{ text.detail.reasons.other }}</option>
                 </select>
                 <button
                   type="button"
                   class="btn btn-danger-soft btn-sm"
                   (click)="changeState(d, 'unmanaged')"
                 >
-                  設為不納管
+                  {{ text.detail.setUnmanaged }}
                 </button>
               </div>
             </div>
           }
 
           <div class="detail-block">
-            <h3>閘道位址（不建立 IP 紀錄）</h3>
+            <h3>{{ text.detail.gatewayHeading }}</h3>
             @if (d.gateways.length === 0) {
-              <p class="muted-text">無交換器介面位址紀錄。</p>
+              <p class="muted-text">{{ text.detail.noGateways }}</p>
             } @else {
               <ul class="gw-list">
                 @for (g of d.gateways; track g.ip_address) {
@@ -201,7 +201,7 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
           </div>
 
           <div class="detail-block">
-            <h3>排除範圍（DHCP / 無線 / 其他）</h3>
+            <h3>{{ text.detail.exclusionHeading }}</h3>
             @for (ex of d.exclusions; track ex.id) {
               <div class="excl-row">
                 <div>
@@ -213,7 +213,7 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
                     type="button"
                     class="btn btn-ghost btn-sm"
                     (click)="removeExclusion(d.id, ex.id)"
-                    aria-label="移除排除範圍"
+                    [attr.aria-label]="text.detail.removeExclusion"
                   >
                     <svg lucideTrash2 [size]="14"></svg>
                   </button>
@@ -225,7 +225,7 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
                 <input
                   type="text"
                   class="form-input font-mono"
-                  placeholder="起始 IP"
+                  [placeholder]="text.detail.exclusionStart"
                   [(ngModel)]="newExcl.start_ip"
                   name="startIp"
                   required
@@ -233,17 +233,19 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
                 <input
                   type="text"
                   class="form-input font-mono"
-                  placeholder="結束 IP"
+                  [placeholder]="text.detail.exclusionEnd"
                   [(ngModel)]="newExcl.end_ip"
                   name="endIp"
                   required
                 />
                 <select class="form-select" [(ngModel)]="newExcl.reason" name="exclReason">
-                  <option value="dhcp">DHCP</option>
-                  <option value="wireless">無線</option>
-                  <option value="other">其他</option>
+                  <option value="dhcp">{{ text.detail.exclusionReasons.dhcp }}</option>
+                  <option value="wireless">{{ text.detail.exclusionReasons.wireless }}</option>
+                  <option value="other">{{ text.detail.exclusionReasons.other }}</option>
                 </select>
-                <button type="submit" class="btn btn-secondary btn-sm">新增排除</button>
+                <button type="submit" class="btn btn-secondary btn-sm">
+                  {{ text.detail.addExclusion }}
+                </button>
               </form>
             }
           </div>
@@ -253,7 +255,7 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
 
     <app-sheet-container
       [open]="addModalOpen()"
-      title="手動新增網段"
+      [title]="text.manual.title"
       (closed)="addModalOpen.set(false)"
     >
       <form class="form-stack" (ngSubmit)="createManualSubnet()">
@@ -270,7 +272,7 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
           />
         </div>
         <div class="field-group">
-          <label for="manualDesc">網段說明</label>
+          <label for="manualDesc">{{ text.manual.description }}</label>
           <input
             id="manualDesc"
             name="manualDesc"
@@ -281,9 +283,9 @@ type DeletePreviewResponse = components['schemas']['DeletePreviewResponse'];
         </div>
         <div class="sheet-actions">
           <button type="button" class="btn btn-secondary" (click)="addModalOpen.set(false)">
-            取消
+            {{ text.actions.cancel }}
           </button>
-          <button type="submit" class="btn btn-primary">建立並設為納管</button>
+          <button type="submit" class="btn btn-primary">{{ text.manual.submit }}</button>
         </div>
       </form>
     </app-sheet-container>
@@ -475,6 +477,7 @@ export class SubnetsPage implements OnInit {
   private readonly toast = inject(ToastService);
   protected readonly badges = inject(SidebarBadgesService);
   protected readonly auth = inject(AuthService);
+  protected readonly text = SUBNETS_TEXT;
 
   protected readonly subnets = signal<Subnet[]>([]);
   protected readonly undetermined = signal<UndeterminedPrefix[]>([]);
@@ -531,9 +534,10 @@ export class SubnetsPage implements OnInit {
           this.addModalOpen.set(false);
           this.manualForm = { cidr: '', description: '' };
           this.loadSubnets();
-          this.toast.show('網段新增完成', 'success');
+          this.toast.show(this.text.toast.created, 'success');
         },
-        error: (err) => this.toast.show('新增失敗', 'danger', err?.error?.message),
+        error: (err) =>
+          this.toast.show(this.text.toast.createFailed, 'danger', err?.error?.message),
       });
   }
 
@@ -549,7 +553,7 @@ export class SubnetsPage implements OnInit {
           next: (res) => {
             this.selectedDetail.set(res);
             this.loadSubnets();
-            this.toast.show('網段已設為納管', 'success');
+            this.toast.show(this.text.toast.setManaged, 'success');
           },
         });
       return;
@@ -574,18 +578,22 @@ export class SubnetsPage implements OnInit {
                 next: (res) => {
                   this.selectedDetail.set(res);
                   this.loadSubnets();
-                  this.toast.show('網段已設為不納管', 'info');
+                  this.toast.show(this.text.toast.setUnmanaged, 'info');
                 },
-                error: (err) => this.toast.show('變更失敗', 'danger', err?.error?.message),
+                error: (err) =>
+                  this.toast.show(this.text.toast.changeFailed, 'danger', err?.error?.message),
               });
           };
 
           if (prev.requires_confirm) {
             const ref = this.dialog.open<boolean>(ConfirmDialogComponent, {
               data: {
-                title: '確認將網段改為不納管',
-                message: `此變更將直接刪除 ${prev.total_ip_records} 筆 IP 紀錄（其中 ${prev.owned_ip_records} 筆已有擁有者）且無法復原。確認執行？`,
-                confirmLabel: '確認刪除並設為不納管',
+                title: this.text.unmanageDialog.title,
+                message: this.text.unmanageDialog.message(
+                  prev.total_ip_records,
+                  prev.owned_ip_records,
+                ),
+                confirmLabel: this.text.unmanageDialog.confirm,
                 danger: true,
               },
             });
@@ -618,18 +626,26 @@ export class SubnetsPage implements OnInit {
                   this.newExcl = { start_ip: '', end_ip: '', reason: 'dhcp' };
                   this.openDetail(subnetId);
                   this.loadSubnets();
-                  this.toast.show('排除範圍已新增', 'success');
+                  this.toast.show(this.text.toast.exclusionAdded, 'success');
                 },
-                error: (err) => this.toast.show('新增排除失敗', 'danger', err?.error?.message),
+                error: (err) =>
+                  this.toast.show(
+                    this.text.toast.exclusionAddFailed,
+                    'danger',
+                    err?.error?.message,
+                  ),
               });
           };
 
           if (prev.requires_confirm) {
             const ref = this.dialog.open<boolean>(ConfirmDialogComponent, {
               data: {
-                title: '確認新增排除範圍',
-                message: `此排除範圍內共有 ${prev.total_ip_records} 筆現有 IP 紀錄（其中 ${prev.owned_ip_records} 筆已登記），確認後將直接刪除且無法復原。是否繼續？`,
-                confirmLabel: '確認刪除並新增排除',
+                title: this.text.exclusionDialog.title,
+                message: this.text.exclusionDialog.message(
+                  prev.total_ip_records,
+                  prev.owned_ip_records,
+                ),
+                confirmLabel: this.text.exclusionDialog.confirm,
                 danger: true,
               },
             });
@@ -640,7 +656,8 @@ export class SubnetsPage implements OnInit {
             execute();
           }
         },
-        error: (err) => this.toast.show('排除範圍格式錯誤', 'danger', err?.error?.message),
+        error: (err) =>
+          this.toast.show(this.text.toast.exclusionInvalid, 'danger', err?.error?.message),
       });
   }
 
@@ -652,7 +669,7 @@ export class SubnetsPage implements OnInit {
       .subscribe({
         next: () => {
           this.openDetail(subnetId);
-          this.toast.show('已移除排除範圍', 'info');
+          this.toast.show(this.text.toast.exclusionRemoved, 'info');
         },
       });
   }

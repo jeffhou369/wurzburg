@@ -10,6 +10,7 @@ import { SettingsPage } from './features/settings/settings.page';
 import { ShowcasePage } from './features/showcase/showcase.page';
 import { LoginPage } from './features/auth/login.page';
 import { ChangePasswordPage } from './features/auth/change-password.page';
+import { authGuard } from './core/auth.guard';
 
 export const routes: Routes = [
   { path: 'login', component: LoginPage },
@@ -17,6 +18,9 @@ export const routes: Routes = [
   {
     path: '',
     component: ShellLayoutComponent,
+    // 所有 Shell 內的頁面都需要有效工作階段；授權仍由後端 API 逐筆判斷
+    canActivate: [authGuard],
+    canActivateChild: [authGuard],
     children: [
       { path: '', component: WorkbenchPage },
       { path: 'subnets', component: SubnetsPage },

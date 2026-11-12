@@ -1,10 +1,11 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { LucideShieldAlert, LucideBuilding2, LucideKeyRound } from '@lucide/angular';
 import { AUTH_TEXT } from './auth.i18n';
-import { AuthService } from '../../core/auth.service';
+import { AuthService, toCurrentUser, ApiCurrentUser } from '../../core/auth.service';
+import { AuthRedirectService } from '../../core/auth-redirect.service';
 
 @Component({
   selector: 'app-login-page',
@@ -234,8 +235,9 @@ import { AuthService } from '../../core/auth.service';
 })
 export class LoginPage implements OnInit {
   private readonly http = inject(HttpClient);
-  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
+  private readonly redirect = inject(AuthRedirectService);
 
   protected readonly text = AUTH_TEXT;
   protected readonly mode = signal<'org' | 'local'>('org');
@@ -269,50 +271,21 @@ export class LoginPage implements OnInit {
       this.mode() === 'local' ? '/api/v1/auth/login/local' : '/api/v1/auth/login/org';
 
     this.http
-      .post<{
-        user: {
-          id: number;
-          username: string;
-          display_name: string;
-          role: 'admin' | 'user';
-          auth_source: 'local' | 'ad' | 'radius';
-          requires_password_change?: boolean;
-        };
-      }>(
+      .post<{ user: ApiCurrentUser }>(
         endpoint,
         { username: this.username, password: this.password },
         { headers: { 'X-Requested-With': 'XMLHttpRequest' } },
       )
       .subscribe({
         next: (res) => {
-          this.auth.currentUser.set({
-            id: String(res.user.id),
-            username: res.user.username,
-            displayName: res.user.display_name,
-            role: res.user.role,
-            authSource: res.user.auth_source,
-          });
+          const user = toCurrentUser(res.user);
+          this.auth.currentUser.set(user);
           this.submitting.set(false);
-          if (res.user.requires_password_change) {
-            void this.router.navigateByUrl('/change-password');
-          } else if (res.user.role === 'admin') {
-            this.http.get<{ completed: boolean }>('/api/v1/settings/wizard').subscribe({
-              next: (wz) => {
-                if (!wz.completed) {
-                  void this.router.navigateByUrl('/?wizard=true');
-                } else {
-                  void this.router.navigateByUrl('/');
-                }
-              },
-              error: () => void this.router.navigateByUrl('/'),
-            });
-          } else {
-            void this.router.navigateByUrl('/');
-          }
+          this.redirect.navigateAfterAuth(user, this.route.snapshot.queryParamMap.get('returnUrl'));
         },
         error: (err) => {
           this.submitting.set(false);
-          this.errorMsg.set(err?.error?.message ?? '登入失敗，請檢查帳號密碼');
+          this.errorMsg.set(err?.error?.message ?? this.text.errors.loginFailed);
         },
       });
   }

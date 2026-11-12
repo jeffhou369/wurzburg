@@ -57,6 +57,8 @@ paths:
     $ref: './resources/subnets.yaml#/paths/subnets_collection'
   /api/v1/subnets/{id}:
     $ref: './resources/subnets.yaml#/paths/subnets_item'
+  /api/v1/subnets/{id}/cidr/preview:
+    $ref: './resources/subnets.yaml#/paths/subnet_cidr_preview'
   /api/v1/subnets/{id}/state/preview:
     $ref: './resources/subnets.yaml#/paths/subnet_state_preview'
   /api/v1/subnets/{id}/state:

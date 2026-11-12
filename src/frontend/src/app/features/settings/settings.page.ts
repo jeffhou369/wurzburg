@@ -7,6 +7,7 @@ import { MailSettingsComponent } from './mail-settings.component';
 import { OuiSettingsComponent } from './oui-settings.component';
 import { RetentionSettingsComponent } from './retention-settings.component';
 import { SetupWizardDialogComponent } from './setup-wizard.dialog';
+import { SETTINGS_PAGE_TEXT } from './settings.i18n';
 
 export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
 
@@ -25,8 +26,8 @@ export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
   ],
   template: `
     <header class="page-header">
-      <h1 class="page-title">系統設定</h1>
-      <p class="page-subtitle">管理園區基本資訊、驗證來源、SMTP 通知、本地 OUI 資料與政策參數</p>
+      <h1 class="page-title">{{ text.title }}</h1>
+      <p class="page-subtitle">{{ text.subtitle }}</p>
     </header>
 
     <div class="settings-tabs" role="tablist">
@@ -37,7 +38,7 @@ export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
         [class.active]="activeTab() === 'campus'"
         (click)="activeTab.set('campus')"
       >
-        園區與精靈
+        {{ text.tabs.campus }}
       </button>
       <button
         type="button"
@@ -46,7 +47,7 @@ export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
         [class.active]="activeTab() === 'auth'"
         (click)="activeTab.set('auth')"
       >
-        驗證來源 (AD / RADIUS)
+        {{ text.tabs.auth }}
       </button>
       <button
         type="button"
@@ -55,7 +56,7 @@ export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
         [class.active]="activeTab() === 'mail'"
         (click)="activeTab.set('mail')"
       >
-        郵件與通知
+        {{ text.tabs.mail }}
       </button>
       <button
         type="button"
@@ -64,7 +65,7 @@ export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
         [class.active]="activeTab() === 'oui'"
         (click)="activeTab.set('oui')"
       >
-        本地 OUI 資料庫
+        {{ text.tabs.oui }}
       </button>
       <button
         type="button"
@@ -73,7 +74,7 @@ export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
         [class.active]="activeTab() === 'retention'"
         (click)="activeTab.set('retention')"
       >
-        自動清除與保存天數
+        {{ text.tabs.retention }}
       </button>
     </div>
 
@@ -148,6 +149,7 @@ export class SettingsPage implements OnInit {
   private readonly dialog = inject(Dialog);
   private readonly route = inject(ActivatedRoute);
   readonly activeTab = signal<SettingsTab>('campus');
+  protected readonly text = SETTINGS_PAGE_TEXT;
 
   ngOnInit(): void {
     this.route.queryParams.subscribe((params) => {
