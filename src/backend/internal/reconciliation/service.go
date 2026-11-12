@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -65,12 +64,56 @@ func (s *Service) ReconcileObservations(ctx context.Context, outputs []*interfac
 		failedSet[id] = true
 	}
 
+	// 一次性建立記憶體網段快照與現有資料快取，大幅加速大規模批次整併
+	snap, err := s.resolver.BuildSnapshot(ctx)
+	if err != nil {
+		return err
+	}
+
+	undetSet := make(map[string]bool)
+	if uRows, uErr := s.db.QueryContext(ctx, `SELECT ip_address FROM undetermined_prefixes`); uErr == nil {
+		for uRows.Next() {
+			var uip string
+			if uRows.Scan(&uip) == nil {
+				undetSet[uip] = true
+			}
+		}
+		_ = uRows.Close()
+	}
+
+	type cachedIP struct {
+		id       int64
+		presence string
+		reg      string
+		mac      string
+	}
+	ipCache := make(map[string]cachedIP)
+	if ipRows, ipErr := s.db.QueryContext(ctx, `SELECT id, ip_address, presence, registration, mac_address FROM ip_records`); ipErr == nil {
+		for ipRows.Next() {
+			var ipStr string
+			var c cachedIP
+			if ipRows.Scan(&c.id, &ipStr, &c.presence, &c.reg, &c.mac) == nil {
+				ipCache[ipStr] = c
+			}
+		}
+		_ = ipRows.Close()
+	}
+
 	for _, out := range outputs {
 		if out == nil || failedSet[out.VRFConfigID] {
 			continue
 		}
 
 		seenKeysInThisOutput := make(map[string]bool)
+
+		tx, txErr := s.db.BeginTx(ctx, nil)
+		if txErr != nil {
+			return txErr
+		}
+		insIPStmt, _ := tx.PrepareContext(ctx, `INSERT INTO ip_records (ip_address, mac_address, subnet_id, presence, registration, vendor_name, first_seen_at, last_seen_at, created_at, updated_at) VALUES (?, ?, ?, 'online', 'unregistered', ?, ?, ?, ?, ?)`)
+		insEvtStmt, _ := tx.PrepareContext(ctx, `INSERT INTO ip_events (ip_record_id, ip_address, event_type, details, occurred_at) VALUES (?, ?, ?, ?, ?)`)
+		updLastStmt, _ := tx.PrepareContext(ctx, `UPDATE ip_records SET last_seen_at = ?, updated_at = ? WHERE id = ?`)
+		upsertSightStmt, _ := tx.PrepareContext(ctx, `INSERT INTO arp_sightings (ip_record_id, vrf_config_id, switch_id, vrf_name, mac_address, if_index, if_name, arp_type, last_seen_at, missed_rounds, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?) ON DUPLICATE KEY UPDATE mac_address = VALUES(mac_address), if_index = VALUES(if_index), if_name = VALUES(if_name), arp_type = VALUES(arp_type), last_seen_at = VALUES(last_seen_at), missed_rounds = 0, updated_at = VALUES(updated_at)`)
 
 		for _, obs := range out.ARPObservations {
 			cleanIP := strings.TrimSpace(obs.IPAddress)
@@ -79,8 +122,8 @@ func (s *Service) ReconcileObservations(ctx context.Context, outputs []*interfac
 			}
 			mac := strings.ToLower(strings.TrimSpace(obs.MACAddress))
 
-			// 1. 查詢該位址在管理範圍中的歸屬
-			res, err := s.resolver.Resolve(ctx, cleanIP)
+			// 1. 從記憶體快照查詢該位址在管理範圍中的歸屬（零 SQL 查詢）
+			res, err := snap.ResolveIP(cleanIP)
 			if err != nil {
 				continue
 			}
@@ -88,7 +131,7 @@ func (s *Service) ReconcileObservations(ctx context.Context, outputs []*interfac
 			if !res.ShouldHaveRecord {
 				// 未落在任何已知網段 -> 記入未定前綴清單
 				if res.SubnetID == 0 {
-					_, _ = s.db.ExecContext(
+					_, _ = tx.ExecContext(
 						ctx,
 						`INSERT INTO undetermined_prefixes (ip_address, mac_address, switch_id, vrf_name, if_name, last_seen_at, created_at)
 						 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -100,72 +143,59 @@ func (s *Service) ReconcileObservations(ctx context.Context, outputs []*interfac
 			}
 
 			// 若原本在未定前綴清單，現在已有納管網段 -> 自未定前綴清單移除
-			_, _ = s.db.ExecContext(ctx, `DELETE FROM undetermined_prefixes WHERE ip_address = ?`, cleanIP)
+			if undetSet[cleanIP] {
+				_, _ = tx.ExecContext(ctx, `DELETE FROM undetermined_prefixes WHERE ip_address = ?`, cleanIP)
+				delete(undetSet, cleanIP)
+			}
 
-			// 2. 查詢或建立 IP 紀錄
+			// 2. 查詢快取或建立 IP 紀錄
+			existing, found := ipCache[cleanIP]
 			var ipRecordID int64
-			var currentPresence, currentReg, adoptedMAC string
-			err = s.db.QueryRowContext(
-				ctx,
-				`SELECT id, presence, registration, mac_address FROM ip_records WHERE ip_address = ?`,
-				cleanIP,
-			).Scan(&ipRecordID, &currentPresence, &currentReg, &adoptedMAC)
+			var adoptedMAC string
 
-			if errors.Is(err, sql.ErrNoRows) {
+			if !found {
 				vendor := "未知"
 				if s.ouiLookup != nil {
 					vendor = s.ouiLookup.Lookup(mac)
 				}
-				insRes, insErr := s.db.ExecContext(
-					ctx,
-					`INSERT INTO ip_records (ip_address, mac_address, subnet_id, presence, registration, vendor_name, first_seen_at, last_seen_at, created_at, updated_at)
-					 VALUES (?, ?, ?, 'online', 'unregistered', ?, ?, ?, ?, ?)`,
-					cleanIP, mac, res.SubnetID, vendor, now, now, now, now,
-				)
+				insRes, insErr := insIPStmt.ExecContext(ctx, cleanIP, mac, res.SubnetID, vendor, now, now, now, now)
 				if insErr != nil {
 					continue
 				}
 				ipRecordID, _ = insRes.LastInsertId()
 				adoptedMAC = mac
-				currentPresence = "online"
-				currentReg = "unregistered"
+				ipCache[cleanIP] = cachedIP{id: ipRecordID, presence: "online", reg: "unregistered", mac: adoptedMAC}
 
-				_, _ = s.db.ExecContext(
-					ctx,
-					`INSERT INTO ip_events (ip_record_id, ip_address, event_type, details, occurred_at) VALUES (?, ?, 'first_seen', ?, ?)`,
-					ipRecordID, cleanIP, fmt.Sprintf("首次於交換器看到此位址 (MAC: %s, 介面: %s)", mac, obs.IfName), now,
-				)
-			} else if err == nil {
+				_, _ = insEvtStmt.ExecContext(ctx, ipRecordID, cleanIP, "first_seen", fmt.Sprintf("首次於交換器看到此位址 (MAC: %s, 介面: %s)", mac, obs.IfName), now)
+			} else {
+				ipRecordID = existing.id
+				adoptedMAC = existing.mac
+
 				// 既有紀錄若原為離線，立即恢復在線
-				if currentPresence == "offline" {
-					_, _ = s.db.ExecContext(ctx, `UPDATE ip_records SET presence = 'online', last_seen_at = ?, updated_at = ? WHERE id = ?`, now, now, ipRecordID)
-					_, _ = s.db.ExecContext(
-						ctx,
-						`INSERT INTO ip_events (ip_record_id, ip_address, event_type, details, occurred_at) VALUES (?, ?, 'online', '位址重新上線', ?)`,
-						ipRecordID, cleanIP, now,
-					)
+				if existing.presence == "offline" {
+					_, _ = tx.ExecContext(ctx, `UPDATE ip_records SET presence = 'online', last_seen_at = ?, updated_at = ? WHERE id = ?`, now, now, ipRecordID)
+					_, _ = insEvtStmt.ExecContext(ctx, ipRecordID, cleanIP, "online", "位址重新上線", now)
+					existing.presence = "online"
+					ipCache[cleanIP] = existing
 				} else {
-					_, _ = s.db.ExecContext(ctx, `UPDATE ip_records SET last_seen_at = ?, updated_at = ? WHERE id = ?`, now, now, ipRecordID)
+					_, _ = updLastStmt.ExecContext(ctx, now, now, ipRecordID)
 				}
 
 				// MAC 變更檢驗（衝突 vs 直接更新）
 				if adoptedMAC != "" && mac != adoptedMAC {
-					if currentReg == "unregistered" {
+					if existing.reg == "unregistered" {
 						// 未登記位址換了 MAC -> 直接更新採信 MAC 並記歷程，不開衝突 (Ticket 13 規定)
 						vendor := "未知"
 						if s.ouiLookup != nil {
 							vendor = s.ouiLookup.Lookup(mac)
 						}
-						_, _ = s.db.ExecContext(ctx, `UPDATE ip_records SET mac_address = ?, vendor_name = ?, updated_at = ? WHERE id = ?`, mac, vendor, now, ipRecordID)
-						_, _ = s.db.ExecContext(
-							ctx,
-							`INSERT INTO ip_events (ip_record_id, ip_address, event_type, details, occurred_at) VALUES (?, ?, 'mac_changed', ?, ?)`,
-							ipRecordID, cleanIP, fmt.Sprintf("未登記位址 MAC 由 %s 變更為 %s", adoptedMAC, mac), now,
-						)
-						adoptedMAC = mac
+						_, _ = tx.ExecContext(ctx, `UPDATE ip_records SET mac_address = ?, vendor_name = ?, updated_at = ? WHERE id = ?`, mac, vendor, now, ipRecordID)
+						_, _ = insEvtStmt.ExecContext(ctx, ipRecordID, cleanIP, "mac_changed", fmt.Sprintf("未登記位址 MAC 由 %s 變更為 %s", adoptedMAC, mac), now)
+						existing.mac = mac
+						ipCache[cleanIP] = existing
 					} else {
 						// 已登記或已到期位址換了 MAC -> 開啟或更新衝突 (Ticket 25)
-						s.recordConflict(ctx, ipRecordID, cleanIP, adoptedMAC, []string{adoptedMAC, mac}, now)
+						s.recordConflictTx(ctx, tx, ipRecordID, cleanIP, adoptedMAC, []string{adoptedMAC, mac}, now)
 					}
 				}
 			}
@@ -175,15 +205,26 @@ func (s *Service) ReconcileObservations(ctx context.Context, outputs []*interfac
 			if arpType == "" {
 				arpType = "dynamic"
 			}
-			_, _ = s.db.ExecContext(
-				ctx,
-				`INSERT INTO arp_sightings (ip_record_id, vrf_config_id, switch_id, vrf_name, mac_address, if_index, if_name, arp_type, last_seen_at, missed_rounds, created_at, updated_at)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-				 ON DUPLICATE KEY UPDATE mac_address = VALUES(mac_address), if_index = VALUES(if_index), if_name = VALUES(if_name), arp_type = VALUES(arp_type), last_seen_at = VALUES(last_seen_at), missed_rounds = 0, updated_at = VALUES(updated_at)`,
-				ipRecordID, out.VRFConfigID, out.SwitchID, out.VRFName, mac, obs.IfIndex, obs.IfName, arpType, now, now, now,
-			)
+			_, _ = upsertSightStmt.ExecContext(ctx, ipRecordID, out.VRFConfigID, out.SwitchID, out.VRFName, mac, obs.IfIndex, obs.IfName, arpType, now, now, now)
 
 			seenKeysInThisOutput[fmt.Sprintf("%d:%d", ipRecordID, out.VRFConfigID)] = true
+		}
+
+		if insIPStmt != nil {
+			_ = insIPStmt.Close()
+		}
+		if insEvtStmt != nil {
+			_ = insEvtStmt.Close()
+		}
+		if updLastStmt != nil {
+			_ = updLastStmt.Close()
+		}
+		if upsertSightStmt != nil {
+			_ = upsertSightStmt.Close()
+		}
+		if err := tx.Commit(); err != nil {
+			_ = tx.Rollback()
+			return err
 		}
 
 		// 4. 針對本輸出中「原本看得到、但本輪未看見」的觀測累計未見輪數
@@ -249,6 +290,17 @@ func (s *Service) handleMissedSightings(ctx context.Context, vrfConfigID int64, 
 func (s *Service) recordConflict(ctx context.Context, ipRecordID int64, ip, adoptedMAC string, macs []string, now time.Time) {
 	macJSON, _ := json.Marshal(macs)
 	_, _ = s.db.ExecContext(
+		ctx,
+		`INSERT INTO ip_conflicts (ip_record_id, ip_address, adopted_mac, conflict_macs, status, first_detected_at, last_detected_at, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, 'open', ?, ?, ?, ?)
+		 ON DUPLICATE KEY UPDATE conflict_macs = VALUES(conflict_macs), last_detected_at = VALUES(last_detected_at), updated_at = VALUES(updated_at)`,
+		ipRecordID, ip, adoptedMAC, string(macJSON), now, now, now, now,
+	)
+}
+
+func (s *Service) recordConflictTx(ctx context.Context, tx *sql.Tx, ipRecordID int64, ip, adoptedMAC string, macs []string, now time.Time) {
+	macJSON, _ := json.Marshal(macs)
+	_, _ = tx.ExecContext(
 		ctx,
 		`INSERT INTO ip_conflicts (ip_record_id, ip_address, adopted_mac, conflict_macs, status, first_detected_at, last_detected_at, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, 'open', ?, ?, ?, ?)

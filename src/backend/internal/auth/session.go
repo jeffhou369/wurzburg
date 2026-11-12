@@ -17,11 +17,12 @@ import (
 const CookieName = "wurzburg_session"
 
 type User struct {
-	ID          int64
-	Username    string
-	DisplayName string
-	Role        string // admin | user
-	AuthSource  string // local | ad | radius
+	ID                     int64
+	Username               string
+	DisplayName            string
+	Role                   string // admin | user
+	AuthSource             string // local | ad | radius
+	RequiresPasswordChange bool
 }
 
 type SessionStore struct {
@@ -90,12 +91,12 @@ func (s *SessionStore) ValidateSession(
 
 	err := s.db.QueryRowContext(
 		ctx,
-		`SELECT u.id, u.username, u.display_name, u.role, u.auth_source, u.enabled, s.expires_at, s.idle_timeout_at
+		`SELECT u.id, u.username, u.display_name, u.role, u.auth_source, u.enabled, u.requires_password_change, s.expires_at, s.idle_timeout_at
 		 FROM sessions s
 		 JOIN users u ON s.user_id = u.id
 		 WHERE s.token_hash = ?`,
 		tokenHash,
-	).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Role, &u.AuthSource, &userEnabled, &expiresAt, &idleTimeoutAt)
+	).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Role, &u.AuthSource, &userEnabled, &u.RequiresPasswordChange, &expiresAt, &idleTimeoutAt)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errors.New("工作階段不存在或已撤銷")

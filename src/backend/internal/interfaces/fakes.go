@@ -119,3 +119,25 @@ func (f *FakeMailer) SentMessages() []MailMessage {
 	copy(out, f.Sent)
 	return out
 }
+
+func (f *FakeMailer) Reset() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.Sent = nil
+	f.FailErr = nil
+}
+
+func (f *FakeMailer) Count() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.Sent)
+}
+
+func (f *FakeMailer) PopAll() []MailMessage {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]MailMessage, len(f.Sent))
+	copy(out, f.Sent)
+	f.Sent = nil
+	return out
+}

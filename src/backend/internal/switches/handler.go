@@ -210,14 +210,30 @@ type switchPayload struct {
 	RoleLabel      string `json:"role_label"`
 	Notes          string `json:"notes"`
 	SNMPCommunity  string `json:"snmp_community"`
+	Community      string `json:"community"`
 	V3Username     string `json:"v3_username"`
+	V3User         string `json:"v3_user"`
 	V3AuthProtocol string `json:"v3_auth_protocol"`
+	V3AuthProto    string `json:"v3_auth_proto"`
 	V3AuthPass     string `json:"v3_auth_pass"`
 	V3PrivProtocol string `json:"v3_priv_protocol"`
+	V3PrivProto    string `json:"v3_priv_proto"`
 	V3PrivPass     string `json:"v3_priv_pass"`
 }
 
 func validateSwitchPayload(p *switchPayload, isCreate bool) error {
+	if p.SNMPCommunity == "" && p.Community != "" {
+		p.SNMPCommunity = p.Community
+	}
+	if p.V3Username == "" && p.V3User != "" {
+		p.V3Username = p.V3User
+	}
+	if p.V3AuthProtocol == "" && p.V3AuthProto != "" {
+		p.V3AuthProtocol = p.V3AuthProto
+	}
+	if p.V3PrivProtocol == "" && p.V3PrivProto != "" {
+		p.V3PrivProtocol = p.V3PrivProto
+	}
 	if p.Name == "" {
 		return errors.New("交換器名稱不可為空")
 	}

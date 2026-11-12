@@ -88,8 +88,13 @@ func AuthenticateMiddleware(sessions *SessionStore, cfgStore *settings.Store, al
 // RequireAuth 強制要求使用者必須處於已登入狀態，否則回傳 401。
 func RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if UserFromContext(r.Context()) == nil {
+		u := UserFromContext(r.Context())
+		if u == nil {
 			WriteError(w, http.StatusUnauthorized, "unauthorized", "請先登入系統")
+			return
+		}
+		if u.RequiresPasswordChange && !isPasswordChangeAllowedPath(r.URL.Path) {
+			WriteError(w, http.StatusForbidden, "password_change_required", "首次登入必須先修改密碼")
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -104,12 +109,20 @@ func RequireAdmin(next http.Handler) http.Handler {
 			WriteError(w, http.StatusUnauthorized, "unauthorized", "請先登入系統")
 			return
 		}
+		if u.RequiresPasswordChange && !isPasswordChangeAllowedPath(r.URL.Path) {
+			WriteError(w, http.StatusForbidden, "password_change_required", "首次登入必須先修改密碼")
+			return
+		}
 		if u.Role != "admin" {
 			WriteError(w, http.StatusForbidden, "forbidden", "權限不足，僅限系統管理員執行此操作")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func isPasswordChangeAllowedPath(path string) bool {
+	return path == "/api/v1/auth/me" || path == "/api/v1/auth/logout" || path == "/api/v1/auth/change-password"
 }
 
 // CanEditRegistration 依據 ADR 0012 判斷指定使用者是否有權限編輯屬於 ownerUserID 的登記。

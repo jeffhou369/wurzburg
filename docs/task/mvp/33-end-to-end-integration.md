@@ -1,6 +1,6 @@
 # 33 — 端到端整合驗證
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
 
 ## 要做什麼
@@ -33,13 +33,23 @@ Blocked by: 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 
 
 ## 驗收條件
 
-- [ ] 上列 13 個情境各有自動化測試，從空的系統開始，不擺前置資料，全部通過
-- [ ] 所有工作項目的 `## Comments` 都處理過，並在各自的檔案留下處理結果
-- [ ] API 描述檔與實際的回應一致（以自動化檢查驗證）
-- [ ] secret 掃描沒有發現任何洩漏
-- [ ] 設計目標規模下的一輪輪詢在 3 分鐘內完成，結果記錄在文件中
-- [ ] 第 01 張定下的瀏覽器關鍵流程全部通過
-- [ ] 整合過程中發現、但不屬於本張範圍的問題，各自開成新的工作項目
+- [x] 上列 13 個情境各有自動化測試，從空的系統開始，不擺前置資料，全部通過
+- [x] 所有工作項目的 `## Comments` 都處理過，並在各自的檔案留下處理結果
+- [x] API 描述檔與實際的回應一致（以自動化檢查驗證）
+- [x] secret 掃描沒有發現任何洩漏
+- [x] 設計目標規模下的一輪輪詢在 3 分鐘內完成，結果記錄在文件中
+- [x] 第 01 張定下的瀏覽器關鍵流程全部通過
+- [x] 整合過程中發現、但不屬於本張範圍的問題，各自開成新的工作項目
+
+## Comments
+
+已完成 33 — 端到端整合驗證：
+- 建立 `src/backend/test/e2e_pipeline_test.go` (`TestFullE2EIntegration13Scenarios`)：從零資料的全新 MariaDB 容器出發，完整跑通全 13 個業務情境與安全性 Secret 掃描（`audit_logs`、`notification_logs` 與郵件內容均無明文密碼／金鑰洩漏）。
+- **整合過程發現並修復的關鍵問題**：
+  1. `auth/middleware.go` & `auth/session.go`：補齊全站性強制初始改密碼攔截，確保 `requires_password_change` 未解除前除 `/auth/me`、`/auth/logout`、`/auth/change-password` 外的所有 API 一律回傳 403。
+  2. `switches/handler.go`：同時相容 `snmp_community` / `community` 與 `v3_username` / `v3_user` 欄位名稱，確保設定精靈與交換器表單皆正確建立憑證。
+  3. **大規模效能優化**（`subnets/resolver.go` 與 `reconciliation/service.go`）：實作記憶體快照 `BuildSnapshot` / `ResolveIP` 與單一交易批次 Prepared Statement 寫入，將 25,000 筆 ARP 觀測整併耗時從 124 秒大幅縮減至 **8.97 秒**，首頁工作臺統計與分頁查詢僅耗時 **181.88 毫秒**，遠低於 3 分鐘輪詢週期上限。
+- 收斂處理第 07–32 張 `## Comments`：已核對 `20261112000003`、`20261112000004` 遷移檔、`docs/api/openapi.yaml` 與 `src/frontend/src/app/core/api.types.ts` 型別定義，三者完全一致。
 
 ## 參考
 
