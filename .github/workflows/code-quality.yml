@@ -1,0 +1,252 @@
+# 程式碼品質與靜態檢查（Code Quality）
+#
+# 用途：
+#   在「對 main 發出的 pull request」、「推送到 main」以及手動觸發時，
+#   執行工作流程語法檢查與各子系統的靜態程式碼分析。
+#
+# 工作流程執行規則：
+#   - workflows 工作：每次均執行，以 actionlint 檢查 .github/workflows/*.yml 語法。
+#   - backend 工作  ：僅在出現 src/backend/go.mod 時執行 Go 格式檢查（gofmt）、
+#                     go vet 與 golangci-lint。
+#   - frontend 工作 ：僅在出現 src/frontend/package.json 時執行 npm ci 與
+#                     npm run lint。
+#   - gate 工作     ：提供單一固定的必要狀態檢查（required status check）。
+#
+# 初始無程式碼狀態：
+#   目前儲存庫僅有規格文件，無 Go 或 Angular 原始碼。detect 工作會正確偵測並
+#   略過尚未建立的後端／前端工作，讓 CI 保持通過；待程式碼加入後自動生效。
+
+name: Code Quality
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  detect:
+    name: Detect subsystems
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      has_backend: ${{ steps.check.outputs.has_backend }}
+      has_frontend: ${{ steps.check.outputs.has_frontend }}
+    steps:
+      - name: 取出原始碼
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 檢查子系統是否存在
+        id: check
+        shell: bash
+        run: |
+          set -euo pipefail
+          has_backend="false"
+          has_frontend="false"
+
+          if [ -f "src/backend/go.mod" ]; then
+            has_backend="true"
+          fi
+
+          if [ -f "src/frontend/package.json" ]; then
+            has_frontend="true"
+          fi
+
+          echo "has_backend=${has_backend}" >> "$GITHUB_OUTPUT"
+          echo "has_frontend=${has_frontend}" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### 程式碼品質子系統偵測結果"
+            echo
+            echo "- Go 後端 (src/backend/go.mod)：${has_backend}"
+            echo "- Angular 前端 (src/frontend/package.json)：${has_frontend}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  workflows:
+    name: Lint Workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: 取出原始碼
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 下載並驗證 actionlint 二進位檔
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="1.7.12"
+          asset="actionlint_${version}_linux_amd64.tar.gz"
+          expected_sha256="8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+
+          curl -sSLO "https://github.com/rhysd/actionlint/releases/download/v${version}/${asset}"
+          echo "${expected_sha256}  ${asset}" | sha256sum -c -
+          tar -xzf "${asset}" actionlint
+          sudo mv actionlint /usr/local/bin/actionlint
+          rm -f "${asset}"
+
+      - name: 執行 actionlint 語法檢查
+        shell: bash
+        run: |
+          set -euo pipefail
+          actionlint -color
+
+  backend:
+    name: Backend Quality (Go)
+    needs: detect
+    if: ${{ needs.detect.outputs.has_backend == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: 取出原始碼
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 設定 Go 環境
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: src/backend/go.mod
+          cache-dependency-path: src/backend/go.sum
+
+      - name: 檢查程式碼排版（gofmt）
+        shell: bash
+        working-directory: src/backend
+        run: |
+          set -euo pipefail
+          unformatted="$(gofmt -l .)"
+          if [ -n "${unformatted}" ]; then
+            echo "::error::以下檔案未符合 gofmt 排版規範："
+            echo "${unformatted}"
+            exit 1
+          fi
+
+      - name: 執行靜態檢查（go vet）
+        shell: bash
+        working-directory: src/backend
+        run: |
+          set -euo pipefail
+          go vet ./...
+
+      - name: 執行 golangci-lint 檢查
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: latest
+          working-directory: src/backend
+
+  frontend:
+    name: Frontend Quality (Angular)
+    needs: detect
+    if: ${{ needs.detect.outputs.has_frontend == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: 取出原始碼
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 設定 Node.js 環境
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: src/frontend/package*.json
+
+      - name: 安裝前端相依套件
+        shell: bash
+        working-directory: src/frontend
+        run: |
+          set -euo pipefail
+          if [ -f "package-lock.json" ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: 執行前端語法檢查（Lint）
+        shell: bash
+        working-directory: src/frontend
+        run: |
+          set -euo pipefail
+          if node -e "const p = require('./package.json'); process.exit(p.scripts && p.scripts.lint ? 0 : 1)"; then
+            npm run lint
+          else
+            echo "package.json 未定義 lint 腳本，略過此步驟"
+          fi
+
+      - name: 執行前端排版檢查
+        shell: bash
+        working-directory: src/frontend
+        run: |
+          set -euo pipefail
+          if node -e "const p = require('./package.json'); process.exit(p.scripts && p.scripts['format:check'] ? 0 : 1)"; then
+            npm run format:check
+          else
+            echo "package.json 未定義 format:check 腳本，略過此步驟"
+          fi
+
+  gate:
+    name: Code Quality gate
+    if: ${{ always() }}
+    needs:
+      - detect
+      - workflows
+      - backend
+      - frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: 確認工作流程與程式碼品質檢查結果
+        shell: bash
+        env:
+          WORKFLOWS_RESULT: ${{ needs.workflows.result }}
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+        run: |
+          set -euo pipefail
+          echo "Workflows lint 結果：${WORKFLOWS_RESULT}"
+          echo "Backend lint 結果：${BACKEND_RESULT}"
+          echo "Frontend lint 結果：${FRONTEND_RESULT}"
+
+          # workflows 必須成功
+          if [ "${WORKFLOWS_RESULT}" != "success" ]; then
+            echo "::error::工作流程語法檢查失敗"
+            exit 1
+          fi
+
+          # backend 若有執行（非 skipped），必須為 success
+          if [ "${BACKEND_RESULT}" != "success" ] && [ "${BACKEND_RESULT}" != "skipped" ]; then
+            echo "::error::後端程式碼品質檢查失敗 (${BACKEND_RESULT})"
+            exit 1
+          fi
+
+          # frontend 若有執行（非 skipped），必須為 success
+          if [ "${FRONTEND_RESULT}" != "success" ] && [ "${FRONTEND_RESULT}" != "skipped" ]; then
+            echo "::error::前端程式碼品質檢查失敗 (${FRONTEND_RESULT})"
+            exit 1
+          fi
+
+          echo "所有啟用的品質檢查均已順利通過。"
