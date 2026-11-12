@@ -10,11 +10,14 @@ import (
 	"github.com/jeffhou369/wurzburg/backend/internal/authsource"
 	"github.com/jeffhou369/wurzburg/backend/internal/clock"
 	"github.com/jeffhou369/wurzburg/backend/internal/collector"
+	"github.com/jeffhou369/wurzburg/backend/internal/conflicts"
 	"github.com/jeffhou369/wurzburg/backend/internal/oui"
 	"github.com/jeffhou369/wurzburg/backend/internal/pipeline"
 	"github.com/jeffhou369/wurzburg/backend/internal/purge"
+	"github.com/jeffhou369/wurzburg/backend/internal/reconciliation"
 	"github.com/jeffhou369/wurzburg/backend/internal/scheduler"
 	"github.com/jeffhou369/wurzburg/backend/internal/server"
+	"github.com/jeffhou369/wurzburg/backend/internal/subnets"
 	"github.com/jeffhou369/wurzburg/backend/internal/switches"
 )
 
@@ -30,12 +33,27 @@ func mountFeatureModules(ctx context.Context, srv *server.Server, db *sql.DB, cl
 	auditHandler := audit.NewHandler(db)
 	purgeSvc := purge.NewService(db, clk, srv.Settings, srv.Audit)
 
+	scopeSvc := subnets.NewScopeService(db, clk, srv.Audit, "")
+	resolver := subnets.NewResolver(db)
+	reconcileSvc := reconciliation.NewService(db, clk, srv.Settings, resolver, ouiSvc)
+	conflictsHandler := conflicts.NewHandler(db, clk, srv.Audit, ouiSvc)
+
 	snmpCol := collector.NewSNMPCollector(clk)
 	switchesHandler := switches.NewHandler(db, clk, srv.Cipher, srv.Audit, snmpCol)
-	pipe := pipeline.New(nil, nil)
+	pipe := pipeline.New(scopeSvc, reconcileSvc)
 	sched := scheduler.New(db, clk, srv.Cipher, srv.Settings, srv.Audit, snmpCol, pipe)
 
-	srv.Mount(accountsHandler, authSrcMgr, auditHandler, ouiSvc, purgeSvc, switchesHandler, sched)
+	srv.Mount(
+		accountsHandler,
+		authSrcMgr,
+		auditHandler,
+		ouiSvc,
+		purgeSvc,
+		switchesHandler,
+		sched,
+		scopeSvc,
+		conflictsHandler,
+	)
 
 	if db != nil {
 		go sched.StartBackgroundLoop(ctx)
