@@ -14,7 +14,7 @@
 
 ## 儲存庫現況與開發指令
 
-基礎骨架已建立（Go 後端、Angular 20 前端、MariaDB Compose 部署），目前正依 `docs/task/mvp/` 進行平行實作。
+MVP 全功能已實作完成（Go 後端、Angular 20 前端、MariaDB Compose 部署），已通過單元測試、ChromeHeadless 瀏覽器測試及 13 大業務場景端到端整合測試（第 01–34 張工作項目已完成，剩餘第 35、36 張為待人類實機驗證項目）。安裝與維運說明見 `README.md` 與 `docs/install.md`。
 
 儲存庫目錄名稱含 `ü`，在 shell 指令中路徑要加引號；且使用 Docker Compose 時須以 `name: wurzburg` 或 `COMPOSE_PROJECT_NAME=wurzburg` 避免路徑非 ASCII 字元觸發 buildx gRPC 標頭錯誤。
 
