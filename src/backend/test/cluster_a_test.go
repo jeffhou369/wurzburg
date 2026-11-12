@@ -80,9 +80,9 @@ func TestClusterA_AuditOUIAndAutoPurge(t *testing.T) {
 		if got := ouiSvc.Lookup("00:50:56:11:22:33"); got != "VMware, Inc." {
 			t.Errorf("預期 VMware, Inc.，實際 %q", got)
 		}
-		// 28/36 位長前綴優先比對
-		if got := ouiSvc.Lookup("70:B3:D5:12:34:56"); got != "IEEE Example 36-bit MA-S Vendor" {
-			t.Errorf("預期 36-bit 長前綴廠商，實際 %q", got)
+		// 內建快照只收錄真實前綴；虛構的長前綴範例只存在於測試資料，不得命中
+		if got := ouiSvc.Lookup("70:B3:D5:12:34:56"); got != "未知" {
+			t.Errorf("內建快照不應含虛構長前綴，實際 %q", got)
 		}
 		// 查不到回傳「未知」
 		if got := ouiSvc.Lookup("DE:AD:BE:EF:00:01"); got != "未知" {
@@ -96,7 +96,7 @@ func TestClusterA_AuditOUIAndAutoPurge(t *testing.T) {
 		var buf bytes.Buffer
 		mw := multipart.NewWriter(&buf)
 		fw, _ := mw.CreateFormFile("file", "custom-oui.csv")
-		_, _ = fw.Write([]byte("AABBCC,24,Custom Test Corp\n"))
+		_, _ = fw.Write([]byte("AABBCC,24,Custom Test Corp\n70B3D5,24,Example 24-bit Vendor\n70B3D51,28,Example 28-bit Vendor\n70B3D5123,36,Example 36-bit Vendor\n"))
 		_ = mw.Close()
 
 		reqUpload := testutil.NewAuthRequest(http.MethodPost, "/api/v1/settings/oui", nil, adminID, "admin", "admin")
@@ -116,6 +116,17 @@ func TestClusterA_AuditOUIAndAutoPurge(t *testing.T) {
 
 		if got := ouiSvc.Lookup("aa:bb:cc:11:22:33"); got != "Custom Test Corp" {
 			t.Errorf("上傳後查詢預期 Custom Test Corp，實際 %q", got)
+		}
+
+		// 24/28/36 位前綴並存時，以最長前綴優先比對
+		for mac, want := range map[string]string{
+			"70:B3:D5:12:34:56": "Example 36-bit Vendor",
+			"70:B3:D5:1F:00:01": "Example 28-bit Vendor",
+			"70:B3:D5:20:00:01": "Example 24-bit Vendor",
+		} {
+			if got := ouiSvc.Lookup(mac); got != want {
+				t.Errorf("查詢 %s 預期 %q，實際 %q", mac, want, got)
+			}
 		}
 
 		var dbVendor string
