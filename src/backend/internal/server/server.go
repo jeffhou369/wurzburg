@@ -82,7 +82,7 @@ func (s *Server) setupRoutes(registrars ...RouteRegistrar) {
 
 	// 基礎中介軟體
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
+	r.Use(clientIPMiddleware(s.cfg.TrustedProxies))
 	r.Use(middleware.Recoverer)
 
 	// 健康檢查端點（不需身分驗證，不含機敏資料）

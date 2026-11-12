@@ -82,6 +82,7 @@
 | `WURZBURG_CAMPUS_NAME` | 園區顯示名稱（亦可在設定精靈或設定頁動態修改） | 選填 | `Würzburg` |
 | `WURZBURG_TIMEZONE` | 園區顯示與排程時區（IANA 格式，資料庫一律存 UTC） | 選填 | `Asia/Taipei` |
 | `WURZBURG_ENV` | 執行環境模式（`production` 或 `development`） | 選填 | `production` |
+| `WURZBURG_TRUSTED_PROXIES` | 可信任的反向代理位址（IPv4 或 CIDR，逗號分隔）。只有直接連線來源在清單內時，才採信 `X-Real-IP`／`X-Forwarded-For` 作為客戶端 IP（登入限流與稽核紀錄使用）。**不要設成園區網段或 `0.0.0.0/0`**，否則任何人都能偽造來源 IP。使用本專案的 HTTPS 覆寫檔時會自動設定，不需手動填寫；格式錯誤時程式拒絕啟動 | 選填 | 空白（不信任任何代理） |
 
 ### 2.3 建置與啟動容器
 
