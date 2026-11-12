@@ -11,6 +11,8 @@ import (
 	"github.com/jeffhou369/wurzburg/backend/internal/clock"
 	"github.com/jeffhou369/wurzburg/backend/internal/collector"
 	"github.com/jeffhou369/wurzburg/backend/internal/conflicts"
+	"github.com/jeffhou369/wurzburg/backend/internal/dashboard"
+	"github.com/jeffhou369/wurzburg/backend/internal/iprecords"
 	"github.com/jeffhou369/wurzburg/backend/internal/oui"
 	"github.com/jeffhou369/wurzburg/backend/internal/pipeline"
 	"github.com/jeffhou369/wurzburg/backend/internal/purge"
@@ -42,6 +44,8 @@ func mountFeatureModules(ctx context.Context, srv *server.Server, db *sql.DB, cl
 	switchesHandler := switches.NewHandler(db, clk, srv.Cipher, srv.Audit, snmpCol)
 	pipe := pipeline.New(scopeSvc, reconcileSvc)
 	sched := scheduler.New(db, clk, srv.Cipher, srv.Settings, srv.Audit, snmpCol, pipe)
+	dashHandler := dashboard.NewHandler(db, clk, sched)
+	ipHandler := iprecords.NewHandler(db, clk, srv.Settings, srv.Audit)
 
 	srv.Mount(
 		accountsHandler,
@@ -53,6 +57,8 @@ func mountFeatureModules(ctx context.Context, srv *server.Server, db *sql.DB, cl
 		sched,
 		scopeSvc,
 		conflictsHandler,
+		dashHandler,
+		ipHandler,
 	)
 
 	if db != nil {
