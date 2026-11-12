@@ -1,0 +1,137 @@
+paths:
+  login_local:
+    post:
+      tags: [Auth]
+      summary: 系統管理員本機帳號登入
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: admin
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: 登入成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+        '401':
+          description: 帳號或密碼錯誤
+        '423':
+          description: 登入失敗過多已暫時鎖定
+
+  login_org:
+    post:
+      tags: [Auth]
+      summary: 一般使用者組織帳號（AD 或 RADIUS）登入
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: 登入成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+        '401':
+          description: 帳密錯誤或驗證失敗
+        '403':
+          description: 未在此園區允許登入的組織群組內
+
+  logout:
+    post:
+      tags: [Auth]
+      summary: 登出並使當前工作階段失效
+      responses:
+        '204':
+          description: 成功登出
+
+  me:
+    get:
+      tags: [Auth]
+      summary: 取得當前登入者資訊
+      responses:
+        '200':
+          description: 登入者身分
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+        '401':
+          description: 未登入
+
+  change_password:
+    post:
+      tags: [Auth]
+      summary: 首次登入或常態變更本機管理員密碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [new_password]
+              properties:
+                old_password:
+                  type: string
+                  format: password
+                new_password:
+                  type: string
+                  format: password
+                  minLength: 12
+      responses:
+        '200':
+          description: 密碼已成功變更
+        '422':
+          description: 新密碼不符長度或複雜度政策
+
+components:
+  schemas:
+    CurrentUser:
+      type: object
+      required: [id, username, display_name, role, auth_source]
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        display_name:
+          type: string
+        mail:
+          type: string
+        role:
+          type: string
+          enum: [admin, user]
+        auth_source:
+          type: string
+          enum: [local, ad, radius]
+        requires_password_change:
+          type: boolean
+
+    AuthSessionResponse:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: '#/components/schemas/CurrentUser'

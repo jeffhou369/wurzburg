@@ -1,0 +1,420 @@
+paths:
+  ip_records_collection:
+    get:
+      tags: [IP Records]
+      summary: 搜尋、篩選與分頁查詢納管 IP 紀錄
+      parameters:
+        - $ref: './common.yaml#/components/parameters/PageParam'
+        - $ref: './common.yaml#/components/parameters/PageSizeParam'
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: 搜尋 IP、MAC、擁有者、主機名稱或備註
+        - name: subnet_id
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: switch_id
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: presence
+          in: query
+          schema:
+            type: string
+            enum: [online, offline]
+        - name: registration
+          in: query
+          schema:
+            type: string
+            enum: [unregistered, registered, expired]
+        - name: expiring_soon
+          in: query
+          schema:
+            type: boolean
+        - name: pending_confirmation
+          in: query
+          description: 有擁有者且已到期或將於提醒提前天數內到期，可搭配 owner_me 限定自己的待確認登記。
+          schema:
+            type: boolean
+        - name: has_conflict
+          in: query
+          schema:
+            type: boolean
+        - name: owner_me
+          in: query
+          schema:
+            type: boolean
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum: [ip_address, last_seen_at, expires_at, owner_username]
+            default: ip_address
+        - name: sort_dir
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
+      responses:
+        '200':
+          description: IP 紀錄分頁結果
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, pagination]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IPRecordSummary'
+                  pagination:
+                    $ref: './common.yaml#/components/schemas/PaginationMeta'
+
+  ip_records_export:
+    get:
+      tags: [IP Records]
+      summary: 依目前篩選條件直接匯出為 Excel (.xlsx)
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: subnet_id
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: switch_id
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: presence
+          in: query
+          schema:
+            type: string
+            enum: [online, offline]
+        - name: registration
+          in: query
+          schema:
+            type: string
+            enum: [unregistered, registered, expired]
+        - name: expiring_soon
+          in: query
+          schema:
+            type: boolean
+        - name: pending_confirmation
+          in: query
+          description: 有擁有者且已到期或將於提醒提前天數內到期，可搭配 owner_me 限定自己的待確認登記。
+          schema:
+            type: boolean
+        - name: has_conflict
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Excel 檔案串流
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+
+  ip_records_item:
+    get:
+      tags: [IP Records]
+      summary: 取得單筆 IP 紀錄詳情（含觀測來源與變更歷程）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 詳細資料
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IPRecordDetail'
+    put:
+      tags: [Registration]
+      summary: 編輯既有的登記資料（擁有者或系統管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [owner_mail]
+              properties:
+                owner_mail:
+                  type: string
+                  format: email
+                device_type:
+                  type: string
+                hostname:
+                  type: string
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: 已更新
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IPRecordDetail'
+        '403':
+          description: 非該筆紀錄擁有者且非系統管理員
+
+  action_register:
+    post:
+      tags: [Registration]
+      summary: 單筆或批次登記未登記之 IP 紀錄
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterActionRequest'
+      responses:
+        '200':
+          description: 逐筆執行結果
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/BatchActionResult'
+
+  action_confirm:
+    post:
+      tags: [Registration]
+      summary: 單筆或批次重新確認登記（有效期延長一年）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchTargetSelector'
+      responses:
+        '200':
+          description: 逐筆執行結果
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/BatchActionResult'
+
+  action_release:
+    post:
+      tags: [Registration]
+      summary: 單筆或批次釋放登記（回到未登記）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchTargetSelector'
+      responses:
+        '200':
+          description: 逐筆執行結果
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/BatchActionResult'
+
+  action_reassign:
+    post:
+      tags: [Registration]
+      summary: 單筆或批次改派擁有者（僅系統管理員）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReassignActionRequest'
+      responses:
+        '200':
+          description: 逐筆執行結果
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/BatchActionResult'
+
+components:
+  schemas:
+    IPRecordSummary:
+      type: object
+      required:
+        - id
+        - ip_address
+        - mac_address
+        - subnet_cidr
+        - presence
+        - registration
+        - expiring_soon
+        - has_conflict
+        - vendor_name
+        - last_seen_at
+      properties:
+        id:
+          type: integer
+          format: int64
+        ip_address:
+          type: string
+        mac_address:
+          type: string
+        subnet_id:
+          type: integer
+          format: int64
+        subnet_cidr:
+          type: string
+        switch_names:
+          type: array
+          items:
+            type: string
+        if_names:
+          type: array
+          items:
+            type: string
+        vendor_name:
+          type: string
+        device_type:
+          type: string
+        hostname:
+          type: string
+        owner_username:
+          type: string
+        owner_display_name:
+          type: string
+        owner_mail:
+          type: string
+        notes:
+          type: string
+        presence:
+          type: string
+          enum: [online, offline]
+        registration:
+          type: string
+          enum: [unregistered, registered, expired]
+        expiring_soon:
+          type: boolean
+        has_conflict:
+          type: boolean
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        first_seen_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
+
+    ARPSighting:
+      type: object
+      required: [switch_name, vrf_name, mac_address, if_name, arp_type, last_seen_at]
+      properties:
+        switch_name:
+          type: string
+        vrf_name:
+          type: string
+        mac_address:
+          type: string
+        if_name:
+          type: string
+        arp_type:
+          type: string
+        last_seen_at:
+          type: string
+          format: date-time
+
+    IPEvent:
+      type: object
+      required: [id, event_type, details, occurred_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        event_type:
+          type: string
+          enum: [first_seen, online, offline, mac_changed]
+        details:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+
+    IPRecordDetail:
+      allOf:
+        - $ref: '#/components/schemas/IPRecordSummary'
+        - type: object
+          required: [sightings, events, can_edit]
+          properties:
+            can_edit:
+              type: boolean
+            sightings:
+              type: array
+              items:
+                $ref: '#/components/schemas/ARPSighting'
+            events:
+              type: array
+              items:
+                $ref: '#/components/schemas/IPEvent'
+
+    BatchTargetSelector:
+      type: object
+      properties:
+        ip_record_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+        select_all_filtered:
+          type: boolean
+          default: false
+        filter:
+          type: object
+          description: 當 select_all_filtered 為 true 時套用之篩選條件
+
+    RegisterActionRequest:
+      allOf:
+        - $ref: '#/components/schemas/BatchTargetSelector'
+        - type: object
+          required: [owner_mail]
+          properties:
+            owner_mail:
+              type: string
+              format: email
+            device_type:
+              type: string
+            hostname:
+              type: string
+            notes:
+              type: string
+            owner_username:
+              type: string
+              description: 僅系統管理員代為登記時可指定
+
+    ReassignActionRequest:
+      allOf:
+        - $ref: '#/components/schemas/BatchTargetSelector'
+        - type: object
+          required: [target_username]
+          properties:
+            target_username:
+              type: string

@@ -1,0 +1,53 @@
+paths:
+  dashboard_stats:
+    get:
+      tags: [Dashboard]
+      summary: 取得首頁統計儀表板 KPI 數字與最近同步狀態
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummary'
+
+components:
+  schemas:
+    DashboardSummary:
+      type: object
+      required:
+        - managed_total
+        - online_count
+        - offline_count
+        - unregistered_online_count
+        - expired_count
+        - open_conflicts_count
+        - switches_count
+        - sync_in_progress
+      properties:
+        managed_total:
+          type: integer
+        online_count:
+          type: integer
+        offline_count:
+          type: integer
+        unregistered_online_count:
+          type: integer
+        expired_count:
+          type: integer
+        open_conflicts_count:
+          type: integer
+        switches_count:
+          type: integer
+        last_sync_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_sync_success:
+          type: boolean
+        failed_vrf_count:
+          type: integer
+        sync_in_progress:
+          type: boolean
+        round_incomplete:
+          type: boolean

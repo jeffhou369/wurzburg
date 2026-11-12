@@ -1,0 +1,48 @@
+paths:
+  healthz:
+    get:
+      tags: [Health]
+      summary: 基礎存活檢查
+      responses:
+        '200':
+          description: 正常
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  api_health:
+    get:
+      tags: [Health]
+      summary: 詳細健康檢查（不含機敏資訊）
+      responses:
+        '200':
+          description: 正常
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status, timestamp, database, campus]
+      properties:
+        status:
+          type: string
+          example: ok
+        timestamp:
+          type: string
+          format: date-time
+        database:
+          type: string
+          enum: [connected, disconnected, unconfigured]
+        campus:
+          type: string
+          example: Würzburg

@@ -1,0 +1,87 @@
+paths:
+  admins_collection:
+    get:
+      tags: [Admins]
+      summary: 列出所有本機系統管理員帳號
+      responses:
+        '200':
+          description: 管理員列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminAccount'
+    post:
+      tags: [Admins]
+      summary: 建立新的本機系統管理員帳號
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password, display_name]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                  format: password
+                  minLength: 12
+                display_name:
+                  type: string
+      responses:
+        '201':
+          description: 已建立
+
+  admins_toggle:
+    post:
+      tags: [Admins]
+      summary: 啟用或停用指定系統管理員帳號（不可停用最後一位啟用中之管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: 已更新狀態
+        '409':
+          description: 無法停用最後一位啟用中的系統管理員
+
+components:
+  schemas:
+    AdminAccount:
+      type: object
+      required: [id, username, display_name, enabled]
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        display_name:
+          type: string
+        enabled:
+          type: boolean
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true

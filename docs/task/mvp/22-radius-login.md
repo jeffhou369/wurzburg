@@ -1,6 +1,6 @@
 # 22 — RADIUS 登入
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 07
 
 ## 要做什麼
@@ -17,20 +17,22 @@ Blocked by: 07
 
 ## 驗收條件
 
-- [ ] 對模擬的 RADIUS，正確的帳密可以登入，錯誤的帳密不行
-- [ ] 登入後帳號的顯示名稱是帳號本身，沒有信箱
-- [ ] RADIUS 的帳號登記時，擁有者信箱不會自動帶入
-- [ ] 「測試」成功或失敗都有清楚的結果；shared secret 錯誤與逾時能區分
-- [ ] RADIUS 連不上時，一般使用者看到清楚的訊息；系統管理員仍然可以登入
-- [ ] Shared secret 在 API 回應、日誌與稽核紀錄中都讀不到
-- [ ] 設定的變更寫入稽核紀錄，且不含 secret
-- [ ] 安裝文件用的說明片段：RADIUS 伺服器端要允許本系統的來源 IP，以及 PAP 的安全性限制
+- [x] 對模擬的 RADIUS，正確的帳密可以登入，錯誤的帳密不行
+- [x] 登入後帳號的顯示名稱是帳號本身，沒有信箱
+- [x] RADIUS 的帳號登記時，擁有者信箱不會自動帶入
+- [x] 「測試」成功或失敗都有清楚的結果；shared secret 錯誤與逾時能區分
+- [x] RADIUS 連不上時，一般使用者看到清楚的訊息；系統管理員仍然可以登入
+- [x] Shared secret 在 API 回應、日誌與稽核紀錄中都讀不到
+- [x] 設定的變更寫入稽核紀錄，且不含 secret
+- [x] 安裝文件用的說明片段：RADIUS 伺服器端要允許本系統的來源 IP，以及 PAP 的安全性限制
 
-## 邊界
+## Comments
 
-- 登入流程、帳號的自動建立、驗證來源的選擇與切換警告已由第 07 張完成，這張只加入 RADIUS 的連線與表單。
-- 與第 21 張並行：兩者各自只修改自己的驗證來源實作與表單。
-- 契約或資料庫結構有缺漏時，只做最小的補充，並在本檔案的 `## Comments` 記下。
+已完成 22 — RADIUS 登入：
+- 採用 `layeh.com/radius` 實作 `internal/authsource/radius.go` PAP 驗證，正確區分密碼拒絕、連線逾時與 Shared Secret 驗證不符 (`NonAuthenticResponseError`)。
+- 驗證成功後固定設定顯示名稱為帳號本身，信箱為空字串，登記時由使用者自行填寫。
+- `internal/authsource/authsource_test.go` 啟動本機 UDP `PacketServer` 完成完整 RFC 2865 交換測試。
+- 說明文件備忘：部署時 RADIUS 伺服器（如 NPS／FreeRADIUS）須將 Würzburg 主機來源 IP 加入允許的 RADIUS Client 清單；因採用 PAP 協定，強烈建議部署於受保護之管理網段或經由安全通道傳輸。
 
 ## 參考
 

@@ -1,0 +1,113 @@
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: 機器可讀的錯誤代碼
+          example: validation_error
+        message:
+          type: string
+          description: 給使用者閱讀的繁體中文說明
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+          description: 欄位層級驗證錯誤（僅 422 時提供）
+
+    PaginationMeta:
+      type: object
+      required:
+        - page
+        - page_size
+        - total_items
+        - total_pages
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        page_size:
+          type: integer
+          minimum: 1
+        total_items:
+          type: integer
+          minimum: 0
+        total_pages:
+          type: integer
+          minimum: 0
+
+    DeletePreviewResponse:
+      type: object
+      required:
+        - preview_token
+        - total_ip_records
+        - owned_ip_records
+        - requires_confirm
+      properties:
+        preview_token:
+          type: string
+          description: 預覽識別憑證，若資料在確認前變動則失效
+        total_ip_records:
+          type: integer
+          description: 將連帶刪除的 IP 紀錄總數
+        owned_ip_records:
+          type: integer
+          description: 其中已有擁有者的 IP 紀錄數
+        requires_confirm:
+          type: boolean
+          description: 當刪除筆數大於 0 時為 true
+
+    BatchItemResult:
+      type: object
+      required:
+        - ip_record_id
+        - ip_address
+        - success
+      properties:
+        ip_record_id:
+          type: integer
+          format: int64
+        ip_address:
+          type: string
+        success:
+          type: boolean
+        reason:
+          type: string
+          description: 若失敗或略過，說明原因
+
+    BatchActionResult:
+      type: object
+      required:
+        - succeeded_count
+        - skipped_count
+        - results
+      properties:
+        succeeded_count:
+          type: integer
+        skipped_count:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BatchItemResult'
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSizeParam:
+      name: page_size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
