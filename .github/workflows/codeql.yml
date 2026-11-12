@@ -1,0 +1,190 @@
+# CodeQL 安全性掃描（進階設定 advanced setup）
+#
+# 用途：
+#   在「對 main 發出的 pull request」、「推送到 main」以及手動觸發時，
+#   以 CodeQL 的 security-extended 查詢組合掃描本儲存庫，結果上傳到
+#   GitHub Code scanning。
+#
+# 語言如何決定：
+#   CodeQL 若被要求分析一個沒有任何原始碼的語言會直接失敗，因此語言矩陣
+#   不寫死，而是由 detect 工作在每次執行時依「git 追蹤的檔案」動態產生：
+#     - actions               ：一律納入（workflow 檔本身就是可分析的對象）。
+#     - go                    ：出現任何非測試、非 vendor 的 *.go 檔時納入
+#                               （預計位置：src/backend）。
+#     - javascript-typescript ：出現任何 JS／TS 原始檔時納入，
+#                               node_modules、vendor 等外來程式碼不算
+#                               （預計位置：src/frontend）。
+#   只有 go.mod 或 package.json 而沒有原始檔時不會納入，因為那樣 CodeQL
+#   一樣會以「找不到原始碼」失敗。程式碼出現後不需要再修改本檔。
+#
+# 建置模式（build-mode）：
+#   - actions、javascript-typescript：none（直譯式語言，不需建置）。
+#   - go：autobuild（CodeQL 對 Go 只支援 autobuild 或 manual，不支援 none）。
+#
+# 必要狀態檢查（required status check）：
+#   Analyze (...) 的數量會隨語言增減，請把固定名稱的「CodeQL gate」設為
+#   必要檢查，不要直接指定個別的 Analyze (...)。
+#
+# 注意：進階設定不可與 Code scanning 的「預設設定（default setup）」同時
+#   啟用，否則上傳分析結果時會被拒絕。
+
+name: CodeQL
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# 預設只給唯讀權限，需要寫入的權限只在個別工作上開放。
+permissions:
+  contents: read
+
+# 只有 pull request 會取消被新提交取代的舊執行；
+# push 與手動觸發以 run_id 各自成組，彼此不會互相取消。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  detect:
+    name: Detect languages
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.languages.outputs.matrix }}
+    steps:
+      - name: 取出原始碼
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 偵測要分析的語言並產生矩陣
+        id: languages
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # 計算符合 include、且不符合 exclude 的已追蹤檔案數。
+          # 只讀取檔名，不會執行儲存庫內的任何程式。
+          count_tracked() {
+            local include="$1" exclude="$2"
+            git ls-files -z \
+              | { grep -zE -- "$include" || true; } \
+              | { grep -zvE -- "$exclude" || true; } \
+              | tr -cd '\0' \
+              | wc -c \
+              | tr -d '[:space:]'
+          }
+
+          # Go：排除測試檔，以及 Go 工具鏈本來就會略過的目錄
+          # （vendor、testdata、以 . 或 _ 開頭的目錄）。
+          go_files="$(count_tracked \
+            '\.go$' \
+            '(^|/)(vendor|testdata)/|(^|/)[._][^/]*/|_test\.go$')"
+
+          # JavaScript／TypeScript：排除外來套件目錄與壓縮過的檔案。
+          js_files="$(count_tracked \
+            '\.(js|jsx|mjs|cjs|ts|tsx|mts|cts)$' \
+            '(^|/)(node_modules|bower_components|vendor)/|[.-]min\.js$')"
+
+          matrix="$(jq -cn \
+            --argjson go "$go_files" \
+            --argjson js "$js_files" '
+              {
+                include: (
+                  [{language: "actions", "build-mode": "none"}]
+                  + (if $go > 0
+                     then [{language: "go", "build-mode": "autobuild"}]
+                     else [] end)
+                  + (if $js > 0
+                     then [{language: "javascript-typescript", "build-mode": "none"}]
+                     else [] end)
+                )
+              }')"
+
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### CodeQL 語言偵測結果"
+            echo
+            echo "- Go 原始檔：${go_files} 個"
+            echo "- JavaScript／TypeScript 原始檔：${js_files} 個"
+            echo "- 本次分析的語言：$(jq -r '[.include[].language] | join("、")' <<<"$matrix")"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    needs: detect
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      # 取出原始碼。
+      contents: read
+      # 上傳分析結果到 Code scanning。
+      security-events: write
+      # 儲存庫若改為私有，CodeQL 需要此權限讀取本次執行的資訊；公開時無影響。
+      actions: read
+    strategy:
+      # 一個語言失敗不要連帶取消其他語言，才能看到完整結果。
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect.outputs.matrix) }}
+    steps:
+      - name: 取出原始碼
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # 進階設定不會自動安裝 Go，因此依 go.mod 安裝相符的版本。
+      # go.mod 不在預計位置時略過此步驟，改用執行器內建的 Go。
+      # 關閉快取：CodeQL 不需要它，也避免 pull request 汙染共用快取。
+      - name: 安裝 Go（僅 Go 分析需要）
+        if: ${{ matrix.language == 'go' && hashFiles('src/backend/go.mod') != '' }}
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: src/backend/go.mod
+          cache: false
+
+      - name: 初始化 CodeQL
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
+
+      # build-mode 為 autobuild 的語言（Go）會在此步驟自動建置後再分析。
+      - name: 執行 CodeQL 分析並上傳結果
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  # 語言矩陣是動態的，Analyze (...) 的名稱與數量會變動；
+  # 這個工作提供一個名稱固定的總結果，供分支保護設為必要檢查。
+  gate:
+    name: CodeQL gate
+    if: ${{ always() }}
+    needs:
+      - detect
+      - analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: 確認語言偵測與所有分析都成功
+        shell: bash
+        env:
+          DETECT_RESULT: ${{ needs.detect.result }}
+          ANALYZE_RESULT: ${{ needs.analyze.result }}
+        run: |
+          set -euo pipefail
+          echo "detect：${DETECT_RESULT}"
+          echo "analyze：${ANALYZE_RESULT}"
+          if [[ "$DETECT_RESULT" != "success" || "$ANALYZE_RESULT" != "success" ]]; then
+            echo "::error::CodeQL 未全部成功（detect=${DETECT_RESULT}，analyze=${ANALYZE_RESULT}）"
+            exit 1
+          fi

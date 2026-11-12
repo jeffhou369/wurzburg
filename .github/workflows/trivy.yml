@@ -1,0 +1,81 @@
+# Trivy 弱點元件與安全性掃描（Vulnerable Component Scanning）
+#
+# 用途：
+#   在「對 main 發出的 pull request」、「推送到 main」以及手動觸發時，
+#   以 Aqua Security 的 Trivy 掃描儲存庫檔案系統（fs mode），涵蓋：
+#     - 相依套件弱點（vuln）
+#     - 基礎設施即程式碼與設定問題（misconfig）
+#     - 意外提交的金鑰或機敏資訊（secret）
+#
+# 結果呈現與門檻：
+#   1. 產生 SARIF 格式報告，上傳至 GitHub Code scanning（Security 頁籤，category: trivy-fs）。
+#      若來自外部 Fork PR，自動略過 SARIF 上傳，避免權限不足問題。
+#   2. 以終端機表格格式顯示掃描摘要；若發現「已有修復版本（ignore-unfixed）」的
+#      CRITICAL 或 HIGH 等級弱點，將中斷工作流程以阻擋問題合併。
+#
+# 初始無程式碼狀態：
+#   Trivy fs 模式在無支援原始碼或 lockfile 時回報無問題並正常退出（exit 0），
+#   待未來加入後端、前端或部署設定時自動發揮作用。
+
+name: Trivy
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  scan:
+    name: Trivy Filesystem Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: 取出原始碼
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 執行 Trivy 掃描並產生 SARIF 報告
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig,secret
+          format: sarif
+          output: trivy-results.sarif
+          version: v0.76.2
+          cache: true
+
+      - name: 上傳 SARIF 至 GitHub Code Scanning
+        if: ${{ !cancelled() && github.event.pull_request.head.repo.fork != true }}
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-fs
+
+      - name: 執行 Trivy 品質門檻檢查（CRITICAL / HIGH 阻擋）
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig,secret
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+          version: v0.76.2
+          cache: true

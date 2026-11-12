@@ -1,0 +1,104 @@
+# 軟體物料清單產出（Software Bill of Materials, SBOM）
+#
+# 用途：
+#   在「對 main 發出的 pull request」、「推送到 main」以及手動觸發時，
+#   透過 Anchore Syft 掃描儲存庫相依元件，產生標準化的軟體物料清單。
+#
+# 產出格式：
+#   - SPDX 2.3（JSON 格式）：符合 Linux Foundation 與 ISO/IEC 5230:2020 標準。
+#   - CycloneDX 1.6（JSON 格式）：符合 OWASP 軟體供應鏈安全標準。
+#
+# 下載與留存：
+#   產出檔案打包上傳為 GitHub Actions 成果物（Artifact，名稱格式為
+#   wurzburg-sbom-<commit-sha>），可在 Actions 頁面直接下載，預設保留 30 天。
+#
+# 權限與選用功能：
+#   維持最小權限原則（僅 contents: read）。若日後欲啟用自動上傳至
+#   GitHub Dependency Graph，需設定 dependency-snapshot: true 並授予
+#   contents: write 權限。
+
+name: SBOM
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  generate:
+    name: Generate SBOM (Syft)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: 取出原始碼
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 產生 SPDX 格式軟體物料清單
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: .
+          format: spdx-json
+          output-file: wurzburg-sbom.spdx.json
+          syft-version: v1.57.1
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: 產生 CycloneDX 格式軟體物料清單
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: wurzburg-sbom.cyclonedx.json
+          syft-version: v1.57.1
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: 上傳 SBOM 成果物至工作流程
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wurzburg-sbom-${{ github.sha }}
+          path: |
+            wurzburg-sbom.spdx.json
+            wurzburg-sbom.cyclonedx.json
+          retention-days: 30
+
+      - name: 彙整 SBOM 統計資訊至工作摘要
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          spdx_file="wurzburg-sbom.spdx.json"
+          cyclonedx_file="wurzburg-sbom.cyclonedx.json"
+
+          total_spdx=$(jq '.packages | length' "${spdx_file}" 2>/dev/null || echo 0)
+          total_cdx=$(jq '.components | length' "${cyclonedx_file}" 2>/dev/null || echo 0)
+          ecosystems=$(jq -r 'if (.components // [] | length) == 0 then "- 尚無偵測到相依元件" else ([.components[] | (.purl // "" | (try capture("^pkg:(?<type>[^/]+)/").type catch "other"))] | group_by(.) | map("- \(.[0])：\(length) 個") | .[]) end' "${cyclonedx_file}" 2>/dev/null || echo "- 無法解析生態系分佈")
+
+          {
+            echo "### 軟體物料清單（SBOM）產出摘要"
+            echo
+            echo "| 格式 | 檔案名稱 | 紀錄項目數 |"
+            echo "| --- | --- | --- |"
+            echo "| SPDX 2.3 (JSON) | \`${spdx_file}\` | ${total_spdx} |"
+            echo "| CycloneDX 1.6 (JSON) | \`${cyclonedx_file}\` | ${total_cdx} |"
+            echo
+            echo "#### 依套件生態系分佈（CycloneDX）"
+            echo "${ecosystems}"
+            echo
+            echo "完整的 SBOM 檔案已打包為成果物 \`wurzburg-sbom-${{ github.sha }}\`，請至工作流程頁面下載。"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,66 @@
+# OSV-Scanner 相依套件弱點掃描
+#
+# 用途：
+#   在「對 main 發出的 pull request」、「推送到 main」以及手動觸發時，
+#   透過 Google 的 OSV 資料庫掃描專案相依套件中已知的安全弱點。
+#
+# 運作方式：
+#   - pull_request：呼叫官方可重複使用工作流程 osv-scanner-reusable-pr.yml，
+#     比對目標分支與 PR 分支的弱點差異，僅在 PR 引入「新弱點」時提出警告或阻擋。
+#     若來自外部 Fork PR，自動停用 SARIF 上傳，避免權限不足問題。
+#   - push / dispatch：呼叫 osv-scanner-reusable.yml 執行完整掃描，結果上傳至
+#     GitHub Code scanning（Security 頁籤）。
+#
+# 初始無 lockfile 狀態：
+#   使用 --allow-no-lockfiles 參數，在儲存庫尚無 lockfile 時正常通過，
+#   待未來加入 go.mod / package-lock.json 時自動開始掃描。
+
+name: OSV-Scanner
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  scan-pr:
+    name: Scan PR
+    if: ${{ github.event_name == 'pull_request' }}
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@32d3cd482bdadfb38b186c0ad1b031902d55d932 # v2.7.1
+    with:
+      scan-args: |-
+        --include-git-root
+        --allow-no-lockfiles
+        -r
+        ./
+      upload-sarif: ${{ !github.event.pull_request.head.repo.fork }}
+
+  scan-push:
+    name: Scan Main
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@32d3cd482bdadfb38b186c0ad1b031902d55d932 # v2.7.1
+    with:
+      scan-args: |-
+        --include-git-root
+        --allow-no-lockfiles
+        -r
+        ./
