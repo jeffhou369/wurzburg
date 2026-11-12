@@ -6,32 +6,56 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jeffhou369/wurzburg/backend/internal/audit"
+	"github.com/jeffhou369/wurzburg/backend/internal/auth"
 	"github.com/jeffhou369/wurzburg/backend/internal/clock"
 	"github.com/jeffhou369/wurzburg/backend/internal/config"
+	"github.com/jeffhou369/wurzburg/backend/internal/crypto"
+	"github.com/jeffhou369/wurzburg/backend/internal/settings"
 	"github.com/jeffhou369/wurzburg/backend/internal/static"
 )
 
-// Server 封裝 HTTP 路由、依賴項目與伺服器設定。
-type Server struct {
-	cfg    *config.Config
-	db     *sql.DB
-	clock  clock.Clock
-	router chi.Router
+// RouteRegistrar 定義各功能模組向核心 API 路由掛載自身端點之介面。
+type RouteRegistrar interface {
+	RegisterRoutes(api chi.Router)
 }
 
-// New 建立並配置一個新的 Server 實例。
-func New(cfg *config.Config, db *sql.DB, clk clock.Clock) *Server {
+// Server 封裝 HTTP 路由、共用基礎服務與伺服器設定。
+type Server struct {
+	cfg      *config.Config
+	db       *sql.DB
+	clock    clock.Clock
+	router   chi.Router
+	Sessions *auth.SessionStore
+	Settings *settings.Store
+	Audit    *audit.Logger
+	Cipher   *crypto.Cipher
+}
+
+// New 建立並配置一個新的 Server 實例，並掛載傳入的功能路由。
+func New(cfg *config.Config, db *sql.DB, clk clock.Clock, registrars ...RouteRegistrar) *Server {
 	if clk == nil {
 		clk = clock.NewRealClock()
 	}
 
-	s := &Server{
-		cfg:   cfg,
-		db:    db,
-		clock: clk,
+	var cipher *crypto.Cipher
+	if cfg.SecretKey != "" {
+		if c, err := crypto.NewCipher(cfg.SecretKey); err == nil {
+			cipher = c
+		}
 	}
 
-	s.setupRoutes()
+	s := &Server{
+		cfg:      cfg,
+		db:       db,
+		clock:    clk,
+		Sessions: auth.NewSessionStore(db, clk),
+		Settings: settings.NewStore(db, cipher, clk),
+		Audit:    audit.NewLogger(db, clk),
+		Cipher:   cipher,
+	}
+
+	s.setupRoutes(registrars...)
 	return s
 }
 
@@ -40,7 +64,7 @@ func (s *Server) Router() http.Handler {
 	return s.router
 }
 
-func (s *Server) setupRoutes() {
+func (s *Server) setupRoutes(registrars ...RouteRegistrar) {
 	r := chi.NewRouter()
 
 	// 基礎中介軟體
@@ -52,9 +76,33 @@ func (s *Server) setupRoutes() {
 	r.Get("/healthz", s.handleHealthz)
 	r.Get("/api/v1/health", s.handleDetailedHealth)
 
+	allowTestHeaders := s.cfg.AppEnv == "test"
+
 	// API 路由群組
 	r.Route("/api/v1", func(api chi.Router) {
+		api.Use(auth.AuthenticateMiddleware(s.Sessions, s.Settings, allowTestHeaders))
+		api.Use(auth.CSRFMiddleware)
+
 		api.Get("/health", s.handleDetailedHealth)
+
+		// 內建權限檢測示範端點（供基礎測試與診斷使用）
+		api.With(auth.RequireAuth).Get("/auth/check", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"authenticated":true}`))
+		})
+		api.With(auth.RequireAdmin).Post("/auth/admin-check", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"admin":true}`))
+		})
+
+		// 掛載所有功能模組之路由
+		for _, reg := range registrars {
+			if reg != nil {
+				reg.RegisterRoutes(api)
+			}
+		}
 	})
 
 	// 前端靜態頁面與 Single Page Application 萬用回退路由
