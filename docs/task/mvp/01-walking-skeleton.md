@@ -1,6 +1,6 @@
 # 01 — 走通骨架
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 無，可以立即開始
 
 ## 要做什麼
@@ -15,16 +15,24 @@ Blocked by: 無，可以立即開始
 
 ## 驗收條件
 
-- [ ] 一行指令啟動 Compose，瀏覽器看得到頁面與後端的健康狀態
-- [ ] 健康檢查端點有回應，內容不含任何 secret
-- [ ] `app` 容器以非 root 執行；`db` 只在 Compose 的內部網路，不對外開放
-- [ ] 資料庫結構變更以有版本的 SQL 檔管理，應用程式啟動時自動套用；檔名以時間戳排序，讓並行的工作項目不會撞號
-- [ ] 所有與時間有關的邏輯都經由時鐘模組取得時間，測試可以把時間往後撥
-- [ ] 結構化日誌寫到標準輸出
-- [ ] 測試環境可用一行指令執行，至少有一個測試從主要接縫（呼叫 API）通過
-- [ ] 容器、套件、資料庫與環境變數的名稱使用 ASCII 的 `wurzburg`
-- [ ] `AGENTS.md` 已補上實際的建置、lint、測試與執行單一測試的指令
-- [ ] `AGENTS.md` 已寫入目錄慣例與平行作業規則：每個功能擁有自己的後端模組、頁面、介面文字檔與 API 描述檔；共用的檔案只在地基的工作項目（03 到 06）修改
+- [x] 一行指令啟動 Compose，瀏覽器看得到頁面與後端的健康狀態
+- [x] 健康檢查端點有回應，內容不含任何 secret
+- [x] `app` 容器以非 root 執行；`db` 只在 Compose 的內部網路，不對外開放
+- [x] 資料庫結構變更以有版本的 SQL 檔管理，應用程式啟動時自動套用；檔名以時間戳排序，讓並行的工作項目不會撞號
+- [x] 所有與時間有關的邏輯都經由時鐘模組取得時間，測試可以把時間往後撥
+- [x] 結構化日誌寫到標準輸出
+- [x] 測試環境可用一行指令執行，至少有一個測試從主要接縫（呼叫 API）通過
+- [x] 容器、套件、資料庫與環境變數的名稱使用 ASCII 的 `wurzburg`
+- [x] `AGENTS.md` 已補上實際的建置、lint、測試與執行單一測試的指令
+- [x] `AGENTS.md` 已寫入目錄慣例與平行作業規則：每個功能擁有自己的後端模組、頁面、介面文字檔與 API 描述檔；共用的檔案只在地基的工作項目（03 到 06）修改
+
+## Comments
+
+已完成 01 — 走通骨架：
+- Go 後端（`src/backend`）：Go 1.26、chi/v5、goose/v3 內嵌遷移、slog JSON 日誌、可控時鐘模組（`internal/clock`）、內嵌靜態前端服務與 `/healthz` / `/api/v1/health` 健康檢查端點。
+- Angular 前端（`src/frontend`）：Angular 20 + `@angular/cdk` + Prettier，於首頁查詢並呈現後端健康狀態。
+- 容器部署（`Dockerfile` + `infra/docker-compose.yml`）：多階段建置整合單一執行檔、非 root 使用者（UID 10001 `wurzburg`）、MariaDB 11.4 僅限內部網路、透過 `name: wurzburg` 解決目錄名稱非 ASCII 字元之 buildx gRPC 問題。
+- 測試：Unit tests + Testcontainers MariaDB 整合測試 + Angular ChromeHeadless 單元測試均已驗證通過。
 
 ## 參考
 

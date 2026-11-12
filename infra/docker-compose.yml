@@ -1,0 +1,59 @@
+name: wurzburg
+
+services:
+  db:
+    image: mariadb:11.4
+    container_name: wurzburg-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${WURZBURG_DB_NAME:-wurzburg}
+      MARIADB_USER: ${WURZBURG_DB_USER:-wurzburg}
+      MARIADB_PASSWORD: ${WURZBURG_DB_PASSWORD:-wurzburg_dev_password}
+      MARIADB_ROOT_PASSWORD: ${WURZBURG_DB_ROOT_PASSWORD:-wurzburg_root_dev_password}
+    volumes:
+      - wurzburg-db-data:/var/lib/mysql
+    networks:
+      - wurzburg-net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  app:
+    image: wurzburg:dev
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: wurzburg-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${WURZBURG_HTTP_PORT:-8080}:8080"
+    environment:
+      WURZBURG_PORT: "8080"
+      WURZBURG_ENV: ${WURZBURG_ENV:-production}
+      WURZBURG_CAMPUS_NAME: ${WURZBURG_CAMPUS_NAME:-Würzburg}
+      WURZBURG_TIMEZONE: ${WURZBURG_TIMEZONE:-Asia/Taipei}
+      WURZBURG_DB_HOST: db
+      WURZBURG_DB_PORT: "3306"
+      WURZBURG_DB_NAME: ${WURZBURG_DB_NAME:-wurzburg}
+      WURZBURG_DB_USER: ${WURZBURG_DB_USER:-wurzburg}
+      WURZBURG_DB_PASSWORD: ${WURZBURG_DB_PASSWORD:-wurzburg_dev_password}
+      WURZBURG_ADMIN_USERNAME: ${WURZBURG_ADMIN_USERNAME:-}
+      WURZBURG_ADMIN_PASSWORD: ${WURZBURG_ADMIN_PASSWORD:-}
+      WURZBURG_SECRET_KEY: ${WURZBURG_SECRET_KEY:-}
+    networks:
+      - wurzburg-net
+
+volumes:
+  wurzburg-db-data:
+    name: wurzburg-db-data
+
+networks:
+  wurzburg-net:
+    name: wurzburg-net
+    driver: bridge

@@ -1,0 +1,133 @@
+.skeleton-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffff;
+  color: #0f172a;
+  font-family:
+    'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  padding: 1.5rem;
+}
+
+.status-card {
+  width: 100%;
+  max-width: 480px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow:
+    0 1px 3px 0 rgba(15, 23, 42, 0.05),
+    0 1px 2px -1px rgba(15, 23, 42, 0.03);
+}
+
+.card-header {
+  margin-bottom: 16px;
+
+  h1 {
+    margin: 0 0 4px 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #0f172a;
+  }
+
+  .subtitle {
+    margin: 0;
+    font-size: 14px;
+    color: #475569;
+  }
+}
+
+.loading-text {
+  font-size: 14px;
+  color: #475569;
+  margin: 16px 0;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  &.status-success {
+    background-color: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+
+    .dot {
+      background-color: #10b981;
+    }
+  }
+
+  &.status-danger {
+    background-color: #fff1ee;
+    color: #9f2d20;
+    border: 1px solid #dfb7b0;
+
+    .dot {
+      background-color: #9f2d20;
+    }
+  }
+}
+
+.detail-list {
+  margin: 0 0 20px 0;
+  border-top: 1px solid #f1f5f9;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 14px;
+
+  dt {
+    color: #475569;
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 500;
+    color: #0f172a;
+
+    &.mono {
+      font-family: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+    }
+  }
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-secondary {
+  background-color: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #f6f8f6;
+    border-color: #cbd5e1;
+  }
+}

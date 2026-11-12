@@ -1,1 +1,13 @@
 .DS_Store
+.env
+infra/.env
+
+# Backend build & embedded static output
+src/backend/wurzburg
+src/backend/internal/static/dist/*
+!src/backend/internal/static/dist/.gitkeep
+
+# Frontend build & node_modules
+src/frontend/node_modules/
+src/frontend/dist/
+src/frontend/.angular/

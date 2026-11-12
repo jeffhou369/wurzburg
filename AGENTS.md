@@ -12,11 +12,50 @@
 
 程式識別碼（變數、函式、檔名、資料表、環境變數、容器名稱）維持 ASCII 英文，專案名在識別碼中寫作 `wurzburg`（PRD ADR-008）。
 
-## 儲存庫現況
+## 儲存庫現況與開發指令
 
-目前只有規格，尚未開始實作。`src/`、`infra/`、`docs/task/` 是空的，沒有套件清單與建置、lint、測試工具。**現在沒有可執行的指令。** 技術棧建立後，請把實際的建置、lint、測試與單一測試指令補進本檔案，不要先猜。
+基礎骨架已建立（Go 後端、Angular 20 前端、MariaDB Compose 部署），目前正依 `docs/task/mvp/` 進行平行實作。
 
-儲存庫目錄名稱含 `ü`，在 shell 指令中路徑要加引號。
+儲存庫目錄名稱含 `ü`，在 shell 指令中路徑要加引號；且使用 Docker Compose 時須以 `name: wurzburg` 或 `COMPOSE_PROJECT_NAME=wurzburg` 避免路徑非 ASCII 字元觸發 buildx gRPC 標頭錯誤。
+
+### 常用開發指令
+
+**後端（`src/backend`）：**
+```sh
+cd src/backend
+go build -o /dev/null ./cmd/wurzburg          # 建置執行檔
+gofmt -l . && go vet ./...                    # 排版與靜態檢查
+go test ./...                                 # 執行全部測試（含 Testcontainers 啟動 MariaDB）
+go test -short ./...                          # 只執行不需 Docker 的單元／快速測試
+go test -v -run TestName ./test/...           # 執行單一測試
+```
+
+**前端（`src/frontend`）：**
+```sh
+cd src/frontend
+npm ci                                        # 安裝相依套件
+npm run build                                 # 建置 Angular 靜態檔案（輸出至 dist/frontend/browser）
+npm run lint                                  # TypeScript 型別檢查
+npm run format:check                          # Prettier 排版檢查
+npm test                                      # 以 ChromeHeadless 執行全部前端單元測試
+npx ng test --watch=false --browsers=ChromeHeadless --include=src/app/app.spec.ts  # 執行單一前端測試檔
+```
+
+**容器建置與啟動：**
+```sh
+docker build -t wurzburg:dev .
+docker compose -f infra/docker-compose.yml up -d --no-build
+```
+
+## 目錄慣例與平行作業規則
+
+為了讓多個工作項目（07 到 32）能安全且最大化平行開發而不互相衝突，請嚴格遵守下列目錄邊界：
+
+- **共用的地基檔案**（如資料庫遷移基礎結構、全域 Router 初始化、Angular 側欄外殼、共用 CSS tokens 與 OpenAPI 總入口）：只在地基工作項目（**03 到 06**）中修改；功能工作項目不得隨意改動共用檔案。
+- **資料庫遷移檔案**：一律放在 `src/backend/migrations/`，檔名採用 `YYYYMMDDHHMMSS_<slug>.sql` 時間戳記前綴（Goose 格式），避免平行開發產生序號衝突。
+- **後端功能模組**：每個功能在 `src/backend/internal/<feature>/` 建立獨立套件，並實作模組提供的路由註冊函式。
+- **前端功能模組**：每個功能在 `src/frontend/src/app/features/<feature>/` 建立獨立的頁面元件與自己的文字檔（繁體中文），掛載進第 03 張預留的路由或插槽。
+- **API 契約**：每個資源一份獨立的 OpenAPI 描述檔（由第 05 張定義位置）；若功能開發中發現契約缺漏，做最小補充並記在該工作項目檔案的 `## Comments` 中，由第 33 張統一收斂。
 
 ## 文件與優先順序
 
