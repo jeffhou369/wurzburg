@@ -64,8 +64,8 @@
   --color-danger-subtle: #fff1ee;
   --color-danger-border: #dfb7b0;
   --color-danger-text: #9f2d20;
-  /* 實心危險按鈕的 hover 底色，以及實心狀態色（成功／危險）上的文字色 */
-  --color-danger-strong: #7f1d1d;
+  /* 實心狀態色（成功／危險）上的文字色；實心危險按鈕 hover 底色沿用樣式包 --button-danger-hover-bg */
+  --button-danger-hover-bg: #e11d48;
   --color-text-on-success: #ffffff;
   --color-text-on-danger: #ffffff;
 
@@ -115,8 +115,8 @@
   --shadow-panel: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.03);
   --shadow-dialog: 0 24px 64px -12px rgba(0, 0, 0, 0.24), 0 8px 24px -8px rgba(0, 0, 0, 0.12);
 
-  /* 側欄抽屜、Sheet 等遮罩層的背景 */
-  --color-overlay-backdrop: rgba(15, 23, 42, 0.35);
+  /* 側欄抽屜、Sheet 等遮罩層的背景（樣式包 components.css --scrim） */
+  --scrim: rgba(45, 42, 38, 0.4196078431);
 
   --motion-fast: 150ms;
   --motion-enter: 220ms;
@@ -172,7 +172,6 @@
   --color-danger-subtle: rgba(198, 87, 70, 0.18);
   --color-danger-border: rgba(198, 87, 70, 0.35);
   --color-danger-text: #fca5a5;
-  --color-danger-strong: #7f1d1d;
   /* 深色主題的成功色偏亮，實心底色上要用深色文字才有足夠對比 */
   --color-text-on-success: #0b0d11;
   --color-text-on-danger: #ffffff;
@@ -182,5 +181,5 @@
   --button-danger-soft-text: #fda4af;
 
   --shadow-panel: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
-  --color-overlay-backdrop: rgba(0, 0, 0, 0.6);
+  --scrim: rgba(3, 8, 20, 0.6509803922);
 }

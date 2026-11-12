@@ -407,7 +407,7 @@ import { ToastContainerComponent } from './toast-container.component';
           display: block;
           position: fixed;
           inset: 0;
-          background-color: var(--color-overlay-backdrop);
+          background-color: var(--scrim);
           z-index: 650;
         }
 

@@ -16,7 +16,7 @@
 | `ip_records` | 納管範圍內之 IP 紀錄 | `ip_address` 全域唯一（ADR 0009）；擁有者為 `owner_user_id`（ADR 0012），`owner_mail` 僅為聯絡欄位 |
 | `arp_sightings` | 目前有效之 ARP 觀測 | `(ip_record_id, vrf_config_id)` 唯一；記錄目前各來源之 MAC、介面名稱與未見輪數 |
 | `ip_events` | IP 變更事件歷程 | 記錄 `first_seen`、`online`、`offline`、`mac_changed` |
-| `ip_conflicts` | MAC 衝突紀錄 | 透過產生欄位 `active_ip_record_id` 與唯一鍵 `uq_active_conflict_per_ip` 保證每筆 IP 紀錄最多只有一筆未解消衝突 |
+| `ip_conflicts` | MAC 衝突紀錄 | 透過產生欄位 `active_ip_record_id` 與唯一鍵 `uq_active_conflict_per_ip` 保證每筆 IP 紀錄最多只有一筆未解消衝突；`other_mac_absent_rounds` 記錄處理中衝突的其他 MAC 連續未被回報的輪數，達離線判定輪數才自動解消 |
 | `undetermined_prefixes` | 未定前綴清單 | `ip_address` 唯一；暫存不屬於任何已知網段的 ARP 觀測 |
 | `sessions` | 伺服端工作階段 | `token_hash` 唯一；記錄絕對逾時與閒置逾時（UTC） |
 | `oui_entries` | 本地 OUI 廠商前綴查詢表 | `(prefix, prefix_length)` 唯一；支援 24/28/36 位元長度 |

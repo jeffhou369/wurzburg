@@ -95,10 +95,10 @@ describe('設計 token（集中於 src/styles/tokens.scss）', () => {
     '--color-danger-subtle',
     '--color-danger-border',
     '--color-danger-text',
-    '--color-danger-strong',
+    '--button-danger-hover-bg',
     '--color-text-on-success',
     '--color-text-on-danger',
-    '--color-overlay-backdrop',
+    '--scrim',
     '--shadow-dialog',
     '--motion-fast',
     '--ease-out',
@@ -116,11 +116,11 @@ describe('設計 token（集中於 src/styles/tokens.scss）', () => {
 
   it('深色主題的遮罩與實心狀態色上的文字色需有獨立設定，不可沿用淺色值', () => {
     const light = withTheme('light', () => ({
-      overlay: rootToken('--color-overlay-backdrop'),
+      overlay: rootToken('--scrim'),
       onSuccess: rootToken('--color-text-on-success'),
     }));
     const dark = withTheme('dark', () => ({
-      overlay: rootToken('--color-overlay-backdrop'),
+      overlay: rootToken('--scrim'),
       onSuccess: rootToken('--color-text-on-success'),
     }));
     expect(dark.overlay).not.toBe(light.overlay);

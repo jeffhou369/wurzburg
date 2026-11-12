@@ -3,6 +3,9 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { CurrentUser } from './auth.service';
 import { sanitizeReturnUrl } from './safe-return-url';
+import type { components } from './api.types';
+
+type WizardStatus = components['schemas']['WizardStatus'];
 
 /**
  * 登入／改密碼成功後的導向規則，集中在這裡避免兩個頁面各自實作而不一致。
@@ -26,7 +29,7 @@ export class AuthRedirectService {
     }
 
     if (user.role === 'admin') {
-      this.http.get<{ completed: boolean }>('/api/v1/settings/wizard').subscribe({
+      this.http.get<WizardStatus>('/api/v1/settings/wizard').subscribe({
         next: (wizard) => {
           const target = wizard.completed
             ? destination

@@ -265,7 +265,7 @@ func (h *Handler) handleResolve(w http.ResponseWriter, r *http.Request) {
 	if req.Resolution == "keep_adopted" {
 		_, err = h.db.ExecContext(
 			ctx,
-			`UPDATE ip_conflicts SET status = 'in_progress', resolution = 'keep_adopted', note = ?, resolved_by = ?, updated_at = ? WHERE id = ?`,
+			`UPDATE ip_conflicts SET status = 'in_progress', resolution = 'keep_adopted', other_mac_absent_rounds = 0, note = ?, resolved_by = ?, updated_at = ? WHERE id = ?`,
 			req.Note, u.Username, now, id,
 		)
 	} else {

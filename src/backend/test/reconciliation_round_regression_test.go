@@ -557,6 +557,35 @@ func TestReconciliationRoundRegression(t *testing.T) {
 		}
 	})
 
+	// 4b. in_progress 衝突：原本回報其他 MAC 的來源改回報採信 MAC（觀測被覆寫），
+	// 仍須等其他 MAC 連續缺席達寬限輪數才解消，不得在第 1 輪就解消。
+	t.Run("InProgressConflict_OverwrittenSourceStillWaitsForGrace", func(t *testing.T) {
+		rig := rig.with(t)
+		rig.seeder.SeedSubnet("10.20.14.0/24", "managed", nil)
+		a, b := rig.newSource("rr4b-a"), rig.newSource("rr4b-b")
+		addr := "10.20.14.11"
+
+		rig.round([]*interfaces.PollOutput{rig.obs(a, addr, rrMAC1), rig.obs(b)})
+		rig.register(addr)
+		rig.round([]*interfaces.PollOutput{rig.obs(a, addr, rrMAC1), rig.obs(b, addr, rrMAC2)})
+		rig.keepAdopted(addr)
+		rig.wantActiveConflict(addr, "in_progress", rrMAC1, rrMAC1, rrMAC2)
+
+		// B 改回報採信 MAC：其他 MAC 第 1 輪缺席，仍在寬限中
+		rig.round([]*interfaces.PollOutput{rig.obs(a, addr, rrMAC1), rig.obs(b, addr, rrMAC1)})
+		rig.wantActiveConflict(addr, "in_progress", rrMAC1, rrMAC1, rrMAC2)
+
+		// 其他 MAC 再次出現：缺席輪數歸零
+		rig.round([]*interfaces.PollOutput{rig.obs(a, addr, rrMAC1), rig.obs(b, addr, rrMAC2)})
+		rig.round([]*interfaces.PollOutput{rig.obs(a, addr, rrMAC1), rig.obs(b, addr, rrMAC1)})
+		rig.wantActiveConflict(addr, "in_progress", rrMAC1, rrMAC1, rrMAC2)
+
+		// 連續第 2 輪缺席：達寬限 -> keep_adopted
+		rig.round([]*interfaces.PollOutput{rig.obs(a, addr, rrMAC1), rig.obs(b, addr, rrMAC1)})
+		rig.wantNoActiveConflict(addr)
+		rig.wantResolvedLast(addr, "keep_adopted")
+	})
+
 	// 5. 讀取失敗的來源：觀測與未見輪數保留，不造成離線或衝突解消。
 	t.Run("FailedSource_PreservesSightings", func(t *testing.T) {
 		rig := rig.with(t)

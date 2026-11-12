@@ -92,6 +92,7 @@ type roundState struct {
 	observed map[int64]bool             // 本輪有被看到的 IP 紀錄
 	removed  map[int64]bool             // 本輪因超過寬限而被移除觀測的 IP 紀錄
 	extras   map[string]map[string]bool // ip -> 同 VRF 內重複出現的其他 MAC
+	reported map[string]map[string]bool // ip -> 本輪成功提交的 VRF 實際回報的 MAC
 }
 
 // vrfResult 是單一 VRF 交易提交後回報的受影響 IP 紀錄。
@@ -133,6 +134,7 @@ func (s *Service) ReconcileObservations(ctx context.Context, outputs []*interfac
 		observed: make(map[int64]bool),
 		removed:  make(map[int64]bool),
 		extras:   make(map[string]map[string]bool),
+		reported: make(map[string]map[string]bool),
 	}
 
 	// 階段一：逐 VRF 套用觀測與寬限。單一 VRF 失敗只回滾自己，不影響其他 VRF。
@@ -153,7 +155,13 @@ func (s *Service) ReconcileObservations(ctx context.Context, outputs []*interfac
 		for _, id := range res.removed {
 			state.removed[id] = true
 		}
+		for _, row := range w.rows {
+			addMAC(state.reported, row.ip, row.mac)
+		}
 		for ip, macs := range w.extras {
+			for _, m := range macs {
+				addMAC(state.reported, ip, m)
+			}
 			set := state.extras[ip]
 			if set == nil {
 				set = make(map[string]bool)
@@ -166,7 +174,7 @@ func (s *Service) ReconcileObservations(ctx context.Context, outputs []*interfac
 	}
 
 	// 階段二：所有 VRF 與寬限都處理完之後，才逐 IP 決策。
-	if err := s.decideIPs(ctx, state, now); err != nil {
+	if err := s.decideIPs(ctx, state, graceRounds, now); err != nil {
 		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
@@ -498,10 +506,11 @@ type ipRecordState struct {
 type activeConflict struct {
 	id     int64
 	status string
+	absent int // other_mac_absent_rounds：其他 MAC 連續未被回報的輪數（僅 in_progress 使用）
 }
 
 // decideIPs 對本輪受影響的 IP 紀錄逐筆決策。依 ID 遞增分批，每批一筆交易。
-func (s *Service) decideIPs(ctx context.Context, st *roundState, now time.Time) error {
+func (s *Service) decideIPs(ctx context.Context, st *roundState, graceRounds int, now time.Time) error {
 	idSet := make(map[int64]bool, len(st.observed)+len(st.removed))
 	for id := range st.observed {
 		idSet[id] = true
@@ -524,7 +533,7 @@ func (s *Service) decideIPs(ctx context.Context, st *roundState, now time.Time) 
 			errs = append(errs, err)
 			break
 		}
-		if err := s.decideChunk(ctx, chunk, st, now); err != nil {
+		if err := s.decideChunk(ctx, chunk, st, graceRounds, now); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -535,11 +544,12 @@ func (s *Service) decideIPs(ctx context.Context, st *roundState, now time.Time) 
 //
 // 規則（開發規格 3.4、3.6）：令 S 為該 IP 目前所有觀測（含寬限內者與本輪同 VRF 重複項）的不重複 MAC 集合。
 //   - |S| >= 2：開立或更新衝突，採信 MAC 不變。
-//   - |S| == 1 且等於採信 MAC：open 衝突自動已解消（auto_vanished），in_progress 衝突解消為 keep_adopted。
+//   - |S| == 1 且等於採信 MAC：open 衝突自動已解消（auto_vanished）；in_progress 衝突須其他 MAC
+//     連續未被回報達離線判定輪數，才解消為 keep_adopted。
 //   - |S| == 1 且不等於採信 MAC：有擁有者 -> 開立或更新衝突，登記與採信 MAC 不變；
 //     無擁有者 -> 更新採信 MAC 並記 mac_changed（若有 in_progress 衝突則維持管理者「維持原採信」的裁決，不更動）。
 //   - |S| == 0：open 衝突保持 open；in_progress 衝突解消為 keep_adopted。
-func (s *Service) decideChunk(ctx context.Context, ids []int64, st *roundState, now time.Time) error {
+func (s *Service) decideChunk(ctx context.Context, ids []int64, st *roundState, graceRounds int, now time.Time) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("啟動逐 IP 決策交易失敗: %w", err)
@@ -607,14 +617,14 @@ func (s *Service) decideChunk(ctx context.Context, ids []int64, st *roundState, 
 
 	// 讀取（並鎖定）未解消的衝突。同一 IP 同時只會有一筆 open／in_progress。
 	conflicts := make(map[int64]activeConflict)
-	cRows, err := tx.QueryContext(ctx, `SELECT id, ip_record_id, status FROM ip_conflicts WHERE ip_record_id IN (`+liveIn+`) AND status IN ('open', 'in_progress') ORDER BY id FOR UPDATE`, liveArgs...)
+	cRows, err := tx.QueryContext(ctx, `SELECT id, ip_record_id, status, other_mac_absent_rounds FROM ip_conflicts WHERE ip_record_id IN (`+liveIn+`) AND status IN ('open', 'in_progress') ORDER BY id FOR UPDATE`, liveArgs...)
 	if err != nil {
 		return fmt.Errorf("讀取衝突失敗: %w", err)
 	}
 	for cRows.Next() {
 		var c activeConflict
 		var ipID int64
-		if err := cRows.Scan(&c.id, &ipID, &c.status); err != nil {
+		if err := cRows.Scan(&c.id, &ipID, &c.status, &c.absent); err != nil {
 			_ = cRows.Close()
 			return fmt.Errorf("讀取衝突失敗: %w", err)
 		}
@@ -653,6 +663,11 @@ func (s *Service) decideChunk(ctx context.Context, ids []int64, st *roundState, 
 		return fmt.Errorf("準備衝突解消語句失敗: %w", err)
 	}
 	defer resolveStmt.Close()
+	absentStmt, err := tx.PrepareContext(ctx, `UPDATE ip_conflicts SET other_mac_absent_rounds = ?, updated_at = ? WHERE id = ? AND status = 'in_progress'`)
+	if err != nil {
+		return fmt.Errorf("準備衝突缺席輪數更新語句失敗: %w", err)
+	}
+	defer absentStmt.Close()
 
 	// 本輪有被看到的 IP：一次更新為在線並刷新最後看到時間。
 	var observedIDs []int64
@@ -686,8 +701,8 @@ func (s *Service) decideChunk(ctx context.Context, ids []int64, st *roundState, 
 		// 在線／離線轉換。離線不等於刪除，也不動登記與擁有者。
 		if observed {
 			if r.presence == "offline" {
-				if _, err := insEvtStmt.ExecContext(ctx, r.id, r.ip, "online", "位址重新上線", now); err != nil {
-					return fmt.Errorf("寫入上線事件 %s 失敗: %w", r.ip, err)
+				if _, err := insEvtStmt.ExecContext(ctx, r.id, r.ip, "online", "位址重新在線", now); err != nil {
+					return fmt.Errorf("寫入恢復在線事件 %s 失敗: %w", r.ip, err)
 				}
 			}
 		} else if len(sightMACs[r.id]) == 0 && r.presence == "online" {
@@ -709,11 +724,27 @@ func (s *Service) decideChunk(ctx context.Context, ids []int64, st *roundState, 
 		}
 
 		act, hasAct := conflicts[r.id]
+		inProgress := hasAct && act.status == "in_progress"
 
+		// 處理中衝突的「其他 MAC」連續缺席輪數：本輪成功回報的 MAC 中只要有非採信者就歸零，
+		// 否則加一（觀測被同一來源以採信 MAC 覆寫時，集合會立刻只剩採信 MAC，不能據此直接解消）。
+		absent := 0
+		if inProgress {
+			absent = act.absent + 1
+			for m := range st.reported[r.ip] {
+				if m != adopted {
+					absent = 0
+					break
+				}
+			}
+		}
+
+		resolved := false
 		resolve := func(resolution string) error {
 			if _, err := resolveStmt.ExecContext(ctx, resolution, now, now, act.id, act.status); err != nil {
 				return fmt.Errorf("解消衝突 %s 失敗: %w", r.ip, err)
 			}
+			resolved = true
 			return nil
 		}
 		upsertConflict := func() error {
@@ -735,13 +766,15 @@ func (s *Service) decideChunk(ctx context.Context, ids []int64, st *roundState, 
 			}
 
 		case len(macs) == 1 && macs[0] == adopted:
-			// 集合恰好只剩採信 MAC：另一個 MAC 已消失，衝突自動解消。
-			if hasAct {
-				resolution := "auto_vanished"
-				if act.status == "in_progress" {
-					resolution = "keep_adopted"
+			// 集合恰好只剩採信 MAC。未處理衝突：不一致已自行消失，自動解消（auto_vanished）。
+			// 處理中衝突：其他 MAC 須連續缺席達離線判定輪數才解消（keep_adopted）。
+			switch {
+			case inProgress && absent >= graceRounds:
+				if err := resolve("keep_adopted"); err != nil {
+					return err
 				}
-				if err := resolve(resolution); err != nil {
+			case hasAct && !inProgress:
+				if err := resolve("auto_vanished"); err != nil {
 					return err
 				}
 			}
@@ -781,6 +814,13 @@ func (s *Service) decideChunk(ctx context.Context, ids []int64, st *roundState, 
 				if err := resolve("keep_adopted"); err != nil {
 					return err
 				}
+			}
+		}
+
+		// 仍未解消的處理中衝突：保存本輪計算的缺席輪數。
+		if inProgress && !resolved && absent != act.absent {
+			if _, err := absentStmt.ExecContext(ctx, absent, now, act.id); err != nil {
+				return fmt.Errorf("更新衝突缺席輪數 %s 失敗: %w", r.ip, err)
 			}
 		}
 	}
@@ -876,4 +916,17 @@ func chunkInt64s(list []int64, size int) [][]int64 {
 		list = list[n:]
 	}
 	return out
+}
+
+// addMAC 將 MAC 加入 ip 對應的集合。
+func addMAC(sets map[string]map[string]bool, ip, mac string) {
+	if mac == "" {
+		return
+	}
+	set := sets[ip]
+	if set == nil {
+		set = make(map[string]bool)
+		sets[ip] = set
+	}
+	set[mac] = true
 }

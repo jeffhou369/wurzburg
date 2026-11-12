@@ -803,13 +803,19 @@ func (h *Handler) handleBatchConfirm(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		_, _ = h.db.ExecContext(ctx, `UPDATE ip_records SET registration = 'registered', confirmed_at = ?, expires_at = ?, updated_at = ? WHERE id = ?`, now, expiresAt, now, id)
-		// 清除舊到期日的催認狀態，使新週期重新從第一輪開始催認
-		_, _ = h.db.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE CONCAT('expiry|', ?, '|%')`, ipAddr)
-		if h.audit != nil {
-			h.audit.Log(ctx, u.Username, u.Role, r.RemoteAddr, "registration.confirm", "ip_record", ipAddr,
-				fmt.Sprintf("重新確認位址 %s，到期日延長至 %s", ipAddr, expiresAt.Format("2006-01-02")),
-				map[string]any{"batch": isBatch})
+		err = h.changeRegistrationTx(ctx, id, u, r.RemoteAddr, "registration.confirm", func(tx *sql.Tx, ip string) (string, map[string]any, error) {
+			if _, err := tx.ExecContext(ctx, `UPDATE ip_records SET registration = 'registered', confirmed_at = ?, expires_at = ?, updated_at = ? WHERE id = ?`, now, expiresAt, now, id); err != nil {
+				return "", nil, err
+			}
+			// 清除舊到期日的催認狀態，使新週期重新從第一輪開始催認
+			if _, err := tx.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE CONCAT('expiry|', ?, '|%')`, ip); err != nil {
+				return "", nil, err
+			}
+			return fmt.Sprintf("重新確認位址 %s，到期日延長至 %s", ip, expiresAt.Format("2006-01-02")), map[string]any{"batch": isBatch}, nil
+		})
+		if err != nil {
+			results = append(results, batchItemResult{IPRecordID: id, IPAddress: ipAddr, Success: false, Reason: "重新確認未完成，資料已保留，請稍後重試"})
+			continue
 		}
 		results = append(results, batchItemResult{IPRecordID: id, IPAddress: ipAddr, Success: true})
 	}
@@ -854,16 +860,21 @@ func (h *Handler) handleBatchRelease(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		_, _ = h.db.ExecContext(
-			ctx,
-			`UPDATE ip_records SET owner_user_id = NULL, owner_mail = '', registration = 'unregistered', expires_at = NULL, updated_at = ? WHERE id = ?`,
-			now, id,
-		)
-		// 清除到期催認狀態
-		_, _ = h.db.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE CONCAT('expiry|', ?, '|%')`, ipAddr)
-		if h.audit != nil {
-			h.audit.Log(ctx, u.Username, u.Role, r.RemoteAddr, "registration.release", "ip_record", ipAddr,
-				fmt.Sprintf("釋放位址 %s 登記", ipAddr), map[string]any{"batch": isBatch})
+		err = h.changeRegistrationTx(ctx, id, u, r.RemoteAddr, "registration.release", func(tx *sql.Tx, ip string) (string, map[string]any, error) {
+			if _, err := tx.ExecContext(ctx,
+				`UPDATE ip_records SET owner_user_id = NULL, owner_mail = '', registration = 'unregistered', expires_at = NULL, updated_at = ? WHERE id = ?`,
+				now, id); err != nil {
+				return "", nil, err
+			}
+			// 清除到期催認狀態
+			if _, err := tx.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE CONCAT('expiry|', ?, '|%')`, ip); err != nil {
+				return "", nil, err
+			}
+			return fmt.Sprintf("釋放位址 %s 登記", ip), map[string]any{"batch": isBatch}, nil
+		})
+		if err != nil {
+			results = append(results, batchItemResult{IPRecordID: id, IPAddress: ipAddr, Success: false, Reason: "釋放未完成，資料已保留，請稍後重試"})
+			continue
 		}
 		results = append(results, batchItemResult{IPRecordID: id, IPAddress: ipAddr, Success: true})
 	}

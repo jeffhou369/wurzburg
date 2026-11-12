@@ -42,7 +42,7 @@ import { SHELL_TEXT } from '../../core/i18n/shell.i18n';
       .sheet-backdrop {
         position: fixed;
         inset: 0;
-        background-color: var(--color-overlay-backdrop);
+        background-color: var(--scrim);
         z-index: 900;
         display: flex;
         justify-content: flex-end;

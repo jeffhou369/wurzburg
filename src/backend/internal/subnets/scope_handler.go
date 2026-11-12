@@ -126,7 +126,8 @@ func (s *ScopeService) ApplyInterfaceAddresses(ctx context.Context, outputs []*i
 			// 尋找或建立網段（新發現者預設為 pending 待檢視）
 			var subnetID int64
 			err = s.db.QueryRowContext(ctx, `SELECT id FROM subnets WHERE cidr = ?`, cidr).Scan(&subnetID)
-			if errors.Is(err, sql.ErrNoRows) {
+			switch {
+			case errors.Is(err, sql.ErrNoRows):
 				res, insErr := s.db.ExecContext(
 					ctx,
 					`INSERT INTO subnets (cidr, state, is_discovered, source_missing, created_at, updated_at)
@@ -134,21 +135,29 @@ func (s *ScopeService) ApplyInterfaceAddresses(ctx context.Context, outputs []*i
 					cidr, now, now,
 				)
 				if insErr != nil {
-					continue
+					return fmt.Errorf("新增發現網段 %s 失敗: %w", cidr, insErr)
 				}
-				subnetID, _ = res.LastInsertId()
-			} else if err == nil {
-				_, _ = s.db.ExecContext(ctx, `UPDATE subnets SET source_missing = FALSE, updated_at = ? WHERE id = ?`, now, subnetID)
+				if subnetID, err = res.LastInsertId(); err != nil {
+					return fmt.Errorf("取得發現網段 %s 編號失敗: %w", cidr, err)
+				}
+			case err != nil:
+				return fmt.Errorf("查詢網段 %s 失敗: %w", cidr, err)
+			default:
+				if _, err := s.db.ExecContext(ctx, `UPDATE subnets SET source_missing = FALSE, updated_at = ? WHERE id = ?`, now, subnetID); err != nil {
+					return fmt.Errorf("更新網段 %s 來源狀態失敗: %w", cidr, err)
+				}
 			}
 
 			if subnetID > 0 {
-				_, _ = s.db.ExecContext(
+				if _, err := s.db.ExecContext(
 					ctx,
 					`INSERT INTO subnet_gateways (subnet_id, ip_address, if_index, if_name, switch_id, vrf_name, created_at)
 					 VALUES (?, ?, ?, ?, ?, ?, ?)
 					 ON DUPLICATE KEY UPDATE if_index = VALUES(if_index), if_name = VALUES(if_name)`,
 					subnetID, addr.IPAddress, addr.IfIndex, addr.IfName, out.SwitchID, out.VRFName, now,
-				)
+				); err != nil {
+					return fmt.Errorf("寫入閘道位址 %s 失敗: %w", addr.IPAddress, err)
+				}
 			}
 		}
 	}
@@ -156,18 +165,29 @@ func (s *ScopeService) ApplyInterfaceAddresses(ctx context.Context, outputs []*i
 	// 標記來源已消失的發現網段（僅在本次確實有成功的讀取輸出時比對）
 	if len(seenCIDRs) > 0 {
 		rows, err := s.db.QueryContext(ctx, `SELECT id, cidr FROM subnets WHERE is_discovered = TRUE AND source_missing = FALSE`)
-		if err == nil {
-			var missingIDs []int64
-			for rows.Next() {
-				var id int64
-				var cidr string
-				if rows.Scan(&id, &cidr) == nil && !seenCIDRs[cidr] {
-					missingIDs = append(missingIDs, id)
-				}
+		if err != nil {
+			return fmt.Errorf("查詢發現網段失敗: %w", err)
+		}
+		var missingIDs []int64
+		for rows.Next() {
+			var id int64
+			var cidr string
+			if err := rows.Scan(&id, &cidr); err != nil {
+				_ = rows.Close()
+				return fmt.Errorf("讀取發現網段失敗: %w", err)
 			}
+			if !seenCIDRs[cidr] {
+				missingIDs = append(missingIDs, id)
+			}
+		}
+		if err := rows.Err(); err != nil {
 			_ = rows.Close()
-			for _, id := range missingIDs {
-				_, _ = s.db.ExecContext(ctx, `UPDATE subnets SET source_missing = TRUE, updated_at = ? WHERE id = ?`, now, id)
+			return fmt.Errorf("讀取發現網段失敗: %w", err)
+		}
+		_ = rows.Close()
+		for _, id := range missingIDs {
+			if _, err := s.db.ExecContext(ctx, `UPDATE subnets SET source_missing = TRUE, updated_at = ? WHERE id = ?`, now, id); err != nil {
+				return fmt.Errorf("標記網段來源消失失敗: %w", err)
 			}
 		}
 	}
@@ -931,6 +951,46 @@ func outsideCIDR(newNet *net.IPNet) func(net.IP) bool {
 	return func(ip4 net.IP) bool { return !newNet.Contains(ip4) }
 }
 
+// recordMove 是修正 CIDR 後改歸屬其他納管網段、因此保留不刪的 IP 紀錄。
+type recordMove struct {
+	recordID int64
+	subnetID int64
+}
+
+// splitCIDROrphans 把「修正 CIDR 後不在新範圍內」的紀錄分成兩類（開發規格 3.3）：
+// 仍落在其他納管網段、且不在排除範圍、不是閘道位址者改歸屬該網段；其餘才刪除。
+// 判定使用「套用新 CIDR 後」的範圍快照；shareLock 為 true 時以共享鎖讀取閘道與排除範圍。
+func splitCIDROrphans(ctx context.Context, q scopeQuerier, scope []scopeRow, subnetID int64, canonical string, shareLock bool, orphans []affectedRecord) ([]affectedRecord, []recordMove, error) {
+	if len(orphans) == 0 {
+		return nil, nil, nil
+	}
+	rows := make([]scopeRow, len(scope))
+	copy(rows, scope)
+	for i := range rows {
+		if rows[i].id == subnetID {
+			rows[i].cidr = canonical
+		}
+	}
+	snap, err := loadSnapshot(ctx, q, rows, shareLock)
+	if err != nil {
+		return nil, nil, err
+	}
+	var deletes []affectedRecord
+	var moves []recordMove
+	for _, rec := range orphans {
+		res, err := snap.ResolveIP(rec.ip)
+		if err != nil {
+			return nil, nil, err
+		}
+		if res.ShouldHaveRecord && res.SubnetID != subnetID {
+			moves = append(moves, recordMove{recordID: rec.id, subnetID: res.SubnetID})
+			continue
+		}
+		deletes = append(deletes, rec)
+	}
+	return deletes, moves, nil
+}
+
 // HandlePreviewCIDRChange 預覽「把網段 CIDR 修正為 X」會刪除哪些 IP 紀錄，回傳與其他預覽相同形狀的結果。
 // 路徑：POST /subnets/{id}/cidr/preview，與確認用 PUT /subnets/{id} 共用相同刪除指紋。
 func (s *ScopeService) HandlePreviewCIDRChange(w http.ResponseWriter, r *http.Request) {
@@ -954,8 +1014,15 @@ func (s *ScopeService) HandlePreviewCIDRChange(w http.ResponseWriter, r *http.Re
 	var recs []affectedRecord
 	var token string
 	err = s.runPreviewTx(r.Context(), id, func(tx *sql.Tx, row scopeRow) error {
-		var err error
-		recs, err = loadAffectedRecords(r.Context(), tx, id, false, outsideCIDR(newNet))
+		orphans, err := loadAffectedRecords(r.Context(), tx, id, false, outsideCIDR(newNet))
+		if err != nil {
+			return err
+		}
+		scope, err := queryScopeRows(r.Context(), tx, plainScopeRowsSQL)
+		if err != nil {
+			return fmt.Errorf("查詢網段範圍失敗: %w", err)
+		}
+		recs, _, err = splitCIDROrphans(r.Context(), tx, scope, id, canonical, false, orphans)
 		if err != nil {
 			return err
 		}
@@ -1007,8 +1074,12 @@ func (s *ScopeService) handleUpdateSubnet(w http.ResponseWriter, r *http.Request
 			return errSubnetNotFound()
 		}
 
-		// 在鎖內重新計算：修正後不再屬於此網段的既有 IP 紀錄
-		recs, err := loadAffectedRecords(r.Context(), tx, id, true, outsideCIDR(newNet))
+		// 在鎖內重新計算：修正後不再屬於此網段的既有 IP 紀錄；仍屬其他納管網段者改歸屬，其餘才刪除。
+		orphans, err := loadAffectedRecords(r.Context(), tx, id, true, outsideCIDR(newNet))
+		if err != nil {
+			return err
+		}
+		recs, moves, err := splitCIDROrphans(r.Context(), tx, scope, id, canonical, true, orphans)
 		if err != nil {
 			return err
 		}
@@ -1023,6 +1094,13 @@ func (s *ScopeService) handleUpdateSubnet(w http.ResponseWriter, r *http.Request
 			}
 		}
 
+		for _, mv := range moves {
+			if _, err := tx.ExecContext(r.Context(), `UPDATE ip_records SET subnet_id = ?, updated_at = ? WHERE id = ?`,
+				mv.subnetID, s.clock.Now(), mv.recordID); err != nil {
+				return fmt.Errorf("調整 IP 紀錄歸屬失敗: %w", err)
+			}
+		}
+
 		if _, err := tx.ExecContext(r.Context(), `UPDATE subnets SET cidr = ?, description = ?, updated_at = ? WHERE id = ?`,
 			canonical, req.Description, s.clock.Now(), id); err != nil {
 			if isDuplicateEntry(err) {
@@ -1033,7 +1111,7 @@ func (s *ScopeService) handleUpdateSubnet(w http.ResponseWriter, r *http.Request
 
 		return s.auditTx(r.Context(), tx, r, "subnet.update", "subnet", strconv.FormatInt(id, 10),
 			fmt.Sprintf("更新網段 %d：CIDR %s → %s", id, row.cidr, canonical),
-			map[string]any{"subnet_id": id, "old_cidr": row.cidr, "cidr": canonical, "deleted_count": len(recs)})
+			map[string]any{"subnet_id": id, "old_cidr": row.cidr, "cidr": canonical, "deleted_count": len(recs), "moved_count": len(moves)})
 	})
 	if err != nil {
 		writeScopeError(w, r, err, "更新網段失敗")

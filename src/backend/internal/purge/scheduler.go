@@ -54,7 +54,7 @@ func (s *MaintenanceScheduler) StartBackgroundLoop(ctx context.Context) {
 	// 啟動時即補做今日維護；失敗時由下一次 tick 重試。
 	run := func() {
 		if err := s.Tick(ctx); err != nil && ctx.Err() == nil {
-			slog.WarnContext(ctx, "自動清除失敗，將於下次維護檢查重試")
+			slog.WarnContext(ctx, "自動清除失敗，將於下次維護檢查重試", "error", err)
 		}
 	}
 	run()
