@@ -13,12 +13,14 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/xuri/excelize/v2"
+
 	"github.com/jeffhou369/wurzburg/backend/internal/audit"
 	"github.com/jeffhou369/wurzburg/backend/internal/auth"
 	"github.com/jeffhou369/wurzburg/backend/internal/clock"
+	"github.com/jeffhou369/wurzburg/backend/internal/dedupkey"
 	"github.com/jeffhou369/wurzburg/backend/internal/settings"
 	"github.com/jeffhou369/wurzburg/backend/internal/state"
-	"github.com/xuri/excelize/v2"
 )
 
 type Handler struct {
@@ -748,7 +750,7 @@ func (h *Handler) handleBatchRegister(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 解除此位址未登記去重狀態
-		_, _ = h.db.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE CONCAT('unreg|', ?, '|%')`, ipAddr)
+		_, _ = h.db.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE ?`, dedupkey.UnregisteredPattern(ipAddr))
 
 		if h.audit != nil {
 			h.audit.Log(ctx, u.Username, u.Role, r.RemoteAddr, "registration.create", "ip_record", ipAddr,
@@ -808,7 +810,7 @@ func (h *Handler) handleBatchConfirm(w http.ResponseWriter, r *http.Request) {
 				return "", nil, err
 			}
 			// 清除舊到期日的催認狀態，使新週期重新從第一輪開始催認
-			if _, err := tx.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE CONCAT('expiry|', ?, '|%')`, ip); err != nil {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE ?`, dedupkey.ExpiryPattern(ip)); err != nil {
 				return "", nil, err
 			}
 			return fmt.Sprintf("重新確認位址 %s，到期日延長至 %s", ip, expiresAt.Format("2006-01-02")), map[string]any{"batch": isBatch}, nil
@@ -867,7 +869,7 @@ func (h *Handler) handleBatchRelease(w http.ResponseWriter, r *http.Request) {
 				return "", nil, err
 			}
 			// 清除到期催認狀態
-			if _, err := tx.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE CONCAT('expiry|', ?, '|%')`, ip); err != nil {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE ?`, dedupkey.ExpiryPattern(ip)); err != nil {
 				return "", nil, err
 			}
 			return fmt.Sprintf("釋放位址 %s 登記", ip), map[string]any{"batch": isBatch}, nil

@@ -8,9 +8,11 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+
 	"github.com/jeffhou369/wurzburg/backend/internal/audit"
 	"github.com/jeffhou369/wurzburg/backend/internal/auth"
 	"github.com/jeffhou369/wurzburg/backend/internal/clock"
+	"github.com/jeffhou369/wurzburg/backend/internal/dedupkey"
 	"github.com/jeffhou369/wurzburg/backend/internal/settings"
 	"github.com/jeffhou369/wurzburg/backend/internal/subnets"
 )
@@ -89,7 +91,7 @@ func (s *Service) RunAutoPurge(ctx context.Context) (int, error) {
 	}
 
 	for _, t := range targets {
-		if _, err := tx.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE CONCAT('unreg|', ?, '|%') OR dedup_key LIKE CONCAT('expiry|', ?, '|%')`, t.ip, t.ip); err != nil {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE ? OR dedup_key LIKE ?`, dedupkey.UnregisteredPattern(t.ip), dedupkey.ExpiryPattern(t.ip)); err != nil {
 			return 0, err
 		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM ip_records WHERE id = ?`, t.id); err != nil {

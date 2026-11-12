@@ -2,7 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { map } from 'rxjs';
 import { AuthService } from './auth.service';
-import { buildLoginReturnQuery } from './safe-return-url';
+import { returnUrlTree } from './safe-return-url';
 
 /**
  * Shell 路由守衛：確認有有效工作階段才放行。
@@ -18,14 +18,10 @@ export const authGuard: CanActivateFn = (_route, state) => {
   return auth.ensureSession().pipe(
     map((user): boolean | UrlTree => {
       if (!user) {
-        return router.createUrlTree(['/login'], {
-          queryParams: buildLoginReturnQuery(state.url),
-        });
+        return returnUrlTree(router, '/login', state.url);
       }
       if (user.requiresPasswordChange) {
-        return router.createUrlTree(['/change-password'], {
-          queryParams: buildLoginReturnQuery(state.url),
-        });
+        return returnUrlTree(router, '/change-password', state.url);
       }
       return true;
     }),

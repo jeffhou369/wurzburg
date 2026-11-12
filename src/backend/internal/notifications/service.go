@@ -12,6 +12,7 @@ import (
 
 	"github.com/jeffhou369/wurzburg/backend/internal/audit"
 	"github.com/jeffhou369/wurzburg/backend/internal/clock"
+	"github.com/jeffhou369/wurzburg/backend/internal/dedupkey"
 	"github.com/jeffhou369/wurzburg/backend/internal/interfaces"
 	"github.com/jeffhou369/wurzburg/backend/internal/mailer"
 	"github.com/jeffhou369/wurzburg/backend/internal/settings"
@@ -170,7 +171,7 @@ func (s *Service) RunUnregisteredDigest(ctx context.Context) (int, error) {
 	var newItems []unregRecordItem
 	cumulativeCount := 0
 	for _, it := range allOnlineUnreg {
-		dKey := fmt.Sprintf("unreg|%s|%s", it.IPAddress, it.MACAddress)
+		dKey := dedupkey.Unregistered(it.IPAddress, it.MACAddress)
 		if notifiedKeys[dKey] {
 			cumulativeCount++
 		} else {
@@ -297,7 +298,7 @@ func (s *Service) RunUnregisteredDigest(ctx context.Context) (int, error) {
 	defer func() { _ = stmt.Close() }()
 
 	for _, it := range newItems {
-		dKey := fmt.Sprintf("unreg|%s|%s", it.IPAddress, it.MACAddress)
+		dKey := dedupkey.Unregistered(it.IPAddress, it.MACAddress)
 		if _, err := stmt.ExecContext(ctx, dKey, now, now); err != nil {
 			return len(newItems), err
 		}
@@ -345,7 +346,7 @@ func (s *Service) RunWeeklySummary(ctx context.Context) (int, error) {
 
 	now := s.clock.Now()
 	year, week := now.In(loc).ISOWeek()
-	weekDedupKey := fmt.Sprintf("weekly|%d-W%02d", year, week)
+	weekDedupKey := dedupkey.Weekly(year, week)
 
 	// 檢查同一週是否已成功寄出
 	var sentCnt int
@@ -367,7 +368,7 @@ func (s *Service) RunWeeklySummary(ctx context.Context) (int, error) {
 		        r.first_seen_at, ns.notified_at
 		 FROM ip_records r
 		 JOIN subnets sub ON r.subnet_id = sub.id
-		 JOIN notification_states ns ON ns.dedup_key = CONCAT('unreg|', r.ip_address, '|', r.mac_address)
+		 JOIN notification_states ns ON ns.dedup_key = `+dedupkey.UnregisteredSQL("r.ip_address", "r.mac_address")+`
 		 WHERE r.presence = 'online' AND r.registration = 'unregistered' AND ns.notif_type = 'unregistered_digest' AND ns.is_notified = TRUE
 		 ORDER BY INET_ATON(r.ip_address) ASC`,
 	)
@@ -604,7 +605,7 @@ func (s *Service) RunExpiryReminders(ctx context.Context) (int, error) {
 			continue // 尚未進入任何催認時段
 		}
 
-		dKey := fmt.Sprintf("expiry|%s|%s|%d", it.IPAddress, expDateStr, curRound)
+		dKey := dedupkey.Expiry(it.IPAddress, expDateStr, curRound)
 		if notifiedKeys[dKey] {
 			continue // 該輪次已寄送過
 		}
