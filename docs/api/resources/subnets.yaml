@@ -1,0 +1,347 @@
+paths:
+  subnets_collection:
+    get:
+      tags: [Subnets]
+      summary: 列出發現與手動新增之網段（含待檢視計數）
+      parameters:
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [pending, managed, unmanaged]
+      responses:
+        '200':
+          description: 網段列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, pending_count]
+                properties:
+                  pending_count:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Subnet'
+    post:
+      tags: [Subnets]
+      summary: 手動新增網段
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cidr]
+              properties:
+                cidr:
+                  type: string
+                  example: 10.10.50.0/24
+                description:
+                  type: string
+      responses:
+        '201':
+          description: 已建立
+
+  subnets_item:
+    get:
+      tags: [Subnets]
+      summary: 取得單一網段詳情（含閘道位址與排除範圍）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 網段詳情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubnetDetail'
+    put:
+      tags: [Subnets]
+      summary: 修正網段 CIDR 或說明（若有影響刪除紀錄需帶 preview_token）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cidr]
+              properties:
+                cidr:
+                  type: string
+                description:
+                  type: string
+                preview_token:
+                  type: string
+      responses:
+        '200':
+          description: 已更新
+
+  subnet_state_preview:
+    post:
+      tags: [Subnets]
+      summary: 預覽變更網段狀態將刪除之 IP 紀錄筆數
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubnetStateChangeRequest'
+      responses:
+        '200':
+          description: 預覽結果
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/DeletePreviewResponse'
+
+  subnet_state:
+    put:
+      tags: [Subnets]
+      summary: 變更網段狀態（納管／不納管）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubnetStateChangeRequest'
+      responses:
+        '200':
+          description: 已變更狀態
+
+  exclusions_preview:
+    post:
+      tags: [Subnets]
+      summary: 預覽新增或調整排除範圍將刪除之 IP 紀錄筆數
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExclusionRangeCreateRequest'
+      responses:
+        '200':
+          description: 預覽結果
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/DeletePreviewResponse'
+
+  exclusions_collection:
+    post:
+      tags: [Subnets]
+      summary: 在納管網段內新增排除範圍
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExclusionRangeCreateRequest'
+      responses:
+        '201':
+          description: 已建立排除範圍
+
+  exclusions_item:
+    delete:
+      tags: [Subnets]
+      summary: 移除排除範圍
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: exclusionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: 已移除
+
+  undetermined_prefixes:
+    get:
+      tags: [Subnets]
+      summary: 列出未定前綴清單
+      responses:
+        '200':
+          description: 清單
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UndeterminedPrefix'
+
+components:
+  schemas:
+    Subnet:
+      type: object
+      required: [id, cidr, state, is_discovered, source_missing, ip_count, online_count]
+      properties:
+        id:
+          type: integer
+          format: int64
+        cidr:
+          type: string
+        state:
+          type: string
+          enum: [pending, managed, unmanaged]
+        exclude_reason:
+          type: string
+          enum: [dhcp, wireless, other]
+          nullable: true
+        exclude_comment:
+          type: string
+        is_discovered:
+          type: boolean
+        source_missing:
+          type: boolean
+        description:
+          type: string
+        ip_count:
+          type: integer
+        online_count:
+          type: integer
+
+    SubnetGateway:
+      type: object
+      required: [ip_address, if_name, switch_name, vrf_name]
+      properties:
+        ip_address:
+          type: string
+        if_name:
+          type: string
+        switch_name:
+          type: string
+        vrf_name:
+          type: string
+
+    ExclusionRange:
+      type: object
+      required: [id, start_ip, end_ip, reason]
+      properties:
+        id:
+          type: integer
+          format: int64
+        start_ip:
+          type: string
+        end_ip:
+          type: string
+        reason:
+          type: string
+          enum: [dhcp, wireless, other]
+        comment:
+          type: string
+
+    SubnetDetail:
+      allOf:
+        - $ref: '#/components/schemas/Subnet'
+        - type: object
+          required: [gateways, exclusions]
+          properties:
+            gateways:
+              type: array
+              items:
+                $ref: '#/components/schemas/SubnetGateway'
+            exclusions:
+              type: array
+              items:
+                $ref: '#/components/schemas/ExclusionRange'
+
+    SubnetStateChangeRequest:
+      type: object
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum: [managed, unmanaged]
+        exclude_reason:
+          type: string
+          enum: [dhcp, wireless, other]
+        exclude_comment:
+          type: string
+        preview_token:
+          type: string
+
+    ExclusionRangeCreateRequest:
+      type: object
+      required: [start_ip, end_ip, reason]
+      properties:
+        start_ip:
+          type: string
+        end_ip:
+          type: string
+        reason:
+          type: string
+          enum: [dhcp, wireless, other]
+        comment:
+          type: string
+        preview_token:
+          type: string
+
+    UndeterminedPrefix:
+      type: object
+      required: [ip_address, mac_address, switch_name, vrf_name, if_name, last_seen_at]
+      properties:
+        ip_address:
+          type: string
+        mac_address:
+          type: string
+        switch_name:
+          type: string
+        vrf_name:
+          type: string
+        if_name:
+          type: string
+        last_seen_at:
+          type: string
+          format: date-time

@@ -1,6 +1,6 @@
 # 20 — HTTPS 範例
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01
 
 ## 要做什麼
@@ -16,13 +16,22 @@ Blocked by: 01
 
 ## 驗收條件
 
-- [ ] 加上這份選用的設定啟動後，以 HTTPS 可以開啟應用程式
-- [ ] 以 HTTP 連線會被轉到 HTTPS
-- [ ] 啟用後 `app` 的埠不對外開放，只能經由反向代理存取
-- [ ] 應用程式收到的請求帶有原始連線為 HTTPS 的資訊
-- [ ] 不加這份設定時，預設的 HTTP 安裝不受任何影響
-- [ ] 有一份簡短的說明：如何放入憑證、如何產生測試用的自簽憑證、如何啟用與停用
-- [ ] 倉庫裡沒有任何憑證或私鑰檔案
+- [x] 加上這份選用的設定啟動後，以 HTTPS 可以開啟應用程式
+- [x] 以 HTTP 連線會被轉到 HTTPS
+- [x] 啟用後 `app` 的埠不對外開放，只能經由反向代理存取
+- [x] 應用程式收到的請求帶有原始連線為 HTTPS 的資訊
+- [x] 不加這份設定時，預設的 HTTP 安裝不受任何影響
+- [x] 有一份簡短的說明：如何放入憑證、如何產生測試用的自簽憑證、如何啟用與停用
+- [x] 倉庫裡沒有任何憑證或私鑰檔案
+
+## Comments
+
+已完成 20 — HTTPS 範例：
+- `infra/docker-compose.https.yml`：透過 `!reset []` 移除 `app` 主機端對外埠，加入 `nginx:1.27-alpine` 負責 TLS 終止。
+- `infra/nginx/wurzburg.conf`：配置 80 轉 443（301 永久轉址）、TLSv1.2/1.3、HSTS 與 `X-Forwarded-Proto: https`。
+- `infra/HTTPS-README.md`：提供繁體中文操作文件與測試用自簽憑證指令。
+- `.gitignore`：加入 `infra/certs/`、`*.crt`、`*.key`、`*.pem` 防止誤提交機敏憑證。
+- 已於本地以測試自簽憑證啟動完整 Compose 疊加設定，驗證 HTTP 301 轉址與 HTTPS `/api/v1/health` 回應皆正常。
 
 ## 邊界
 

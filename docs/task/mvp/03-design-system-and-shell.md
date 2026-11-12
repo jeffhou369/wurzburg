@@ -1,6 +1,6 @@
 # 03 — 設計系統、外殼與基礎元件
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01
 
 ## 要做什麼
@@ -20,18 +20,27 @@ Blocked by: 01
 
 ## 驗收條件
 
-- [ ] `design-system/ip-mgmt/MASTER.md` 存在，並記錄交付前檢查清單
-- [ ] 沒有散落在元件裡的色碼；所有顏色、圓角、陰影、字級來自 token
-- [ ] 主題可以切換（MVP 只有淺色一套，但機制可用）
-- [ ] 側欄 264px，選中項是白底圓角膠囊；窄螢幕可收合
-- [ ] 全部頁面的入口都在，點進去是空頁；系統管理員專用的入口對一般使用者隱藏
-- [ ] 四組插槽都可用，並有說明文件告訴其他工作項目如何填入
-- [ ] 有一個元件展示頁，列出所有基礎元件與各種狀態
-- [ ] 圖示使用 Lucide，沒有用 Emoji 當圖示
-- [ ] IP、MAC、CIDR 與時間使用等寬字族並啟用 `tabular-nums`
-- [ ] 鍵盤焦點可見；文字對比至少 4.5:1；尊重 `prefers-reduced-motion`
-- [ ] 在 375、768、1024、1440px 寬度下可讀且不裁切
-- [ ] 沿用上游樣式檔的地方保留了對應的 `LICENSE`
+- [x] `design-system/ip-mgmt/MASTER.md` 存在，並記錄交付前檢查清單
+- [x] 沒有散落在元件裡的色碼；所有顏色、圓角、陰影、字級來自 token
+- [x] 主題可以切換（MVP 只有淺色一套，但機制可用）
+- [x] 側欄 264px，選中項是白底圓角膠囊；窄螢幕可收合
+- [x] 全部頁面的入口都在，點進去是空頁；系統管理員專用的入口對一般使用者隱藏
+- [x] 四組插槽都可用，並有說明文件告訴其他工作項目如何填入
+- [x] 有一個元件展示頁，列出所有基礎元件與各種狀態
+- [x] 圖示使用 Lucide，沒有用 Emoji 當圖示
+- [x] IP、MAC、CIDR 與時間使用等寬字族並啟用 `tabular-nums`
+- [x] 鍵盤焦點可見；文字對比至少 4.5:1；尊重 `prefers-reduced-motion`
+- [x] 在 375、768、1024、1440px 寬度下可讀且不裁切
+- [x] 沿用上游樣式檔的地方保留了對應的 `LICENSE`
+
+## Comments
+
+已完成 03 — 設計系統、外殼與基礎元件：
+- `design-system/ip-mgmt/MASTER.md`：依據 EasyCLIProxyAPI 基準 token 與 UI UX Pro Max 檢核清單產出。
+- `src/frontend/src/styles/tokens.scss`、`components.scss`、`LICENSE-EasyCLIProxyAPI`：集中定義設計 token（淺色預設與深色切換機制）及保留 MIT 授權檔。
+- `src/frontend/src/app/shared/components/`：實作左側 264px 固定側欄外殼（響應式收合、角色過濾、徽章服務）、StatusPill、EmptyState、ToastContainer、SheetContainer（CDK A11y FocusTrap）、ConfirmDialog（CDK Dialog）、IpRecordSheet（預留分頁插槽）。
+- `src/frontend/src/app/features/`：建立 7 個主頁面入口插槽及 `/showcase` 元件展示頁，並附 `src/frontend/SLOTS.md` 說明插槽使用方法。
+- 安裝並改採官方套件 `@lucide/angular`（1.72.0）。所有單元測試（4/4）、tsc 型別檢查、Prettier 格式與 ng build 均已通過。
 
 ## 參考
 

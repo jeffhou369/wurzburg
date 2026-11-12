@@ -1,6 +1,6 @@
 # 04 — 完整的資料庫結構與資料擺設工具
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01
 
 ## 要做什麼
@@ -29,11 +29,19 @@ Blocked by: 01
 
 ## 驗收條件
 
-- [ ] 上列資料表全部存在，應用程式啟動時自動建立
-- [ ] 上列規則以資料庫的限制條件表達，能表達的都表達
-- [ ] 資料擺設工具可在主要接縫的測試環境中使用，上列每一種情境都有範例測試
-- [ ] 資料擺設工具有說明，告訴其他工作項目如何在自己的檔案裡擴充
-- [ ] 有一份資料模型的說明文件，使用 `CONTEXT.md` 的名詞
+- [x] 上列資料表全部存在，應用程式啟動時自動建立
+- [x] 上列規則以資料庫的限制條件表達，能表達的都表達
+- [x] 資料擺設工具可在主要接縫的測試環境中使用，上列每一種情境都有範例測試
+- [x] 資料擺設工具有說明，告訴其他工作項目如何在自己的檔案裡擴充
+- [x] 有一份資料模型的說明文件，使用 `CONTEXT.md` 的名詞
+
+## Comments
+
+已完成 04 — 完整的資料庫結構與資料擺設工具：
+- `src/backend/migrations/20261112000002_full_mvp_schema.sql`：建置全數 19 張資料表（含 `undetermined_prefixes` 未定前綴清單），強制執行資料庫層級約束（含 `CHECK` 約束不納管必備原因、透過持久化生成欄位 `active_ip_record_id` 與 `UNIQUE` 鍵確保每 IP 紀錄最多一筆未解消衝突）。
+- `src/backend/internal/testutil/seed.go` 與 `README.md`：實作 `Seeder` 供各功能測試快速布置資料而不衝突。
+- `docs/plan/data-model.md`：使用 `CONTEXT.md` 詞彙撰寫完整模型說明。
+- `src/backend/test/schema_seed_test.go`：已透過 MariaDB 11.4 真實容器驗證所有遷移、限制條件與情境建立。
 
 ## 參考
 

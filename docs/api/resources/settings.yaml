@@ -1,0 +1,418 @@
+paths:
+  settings_campus:
+    get:
+      tags: [Settings]
+      summary: 取得園區基本設定
+      responses:
+        '200':
+          description: 園區設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampusSettings'
+    put:
+      tags: [Settings]
+      summary: 更新園區顯示名稱與時區
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampusSettings'
+      responses:
+        '200':
+          description: 已更新
+
+  settings_auth_source:
+    get:
+      tags: [Settings]
+      summary: 取得驗證來源設定（Secret 不回顯明文）
+      responses:
+        '200':
+          description: 設定內容
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSourceSettings'
+    put:
+      tags: [Settings]
+      summary: 更新驗證來源設定
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthSourceUpdateRequest'
+      responses:
+        '200':
+          description: 已更新
+
+  settings_auth_source_test:
+    post:
+      tags: [Settings]
+      summary: 使用測試帳密驗證外部 AD 或 RADIUS 連線
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: 測試結果
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  mail:
+                    type: string
+                  display_name:
+                    type: string
+
+  settings_mail:
+    get:
+      tags: [Settings]
+      summary: 取得 SMTP 郵件與通知收件清單設定
+      responses:
+        '200':
+          description: 郵件設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MailSettings'
+    put:
+      tags: [Settings]
+      summary: 更新 SMTP 郵件設定
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MailSettingsUpdateRequest'
+      responses:
+        '200':
+          description: 已更新
+
+  settings_mail_test:
+    post:
+      tags: [Settings]
+      summary: 寄送測試信件
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recipient]
+              properties:
+                recipient:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: 寄送測試結果
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+
+  settings_oui:
+    get:
+      tags: [Settings]
+      summary: 取得目前本地 OUI 資料庫快照版本與匯入資訊
+      responses:
+        '200':
+          description: OUI 資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OUIStatus'
+    post:
+      tags: [Settings]
+      summary: 上傳並替換本地 OUI 資料檔
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 匯入成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OUIStatus'
+
+  settings_retention:
+    get:
+      tags: [Settings]
+      summary: 取得保留期、到期天數與自動清除政策設定
+      responses:
+        '200':
+          description: 政策設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetentionPolicySettings'
+    put:
+      tags: [Settings]
+      summary: 更新保留期與到期催認設定
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetentionPolicySettings'
+      responses:
+        '200':
+          description: 已更新
+
+  settings_wizard:
+    get:
+      tags: [Settings]
+      summary: 取得首次設定精靈進度與首頁未完成項目清單
+      responses:
+        '200':
+          description: 精靈狀態
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WizardStatus'
+    put:
+      tags: [Settings]
+      summary: 更新設定精靈步驟進度或完成狀態
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_step, completed]
+              properties:
+                current_step:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                completed:
+                  type: boolean
+      responses:
+        '200':
+          description: 已更新
+
+components:
+  schemas:
+    CampusSettings:
+      type: object
+      required: [campus_name, timezone]
+      properties:
+        campus_name:
+          type: string
+          example: Würzburg
+        timezone:
+          type: string
+          example: Asia/Taipei
+
+    AuthSourceSettings:
+      type: object
+      required: [active_source, affected_registered_count]
+      properties:
+        active_source:
+          type: string
+          enum: [none, ad, radius]
+        affected_registered_count:
+          type: integer
+          description: 若更換來源將受影響的既有登記筆數
+        ad_url:
+          type: string
+        ad_use_tls:
+          type: boolean
+        ad_bind_dn:
+          type: string
+        ad_has_bind_password:
+          type: boolean
+        ad_base_dn:
+          type: string
+        ad_allowed_group:
+          type: string
+        radius_host:
+          type: string
+        radius_port:
+          type: integer
+        radius_has_secret:
+          type: boolean
+
+    AuthSourceUpdateRequest:
+      type: object
+      required: [active_source]
+      properties:
+        active_source:
+          type: string
+          enum: [ad, radius]
+        ad_url:
+          type: string
+        ad_use_tls:
+          type: boolean
+        ad_bind_dn:
+          type: string
+        ad_bind_password:
+          type: string
+          format: password
+        ad_base_dn:
+          type: string
+        ad_allowed_group:
+          type: string
+        radius_host:
+          type: string
+        radius_port:
+          type: integer
+        radius_secret:
+          type: string
+          format: password
+
+    MailSettings:
+      type: object
+      required: [smtp_host, smtp_port, smtp_tls_mode, sender_address, admin_recipients, has_password, weekly_summary_cron]
+      properties:
+        smtp_host:
+          type: string
+        smtp_port:
+          type: integer
+        smtp_tls_mode:
+          type: string
+          enum: [starttls, smtps, none]
+        smtp_username:
+          type: string
+        has_password:
+          type: boolean
+        sender_address:
+          type: string
+        admin_recipients:
+          type: array
+          items:
+            type: string
+            format: email
+        weekly_summary_cron:
+          type: string
+          example: 0 9 * * 1
+
+    MailSettingsUpdateRequest:
+      type: object
+      required: [smtp_host, smtp_port, smtp_tls_mode, sender_address, admin_recipients]
+      properties:
+        smtp_host:
+          type: string
+        smtp_port:
+          type: integer
+        smtp_tls_mode:
+          type: string
+          enum: [starttls, smtps, none]
+        smtp_username:
+          type: string
+        smtp_password:
+          type: string
+          format: password
+        sender_address:
+          type: string
+        admin_recipients:
+          type: array
+          items:
+            type: string
+            format: email
+        weekly_summary_cron:
+          type: string
+
+    OUIStatus:
+      type: object
+      required: [version, filename, entry_count, imported_by, imported_at]
+      properties:
+        version:
+          type: string
+        filename:
+          type: string
+        entry_count:
+          type: integer
+        imported_by:
+          type: string
+        imported_at:
+          type: string
+          format: date-time
+
+    RetentionPolicySettings:
+      type: object
+      required:
+        - offline_grace_rounds
+        - auto_purge_days
+        - registration_valid_days
+        - expiry_advance_days
+        - expiry_reminder_interval_days
+        - expiry_max_reminders
+      properties:
+        offline_grace_rounds:
+          type: integer
+          default: 2
+        auto_purge_days:
+          type: integer
+          default: 90
+        registration_valid_days:
+          type: integer
+          default: 365
+        expiry_advance_days:
+          type: integer
+          default: 14
+        expiry_reminder_interval_days:
+          type: integer
+          default: 7
+        expiry_max_reminders:
+          type: integer
+          default: 4
+
+    UnfinishedSetupItem:
+      type: object
+      required: [key, title, consequence, route]
+      properties:
+        key:
+          type: string
+        title:
+          type: string
+        consequence:
+          type: string
+        route:
+          type: string
+
+    WizardStatus:
+      type: object
+      required: [completed, current_step, unfinished_items]
+      properties:
+        completed:
+          type: boolean
+        current_step:
+          type: integer
+        unfinished_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/UnfinishedSetupItem'

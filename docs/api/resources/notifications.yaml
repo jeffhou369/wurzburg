@@ -1,0 +1,75 @@
+paths:
+  notifications_logs:
+    get:
+      tags: [Notifications]
+      summary: 列出郵件通知寄送紀錄
+      parameters:
+        - $ref: './common.yaml#/components/parameters/PageParam'
+        - $ref: './common.yaml#/components/parameters/PageSizeParam'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, sent, failed]
+      responses:
+        '200':
+          description: 通知紀錄清單
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, pagination]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationLog'
+                  pagination:
+                    $ref: './common.yaml#/components/schemas/PaginationMeta'
+
+  notifications_state_reset:
+    post:
+      tags: [Notifications]
+      summary: 手動重設指定去重鍵的通知狀態，使該位址可於下次彙整重新通知
+      parameters:
+        - name: dedupKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 已重設
+
+components:
+  schemas:
+    NotificationLog:
+      type: object
+      required: [id, notif_type, dedup_key, recipient, subject, status, attempt_count, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        notif_type:
+          type: string
+          enum: [unregistered_digest, unregistered_weekly, expiry_reminder, test_mail]
+        dedup_key:
+          type: string
+        recipient:
+          type: string
+        subject:
+          type: string
+        status:
+          type: string
+          enum: [pending, sent, failed]
+        attempt_count:
+          type: integer
+        last_error:
+          type: string
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time

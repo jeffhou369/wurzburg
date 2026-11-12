@@ -1,0 +1,174 @@
+/**
+ * Würzburg Design System Tokens
+ *
+ * 視覺契約來源：EasyCLIProxyAPI (https://github.com/router-for-me/EasyCLIProxyAPI)
+ * 授權：MIT License, Copyright (c) 2026 Router-For.ME
+ *
+ * 本檔案定義全域色彩、字級、間距、圓角、陰影與動效之 CSS 變數。
+ */
+
+:root {
+  /* ========================================================
+     1. 色彩系統（EasyCLIProxyAPI 預設淺色 Light 主題）
+     ======================================================== */
+  --color-workspace: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #eff3f0;
+  --color-surface-sunken: #ffffff;
+  --color-surface-hover: #f6f8f6;
+  --color-surface-active: #f0f0f0;
+
+  --sidebar-bg: #f7f8fa;
+  --sidebar-width: 264px;
+  --sidebar-collapsed-width: 64px;
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #1e293b;
+  --color-text-tertiary: #334155;
+  --color-text-muted: #475569;
+  --color-text-disabled: #64748b;
+  --color-text-on-accent: #ffffff;
+  --color-text-link: #222222;
+
+  --color-border-subtle: #f1f5f9;
+  --color-border-default: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+  --color-border-hover: #94a3b8;
+  --color-border-focus: #222222;
+  --color-focus-ring: rgba(34, 34, 34, 0.28);
+
+  --color-accent: #222222;
+  --color-accent-strong: #000000;
+  --color-accent-soft: #f0f0f0;
+  --color-accent-shadow: rgba(34, 34, 34, 0.18);
+
+  /* 語意狀態色 */
+  --color-success: #2f6b3f;
+  --color-success-subtle: #eef7f0;
+  --color-success-border: #b6d3bd;
+  --color-success-text: #2f6b3f;
+
+  --state-pill-success-bg: #f0fdf4;
+  --state-pill-success-text: #15803d;
+  --state-pill-success-border: #bbf7d0;
+
+  --status-dot-success-bg: #10b981;
+  --status-dot-success-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+
+  --color-warning: #c77b30;
+  --color-warning-subtle: #fff7e9;
+  --color-warning-border: #dfbf91;
+  --color-warning-text: #8b5b21;
+
+  --color-danger: #9f2d20;
+  --color-danger-subtle: #fff1ee;
+  --color-danger-border: #dfb7b0;
+  --color-danger-text: #9f2d20;
+
+  --button-danger-soft-bg: #fff1f2;
+  --button-danger-soft-border: #fecdd3;
+  --button-danger-soft-text: #e11d48;
+
+  --color-info: #0f766e;
+  --color-info-subtle: #eff8f7;
+  --color-info-border: #99d5cf;
+  --color-info-text: #0f766e;
+
+  /* ========================================================
+     2. 字體排印（Typography）
+     ======================================================== */
+  --font-sans:
+    'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei UI',
+    'Microsoft JhengHei', system-ui, sans-serif;
+  --font-mono: 'Cascadia Code', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+
+  --font-size-caption: 12px;
+  --font-size-meta: 13px;
+  --font-size-body: 14px;
+  --font-size-label: 14px;
+  --font-size-section: 16px;
+  --font-size-panel-title: 18px;
+  --font-size-dialog-title: 20px;
+  --font-size-page-title: 24px;
+  --font-size-display: 28px;
+
+  --line-height-tight: 1.35;
+  --line-height-body: 1.6;
+  --line-height-relaxed: 1.7;
+
+  /* ========================================================
+     3. 間距、圓角與陰影（Metrics & Elevations）
+     ======================================================== */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  --shadow-xs: 0 1px 2px rgba(24, 32, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(24, 32, 42, 0.06), 0 1px 2px rgba(24, 32, 42, 0.03);
+  --shadow-md: 0 4px 12px -2px rgba(24, 32, 42, 0.08), 0 2px 4px rgba(24, 32, 42, 0.04);
+  --shadow-lg: 0 12px 32px -6px rgba(24, 32, 42, 0.12), 0 4px 8px -2px rgba(24, 32, 42, 0.06);
+  --shadow-panel: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.03);
+  --shadow-dialog: 0 24px 64px -12px rgba(0, 0, 0, 0.24), 0 8px 24px -8px rgba(0, 0, 0, 0.12);
+
+  --motion-fast: 150ms;
+  --motion-enter: 220ms;
+  --motion-exit: 160ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-theme='dark'] {
+  --color-workspace: #0b0d11;
+  --color-surface: #141720;
+  --color-surface-subtle: #1c212c;
+  --color-surface-sunken: #0b0d11;
+  --color-surface-hover: #252b38;
+  --color-surface-active: #2e3646;
+
+  --sidebar-bg: #10131a;
+
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #d3dce8;
+  --color-text-tertiary: #b0bdcf;
+  --color-text-muted: #9aa9bf;
+  --color-text-disabled: #64748b;
+  --color-text-on-accent: #0b0d11;
+  --color-text-link: #60a5fa;
+
+  --color-border-subtle: #222836;
+  --color-border-default: #222836;
+  --color-border-strong: #2e3646;
+  --color-border-hover: #3a4356;
+  --color-border-focus: #f5f5f5;
+  --color-focus-ring: rgba(245, 245, 245, 0.28);
+
+  --color-accent: #f5f5f5;
+  --color-accent-strong: #ffffff;
+  --color-accent-soft: rgba(245, 245, 245, 0.12);
+  --color-accent-shadow: rgba(0, 0, 0, 0.22);
+
+  --color-success: #34d399;
+  --color-success-subtle: rgba(16, 185, 129, 0.16);
+  --color-success-border: rgba(52, 211, 153, 0.38);
+  --color-success-text: #6ee7b7;
+
+  --state-pill-success-bg: rgba(16, 185, 129, 0.12);
+  --state-pill-success-text: #34d399;
+  --state-pill-success-border: rgba(52, 211, 153, 0.3);
+
+  --color-warning: #d97706;
+  --color-warning-subtle: rgba(217, 119, 6, 0.16);
+  --color-warning-border: rgba(217, 119, 6, 0.35);
+  --color-warning-text: #fcd34d;
+
+  --color-danger: #c65746;
+  --color-danger-subtle: rgba(198, 87, 70, 0.18);
+  --color-danger-border: rgba(198, 87, 70, 0.35);
+  --color-danger-text: #fca5a5;
+
+  --button-danger-soft-bg: rgba(225, 29, 72, 0.15);
+  --button-danger-soft-border: rgba(254, 205, 211, 0.25);
+  --button-danger-soft-text: #fda4af;
+
+  --shadow-panel: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
+}

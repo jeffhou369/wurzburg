@@ -1,6 +1,6 @@
 # 05 — 完整的 API 契約與前端型別
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01
 
 ## 要做什麼
@@ -22,12 +22,20 @@ Blocked by: 01
 
 ## 驗收條件
 
-- [ ] 上列每個資源都有描述檔，涵蓋 `docs/plan/mvp-spec.md` 的全部使用者故事所需的操作
-- [ ] 描述檔通過格式檢查
-- [ ] 共通的慣例寫成一份說明，並在描述檔中一致地套用
-- [ ] 前端的 API 型別由描述檔產生，產生的指令寫進 `AGENTS.md`
-- [ ] 前端有開發用的模擬回應，至少涵蓋 IP 紀錄清單、網段清單與目前的使用者
-- [ ] 欄位與資源的名稱使用英文識別碼，說明文字使用 `CONTEXT.md` 的名詞
+- [x] 上列每個資源都有描述檔，涵蓋 `docs/plan/mvp-spec.md` 的全部使用者故事所需的操作
+- [x] 描述檔通過格式檢查
+- [x] 共通的慣例寫成一份說明，並在描述檔中一致地套用
+- [x] 前端的 API 型別由描述檔產生，產生的指令寫進 `AGENTS.md`
+- [x] 前端有開發用的模擬回應，至少涵蓋 IP 紀錄清單、網段清單與目前的使用者
+- [x] 欄位與資源的名稱使用英文識別碼，說明文字使用 `CONTEXT.md` 的名詞
+
+## Comments
+
+已完成 05 — 完整的 API 契約與前端型別：
+- `docs/api/openapi.yaml` 與 `docs/api/resources/*.yaml`（11 份獨立資源檔 + `common.yaml`）：涵蓋全部 MVP 端點與資料模型。
+- `docs/api/README.md`：記錄分頁、兩階段刪除預覽、批次登記結果與錯誤代碼慣例。
+- `src/frontend/src/app/core/api.types.ts`：透過 `openapi-typescript` 自動產出強型別 TypeScript 介面，並將 `npm run generate:api` 指令補入 `AGENTS.md`。
+- `src/frontend/src/app/core/mock-api.ts`：提供開發期模擬回應（目前使用者、儀表板統計、網段、IP 紀錄與衝突），已通過 TypeScript 型別編譯與測試驗證。
 
 ## 參考
 

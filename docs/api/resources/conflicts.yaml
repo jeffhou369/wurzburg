@@ -1,0 +1,167 @@
+paths:
+  conflicts_collection:
+    get:
+      tags: [Conflicts]
+      summary: 列出 MAC 衝突紀錄（含未處理數量）
+      parameters:
+        - $ref: './common.yaml#/components/parameters/PageParam'
+        - $ref: './common.yaml#/components/parameters/PageSizeParam'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, in_progress, resolved]
+      responses:
+        '200':
+          description: 衝突清單
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, open_count, pagination]
+                properties:
+                  open_count:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ConflictSummary'
+                  pagination:
+                    $ref: './common.yaml#/components/schemas/PaginationMeta'
+
+  conflicts_item:
+    get:
+      tags: [Conflicts]
+      summary: 取得單筆衝突詳細資料與各 MAC 出現來源
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 衝突詳情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictDetail'
+
+  conflicts_resolve:
+    post:
+      tags: [Conflicts]
+      summary: 系統管理員對衝突執行裁決
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConflictResolveRequest'
+      responses:
+        '200':
+          description: 裁決完成
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictDetail'
+        '403':
+          description: 僅系統管理員可裁決
+        '409':
+          description: 衝突狀態已解消無法再裁決
+
+components:
+  schemas:
+    ConflictMACSource:
+      type: object
+      required: [mac_address, switch_name, vrf_name, if_name, first_seen_at, last_seen_at]
+      properties:
+        mac_address:
+          type: string
+        switch_name:
+          type: string
+        vrf_name:
+          type: string
+        if_name:
+          type: string
+        first_seen_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
+
+    ConflictSummary:
+      type: object
+      required: [id, ip_record_id, ip_address, adopted_mac, conflict_macs, status, first_detected_at, last_detected_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        ip_record_id:
+          type: integer
+          format: int64
+        ip_address:
+          type: string
+        adopted_mac:
+          type: string
+        conflict_macs:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [open, in_progress, resolved]
+        resolution:
+          type: string
+          enum: [adopt_new_keep_reg, adopt_new_release_reg, keep_adopted, auto_vanished]
+          nullable: true
+        has_owner:
+          type: boolean
+        owner_username:
+          type: string
+        first_detected_at:
+          type: string
+          format: date-time
+        last_detected_at:
+          type: string
+          format: date-time
+
+    ConflictDetail:
+      allOf:
+        - $ref: '#/components/schemas/ConflictSummary'
+        - type: object
+          required: [sources]
+          properties:
+            note:
+              type: string
+            resolved_by:
+              type: string
+            resolved_at:
+              type: string
+              format: date-time
+              nullable: true
+            sources:
+              type: array
+              items:
+                $ref: '#/components/schemas/ConflictMACSource'
+
+    ConflictResolveRequest:
+      type: object
+      required: [resolution]
+      properties:
+        resolution:
+          type: string
+          enum: [adopt_new_keep_reg, adopt_new_release_reg, keep_adopted]
+        adopted_mac:
+          type: string
+          description: 採用新 MAC 時指定要採信的 MAC
+        note:
+          type: string

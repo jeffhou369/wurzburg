@@ -1,0 +1,207 @@
+/**
+ * Würzburg Reusable Component Utility Styles
+ * 依據 design-system/ip-mgmt/MASTER.md 規範實作
+ */
+
+/* ========================================================
+   按鈕（Buttons）
+   ======================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  font-size: var(--font-size-body);
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--ease-out);
+  border: 1px solid transparent;
+  outline: none;
+
+  &:focus-visible {
+    box-shadow: 0 0 0 3px var(--color-focus-ring);
+    border-color: var(--color-border-focus);
+  }
+
+  &.btn-primary {
+    background-color: var(--color-accent);
+    color: var(--color-text-on-accent);
+    font-weight: 600;
+
+    &:hover {
+      background-color: var(--color-accent-strong);
+    }
+  }
+
+  &.btn-secondary {
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    border-color: var(--color-border-default);
+
+    &:hover {
+      background-color: var(--color-surface-hover);
+      border-color: var(--color-border-strong);
+    }
+  }
+
+  &.btn-ghost {
+    background-color: transparent;
+    color: var(--color-text-secondary);
+
+    &:hover {
+      background-color: var(--color-surface-hover);
+      color: var(--color-text-primary);
+    }
+  }
+
+  &.btn-danger-soft {
+    background-color: var(--button-danger-soft-bg);
+    color: var(--button-danger-soft-text);
+    border-color: var(--button-danger-soft-border);
+
+    &:hover {
+      background-color: var(--color-danger);
+      color: #ffffff;
+      border-color: var(--color-danger);
+    }
+  }
+
+  &.btn-danger-solid {
+    background-color: var(--color-danger);
+    color: #ffffff;
+    font-weight: 600;
+
+    &:hover {
+      background-color: #7f1d1d;
+    }
+  }
+
+  &.btn-sm {
+    padding: 4px 10px;
+    font-size: var(--font-size-meta);
+  }
+}
+
+/* ========================================================
+   卡片（Cards）
+   ======================================================== */
+.card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-panel);
+}
+
+/* ========================================================
+   狀態燈號與膠囊（Status Pills & Dots）
+   ======================================================== */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  font-size: var(--font-size-meta);
+  font-weight: 500;
+  line-height: 1.2;
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+  }
+
+  &.status-online {
+    background-color: var(--state-pill-success-bg);
+    color: var(--state-pill-success-text);
+    border: 1px solid var(--state-pill-success-border);
+
+    .status-dot {
+      background-color: var(--status-dot-success-bg);
+      box-shadow: var(--status-dot-success-shadow);
+    }
+  }
+
+  &.status-offline {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-disabled);
+    border: 1px solid var(--color-border-subtle);
+
+    .status-dot {
+      background-color: var(--color-text-disabled);
+    }
+  }
+
+  &.status-unregistered,
+  &.status-expiring {
+    background-color: var(--color-warning-subtle);
+    color: var(--color-warning-text);
+    border: 1px solid var(--color-warning-border);
+
+    .status-dot {
+      background-color: var(--color-warning);
+    }
+  }
+
+  &.status-conflict,
+  &.status-expired {
+    background-color: var(--color-danger-subtle);
+    color: var(--color-danger-text);
+    border: 1px solid var(--color-danger-border);
+
+    .status-dot {
+      background-color: var(--color-danger);
+    }
+  }
+}
+
+/* 離線資料列灰階樣式 */
+.row-offline {
+  color: var(--color-text-disabled) !important;
+  opacity: 0.72;
+
+  &:hover {
+    opacity: 0.95;
+  }
+}
+
+/* ========================================================
+   表單控制項（Form Inputs）
+   ======================================================== */
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  outline: none;
+  transition:
+    border-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out);
+
+  &:focus {
+    border-color: var(--color-border-focus);
+    box-shadow: 0 0 0 3px var(--color-focus-ring);
+  }
+
+  &::placeholder {
+    color: var(--color-text-muted);
+  }
+}
+
+/* ========================================================
+   等寬字族保護（Tabular Numbers for IP/MAC/Time）
+   ======================================================== */
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}

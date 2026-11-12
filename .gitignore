@@ -1,6 +1,10 @@
 .DS_Store
 .env
 infra/.env
+infra/certs/
+*.crt
+*.key
+*.pem
 
 # Backend build & embedded static output
 src/backend/wurzburg

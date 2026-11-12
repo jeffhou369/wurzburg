@@ -37,6 +37,7 @@ npm ci                                        # 安裝相依套件
 npm run build                                 # 建置 Angular 靜態檔案（輸出至 dist/frontend/browser）
 npm run lint                                  # TypeScript 型別檢查
 npm run format:check                          # Prettier 排版檢查
+npm run generate:api                          # 依 docs/api/openapi.yaml 產生前端 TypeScript 型別
 npm test                                      # 以 ChromeHeadless 執行全部前端單元測試
 npx ng test --watch=false --browsers=ChromeHeadless --include=src/app/app.spec.ts  # 執行單一前端測試檔
 ```

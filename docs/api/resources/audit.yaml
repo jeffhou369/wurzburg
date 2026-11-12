@@ -1,0 +1,53 @@
+paths:
+  audit_logs:
+    get:
+      tags: [Audit]
+      summary: 檢視稽核紀錄（由新到舊）
+      parameters:
+        - $ref: './common.yaml#/components/parameters/PageParam'
+        - $ref: './common.yaml#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: 稽核紀錄分頁清單
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, pagination]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLogEntry'
+                  pagination:
+                    $ref: './common.yaml#/components/schemas/PaginationMeta'
+
+components:
+  schemas:
+    AuditLogEntry:
+      type: object
+      required: [id, username, user_role, ip_address, action, target_type, target_id, summary, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        user_role:
+          type: string
+        ip_address:
+          type: string
+        action:
+          type: string
+        target_type:
+          type: string
+        target_id:
+          type: string
+        summary:
+          type: string
+        details_json:
+          type: object
+          nullable: true
+        created_at:
+          type: string
+          format: date-time

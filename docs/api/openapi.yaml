@@ -1,0 +1,123 @@
+openapi: 3.0.3
+info:
+  title: Würzburg IP 管理系統 API
+  version: 0.1.0
+  description: |
+    Würzburg 內部 IPv4 管理系統 REST API 契約。
+    所有時間欄位採用 UTC ISO-8601 格式，清單採用伺服端分頁，錯誤回應採用一致結構。
+
+servers:
+  - url: /
+
+paths:
+  # Health
+  /healthz:
+    $ref: './resources/health.yaml#/paths/healthz'
+  /api/v1/health:
+    $ref: './resources/health.yaml#/paths/api_health'
+
+  # Auth & Sessions
+  /api/v1/auth/login/local:
+    $ref: './resources/auth.yaml#/paths/login_local'
+  /api/v1/auth/login/org:
+    $ref: './resources/auth.yaml#/paths/login_org'
+  /api/v1/auth/logout:
+    $ref: './resources/auth.yaml#/paths/logout'
+  /api/v1/auth/me:
+    $ref: './resources/auth.yaml#/paths/me'
+  /api/v1/auth/change-password:
+    $ref: './resources/auth.yaml#/paths/change_password'
+
+  # Admins
+  /api/v1/admins:
+    $ref: './resources/admins.yaml#/paths/admins_collection'
+  /api/v1/admins/{id}/toggle:
+    $ref: './resources/admins.yaml#/paths/admins_toggle'
+
+  # Dashboard
+  /api/v1/dashboard/stats:
+    $ref: './resources/dashboard.yaml#/paths/dashboard_stats'
+
+  # Switches & Sync
+  /api/v1/switches:
+    $ref: './resources/switches.yaml#/paths/switches_collection'
+  /api/v1/switches/{id}:
+    $ref: './resources/switches.yaml#/paths/switches_item'
+  /api/v1/switches/{id}/vrfs:
+    $ref: './resources/switches.yaml#/paths/vrf_configs_collection'
+  /api/v1/switches/{id}/vrfs/{vrfId}:
+    $ref: './resources/switches.yaml#/paths/vrf_configs_item'
+  /api/v1/switches/{id}/vrfs/{vrfId}/test-read:
+    $ref: './resources/switches.yaml#/paths/vrf_test_read'
+  /api/v1/sync/trigger:
+    $ref: './resources/switches.yaml#/paths/sync_trigger'
+
+  # Subnets, Gateways, Exclusions & Undetermined Prefixes
+  /api/v1/subnets:
+    $ref: './resources/subnets.yaml#/paths/subnets_collection'
+  /api/v1/subnets/{id}:
+    $ref: './resources/subnets.yaml#/paths/subnets_item'
+  /api/v1/subnets/{id}/state/preview:
+    $ref: './resources/subnets.yaml#/paths/subnet_state_preview'
+  /api/v1/subnets/{id}/state:
+    $ref: './resources/subnets.yaml#/paths/subnet_state'
+  /api/v1/subnets/{id}/exclusions/preview:
+    $ref: './resources/subnets.yaml#/paths/exclusions_preview'
+  /api/v1/subnets/{id}/exclusions:
+    $ref: './resources/subnets.yaml#/paths/exclusions_collection'
+  /api/v1/subnets/{id}/exclusions/{exclusionId}:
+    $ref: './resources/subnets.yaml#/paths/exclusions_item'
+  /api/v1/subnets/undetermined:
+    $ref: './resources/subnets.yaml#/paths/undetermined_prefixes'
+
+  # IP Records, Export & Registration Actions
+  /api/v1/ip-records:
+    $ref: './resources/ip_records.yaml#/paths/ip_records_collection'
+  /api/v1/ip-records/export:
+    $ref: './resources/ip_records.yaml#/paths/ip_records_export'
+  /api/v1/ip-records/{id}:
+    $ref: './resources/ip_records.yaml#/paths/ip_records_item'
+  /api/v1/ip-records/actions/register:
+    $ref: './resources/ip_records.yaml#/paths/action_register'
+  /api/v1/ip-records/actions/confirm:
+    $ref: './resources/ip_records.yaml#/paths/action_confirm'
+  /api/v1/ip-records/actions/release:
+    $ref: './resources/ip_records.yaml#/paths/action_release'
+  /api/v1/ip-records/actions/reassign:
+    $ref: './resources/ip_records.yaml#/paths/action_reassign'
+
+  # Conflicts
+  /api/v1/conflicts:
+    $ref: './resources/conflicts.yaml#/paths/conflicts_collection'
+  /api/v1/conflicts/{id}:
+    $ref: './resources/conflicts.yaml#/paths/conflicts_item'
+  /api/v1/conflicts/{id}/resolve:
+    $ref: './resources/conflicts.yaml#/paths/conflicts_resolve'
+
+  # Notifications
+  /api/v1/notifications/logs:
+    $ref: './resources/notifications.yaml#/paths/notifications_logs'
+  /api/v1/notifications/states/{dedupKey}/reset:
+    $ref: './resources/notifications.yaml#/paths/notifications_state_reset'
+
+  # Audit
+  /api/v1/audit/logs:
+    $ref: './resources/audit.yaml#/paths/audit_logs'
+
+  # Settings & Setup Wizard
+  /api/v1/settings/campus:
+    $ref: './resources/settings.yaml#/paths/settings_campus'
+  /api/v1/settings/auth-source:
+    $ref: './resources/settings.yaml#/paths/settings_auth_source'
+  /api/v1/settings/auth-source/test:
+    $ref: './resources/settings.yaml#/paths/settings_auth_source_test'
+  /api/v1/settings/mail:
+    $ref: './resources/settings.yaml#/paths/settings_mail'
+  /api/v1/settings/mail/test:
+    $ref: './resources/settings.yaml#/paths/settings_mail_test'
+  /api/v1/settings/oui:
+    $ref: './resources/settings.yaml#/paths/settings_oui'
+  /api/v1/settings/retention:
+    $ref: './resources/settings.yaml#/paths/settings_retention'
+  /api/v1/settings/wizard:
+    $ref: './resources/settings.yaml#/paths/settings_wizard'
