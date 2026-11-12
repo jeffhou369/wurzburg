@@ -13,6 +13,8 @@ import (
 	"github.com/jeffhou369/wurzburg/backend/internal/conflicts"
 	"github.com/jeffhou369/wurzburg/backend/internal/dashboard"
 	"github.com/jeffhou369/wurzburg/backend/internal/iprecords"
+	"github.com/jeffhou369/wurzburg/backend/internal/mailer"
+	"github.com/jeffhou369/wurzburg/backend/internal/notifications"
 	"github.com/jeffhou369/wurzburg/backend/internal/oui"
 	"github.com/jeffhou369/wurzburg/backend/internal/pipeline"
 	"github.com/jeffhou369/wurzburg/backend/internal/purge"
@@ -47,6 +49,11 @@ func mountFeatureModules(ctx context.Context, srv *server.Server, db *sql.DB, cl
 	dashHandler := dashboard.NewHandler(db, clk, sched)
 	ipHandler := iprecords.NewHandler(db, clk, srv.Settings, srv.Audit)
 
+	smtpMailer := mailer.NewSMTPMailer(db, clk, srv.Settings)
+	mailHandler := mailer.NewHandler(db, clk, srv.Settings, srv.Audit, smtpMailer)
+	notifSvc := notifications.NewService(db, clk, srv.Settings, srv.Audit, smtpMailer)
+	notifTracker := notifications.NewSchedulerTracker(notifSvc)
+
 	srv.Mount(
 		accountsHandler,
 		authSrcMgr,
@@ -59,9 +66,11 @@ func mountFeatureModules(ctx context.Context, srv *server.Server, db *sql.DB, cl
 		conflictsHandler,
 		dashHandler,
 		ipHandler,
+		mailHandler,
 	)
 
 	if db != nil {
 		go sched.StartBackgroundLoop(ctx)
+		go notifTracker.StartBackgroundLoop(ctx)
 	}
 }

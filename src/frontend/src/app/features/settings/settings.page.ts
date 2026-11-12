@@ -1,5 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { AuthSettingsComponent } from './auth-settings.component';
+import { MailSettingsComponent } from './mail-settings.component';
 import { OuiSettingsComponent } from './oui-settings.component';
 import { RetentionSettingsComponent } from './retention-settings.component';
 
@@ -11,7 +12,12 @@ export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
 @Component({
   selector: 'app-settings-page',
   standalone: true,
-  imports: [AuthSettingsComponent, OuiSettingsComponent, RetentionSettingsComponent],
+  imports: [
+    AuthSettingsComponent,
+    MailSettingsComponent,
+    OuiSettingsComponent,
+    RetentionSettingsComponent,
+  ],
   template: `
     <header class="page-header">
       <h1 class="page-title">系統設定</h1>
@@ -77,9 +83,7 @@ export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
           <app-auth-settings />
         }
         @case ('mail') {
-          <ng-content select="[slot=settings-mail]">
-            <p class="slot-hint">SMTP 與收件清單設定（Ticket 19 / 28 / 29 / 30）。</p>
-          </ng-content>
+          <app-mail-settings />
         }
         @case ('oui') {
           <app-oui-settings />

@@ -27,6 +27,34 @@ paths:
                   pagination:
                     $ref: './common.yaml#/components/schemas/PaginationMeta'
 
+  notifications_states:
+    get:
+      tags: [Notifications]
+      summary: 列出目前處於已通知去重狀態之紀錄
+      parameters:
+        - $ref: './common.yaml#/components/parameters/PageParam'
+        - $ref: './common.yaml#/components/parameters/PageSizeParam'
+        - name: notif_type
+          in: query
+          schema:
+            type: string
+            enum: [unregistered_digest, expiry_reminder]
+      responses:
+        '200':
+          description: 去重狀態清單
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, pagination]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationState'
+                  pagination:
+                    $ref: './common.yaml#/components/schemas/PaginationMeta'
+
   notifications_state_reset:
     post:
       tags: [Notifications]
@@ -71,5 +99,26 @@ components:
           format: date-time
           nullable: true
         created_at:
+          type: string
+          format: date-time
+
+    NotificationState:
+      type: object
+      required: [id, dedup_key, notif_type, is_notified, notified_at, updated_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        dedup_key:
+          type: string
+        notif_type:
+          type: string
+          enum: [unregistered_digest, expiry_reminder]
+        is_notified:
+          type: boolean
+        notified_at:
+          type: string
+          format: date-time
+        updated_at:
           type: string
           format: date-time

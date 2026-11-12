@@ -97,6 +97,8 @@ paths:
   # Notifications
   /api/v1/notifications/logs:
     $ref: './resources/notifications.yaml#/paths/notifications_logs'
+  /api/v1/notifications/states:
+    $ref: './resources/notifications.yaml#/paths/notifications_states'
   /api/v1/notifications/states/{dedupKey}/reset:
     $ref: './resources/notifications.yaml#/paths/notifications_state_reset'
 

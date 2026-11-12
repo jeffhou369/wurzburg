@@ -1679,6 +1679,49 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/notifications/states': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 列出目前處於已通知去重狀態之紀錄 */
+    get: {
+      parameters: {
+        query?: {
+          page?: components['parameters']['PageParam'];
+          page_size?: components['parameters']['PageSizeParam'];
+          notif_type?: 'unregistered_digest' | 'expiry_reminder';
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 去重狀態清單 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              items: components['schemas']['NotificationState'][];
+              pagination: components['schemas']['PaginationMeta'];
+            };
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/notifications/states/{dedupKey}/reset': {
     parameters: {
       query?: never;
@@ -2564,6 +2607,18 @@ export interface components {
       sent_at?: string | null;
       /** Format: date-time */
       created_at: string;
+    };
+    NotificationState: {
+      /** Format: int64 */
+      id: number;
+      dedup_key: string;
+      /** @enum {string} */
+      notif_type: 'unregistered_digest' | 'expiry_reminder';
+      is_notified: boolean;
+      /** Format: date-time */
+      notified_at: string;
+      /** Format: date-time */
+      updated_at: string;
     };
     AuditLogEntry: {
       /** Format: int64 */
