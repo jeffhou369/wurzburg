@@ -7,6 +7,7 @@ import (
 
 	"github.com/jeffhou369/wurzburg/backend/internal/accounts"
 	"github.com/jeffhou369/wurzburg/backend/internal/audit"
+	"github.com/jeffhou369/wurzburg/backend/internal/authsource"
 	"github.com/jeffhou369/wurzburg/backend/internal/clock"
 	"github.com/jeffhou369/wurzburg/backend/internal/oui"
 	"github.com/jeffhou369/wurzburg/backend/internal/purge"
@@ -20,9 +21,10 @@ func mountFeatureModules(srv *server.Server, db *sql.DB, clk clock.Clock) {
 		slog.Warn("初始化本地 OUI 資料庫失敗", "error", err)
 	}
 
-	accountsHandler := accounts.NewHandler(db, clk, srv.Sessions, srv.Settings, srv.Audit, nil)
+	authSrcMgr := authsource.NewDynamicManager(db, srv.Settings, srv.Audit)
+	accountsHandler := accounts.NewHandler(db, clk, srv.Sessions, srv.Settings, srv.Audit, authSrcMgr)
 	auditHandler := audit.NewHandler(db)
 	purgeSvc := purge.NewService(db, clk, srv.Settings, srv.Audit)
 
-	srv.Mount(accountsHandler, auditHandler, ouiSvc, purgeSvc)
+	srv.Mount(accountsHandler, authSrcMgr, auditHandler, ouiSvc, purgeSvc)
 }

@@ -1,4 +1,5 @@
 import { Component, signal } from '@angular/core';
+import { AuthSettingsComponent } from './auth-settings.component';
 import { OuiSettingsComponent } from './oui-settings.component';
 import { RetentionSettingsComponent } from './retention-settings.component';
 
@@ -10,7 +11,7 @@ export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
 @Component({
   selector: 'app-settings-page',
   standalone: true,
-  imports: [OuiSettingsComponent, RetentionSettingsComponent],
+  imports: [AuthSettingsComponent, OuiSettingsComponent, RetentionSettingsComponent],
   template: `
     <header class="page-header">
       <h1 class="page-title">系統設定</h1>
@@ -73,9 +74,7 @@ export type SettingsTab = 'campus' | 'auth' | 'mail' | 'oui' | 'retention';
           </ng-content>
         }
         @case ('auth') {
-          <ng-content select="[slot=settings-auth]">
-            <p class="slot-hint">驗證來源選擇與 AD / RADIUS 連線設定（Ticket 07 / 21 / 22）。</p>
-          </ng-content>
+          <app-auth-settings />
         }
         @case ('mail') {
           <ng-content select="[slot=settings-mail]">
