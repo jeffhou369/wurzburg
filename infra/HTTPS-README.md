@@ -34,7 +34,7 @@ docker compose -f infra/docker-compose.yml -f infra/docker-compose.https.yml up 
 
 啟用後的效果：
 1. `app` 容器停止對主機直接開放 8080 埠，只能透過內部網路的 `nginx` 存取。
-2. `nginx` 監聽 80 與 443 埠（可透過 `WURZBURG_HTTPS_HTTP_PORT` 與 `WURZBURG_HTTPS_PORT` 調整），並將所有 HTTP 請求轉址（301）至 HTTPS。
+2. `nginx` 容器監聽 80 與 443 埠（主機埠可透過 `WURZBURG_HTTPS_HTTP_PORT` 與 `WURZBURG_HTTPS_PORT` 調整），並將所有 HTTP 請求轉址（301）至設定的 HTTPS 主機埠。
 3. 反向代理自動附帶 `X-Forwarded-Proto: https` 標頭，通知 Würzburg 應用程式目前處於加密連線後面（應用程式將自動對 Cookie 加上 `Secure` 屬性並隱藏登入頁明文警告）。
 
 ## 3. 停用並切回預設 HTTP

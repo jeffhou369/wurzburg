@@ -1319,6 +1319,10 @@ export class WorkbenchPage implements OnInit {
         confirmLabel: this.text.releaseDialog.confirm,
         danger: true,
       },
+      role: 'alertdialog',
+      ariaLabel: this.text.releaseDialog.title,
+      ariaLabelledBy: 'confirm-dialog-title',
+      ariaDescribedBy: 'confirm-dialog-message',
     });
     ref.closed.subscribe((ok) => {
       if (ok) this.executeBatch(action);

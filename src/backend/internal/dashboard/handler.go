@@ -56,17 +56,14 @@ func (h *Handler) handleGetStats(w http.ResponseWriter, r *http.Request) {
 
 	var inProg, incomplete bool
 	var lastSync *time.Time
+	lastSuccess := false
 	if h.scheduler != nil {
-		inProg, incomplete, lastSync = h.scheduler.Status()
+		inProg, incomplete, lastSync, lastSuccess = h.scheduler.Status()
 	}
 
 	var failedVrfCount int
-	lastSuccess := true
 	if h.db != nil {
 		_ = h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM vrf_read_configs WHERE enabled = TRUE AND last_status = 'failed'`).Scan(&failedVrfCount)
-		if failedVrfCount > 0 {
-			lastSuccess = false
-		}
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")

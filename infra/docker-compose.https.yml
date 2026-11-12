@@ -21,8 +21,10 @@ services:
     ports:
       - "${WURZBURG_HTTPS_HTTP_PORT:-80}:80"
       - "${WURZBURG_HTTPS_PORT:-443}:443"
+    environment:
+      WURZBURG_HTTPS_PORT: ${WURZBURG_HTTPS_PORT:-443}
     volumes:
-      - ./nginx/wurzburg.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/wurzburg.conf.template:/etc/nginx/templates/wurzburg.conf.template:ro
       - ${WURZBURG_TLS_CERT_PATH:-./certs/wurzburg.crt}:/etc/nginx/certs/wurzburg.crt:ro
       - ${WURZBURG_TLS_KEY_PATH:-./certs/wurzburg.key}:/etc/nginx/certs/wurzburg.key:ro
     networks:

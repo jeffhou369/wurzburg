@@ -2,9 +2,12 @@ package test
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/jeffhou369/wurzburg/backend/internal/crypto"
+	"github.com/jeffhou369/wurzburg/backend/internal/dashboard"
 	"github.com/jeffhou369/wurzburg/backend/internal/interfaces"
 	"github.com/jeffhou369/wurzburg/backend/internal/pipeline"
 	"github.com/jeffhou369/wurzburg/backend/internal/reconciliation"
@@ -30,6 +33,24 @@ func TestReviewRunCycleReportsRealScopeStepFailure(t *testing.T) {
 	scope := subnets.NewScopeService(f.db, f.clk, f.srv.Audit, "")
 	recon := reconciliation.NewService(f.db, f.clk, f.srv.Settings, subnets.NewResolver(f.db), nil)
 	sched := scheduler.New(f.db, f.clk, ciph, f.srv.Settings, f.srv.Audit, col, pipeline.New(scope, recon))
+	f.srv.Mount(dashboard.NewHandler(f.db, f.clk, sched))
+
+	checkLastSyncSuccess := func(want bool) {
+		t.Helper()
+		w := f.request(http.MethodGet, "/api/v1/dashboard/stats", nil, f.adminID, "admin")
+		if w.Code != http.StatusOK {
+			t.Fatalf("讀取儀表板失敗：%d %s", w.Code, w.Body.String())
+		}
+		var stats struct {
+			LastSyncSuccess bool `json:"last_sync_success"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &stats); err != nil {
+			t.Fatal(err)
+		}
+		if stats.LastSyncSuccess != want {
+			t.Fatalf("last_sync_success = %t，預期 %t", stats.LastSyncSuccess, want)
+		}
+	}
 
 	if _, err := f.db.Exec(`CREATE TRIGGER review_fail_subnet_insert BEFORE INSERT ON subnets FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '測試網段寫入失敗'`); err != nil {
 		t.Fatal(err)
@@ -37,10 +58,12 @@ func TestReviewRunCycleReportsRealScopeStepFailure(t *testing.T) {
 	if err := sched.RunCycle(ctx); err == nil {
 		t.Fatal("網段發現寫入失敗時 RunCycle 必須回傳錯誤")
 	}
+	checkLastSyncSuccess(false)
 	if _, err := f.db.Exec(`DROP TRIGGER review_fail_subnet_insert`); err != nil {
 		t.Fatal(err)
 	}
 	if err := sched.RunCycle(ctx); err != nil {
 		t.Fatalf("故障排除後應恢復正常：%v", err)
 	}
+	checkLastSyncSuccess(true)
 }

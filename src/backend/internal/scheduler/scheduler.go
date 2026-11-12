@@ -35,6 +35,7 @@ type Scheduler struct {
 	inProgress      bool
 	roundIncomplete bool
 	lastSyncAt      *time.Time
+	lastSyncSuccess bool
 }
 
 func New(
@@ -65,19 +66,20 @@ func (s *Scheduler) RegisterRoutes(api chi.Router) {
 	api.With(auth.RequireAuth).Get("/sync/status", s.handleStatus)
 }
 
-func (s *Scheduler) Status() (inProgress, roundIncomplete bool, lastSyncAt *time.Time) {
+func (s *Scheduler) Status() (inProgress, roundIncomplete bool, lastSyncAt *time.Time, lastSyncSuccess bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.inProgress, s.roundIncomplete, s.lastSyncAt
+	return s.inProgress, s.roundIncomplete, s.lastSyncAt, s.lastSyncSuccess
 }
 
 func (s *Scheduler) handleStatus(w http.ResponseWriter, r *http.Request) {
-	inProg, incomplete, last := s.Status()
+	inProg, incomplete, last, lastSuccess := s.Status()
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"in_progress":      inProg,
-		"round_incomplete": incomplete,
-		"last_sync_at":     last,
+		"in_progress":       inProg,
+		"round_incomplete":  incomplete,
+		"last_sync_at":      last,
+		"last_sync_success": lastSuccess,
 	})
 }
 
@@ -130,7 +132,7 @@ type switchBatch struct {
 }
 
 // RunCycle 執行完整的一輪 SNMP 輪詢。若上一輪尚未結束，設定 roundIncomplete 並立即略過。
-func (s *Scheduler) RunCycle(ctx context.Context) error {
+func (s *Scheduler) RunCycle(ctx context.Context) (cycleErr error) {
 	s.mu.Lock()
 	if s.inProgress {
 		s.roundIncomplete = true
@@ -146,6 +148,7 @@ func (s *Scheduler) RunCycle(ctx context.Context) error {
 		s.mu.Lock()
 		s.inProgress = false
 		s.lastSyncAt = &now
+		s.lastSyncSuccess = cycleErr == nil
 		s.mu.Unlock()
 	}()
 

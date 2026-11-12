@@ -16,16 +16,16 @@ export interface ConfirmDialogData {
   standalone: true,
   imports: [LucideTriangleAlert],
   template: `
-    <div class="dialog-panel" role="alertdialog" aria-modal="true">
+    <div class="dialog-panel">
       <div class="dialog-header">
         @if (data.danger) {
           <span class="danger-icon" aria-hidden="true">
             <svg lucideTriangleAlert [size]="20" [strokeWidth]="2"></svg>
           </span>
         }
-        <h2 class="dialog-title">{{ data.title }}</h2>
+        <h2 id="confirm-dialog-title" class="dialog-title">{{ data.title }}</h2>
       </div>
-      <p class="dialog-message">{{ data.message }}</p>
+      <p id="confirm-dialog-message" class="dialog-message">{{ data.message }}</p>
       <div class="dialog-actions">
         <button type="button" class="btn btn-secondary" (click)="dialogRef.close(false)">
           {{ data.cancelLabel ?? text.cancel }}

@@ -60,9 +60,12 @@ func New(cfg *config.Config, db *sql.DB, clk clock.Clock, registrars ...RouteReg
 		db:       db,
 		clock:    clk,
 		Sessions: auth.NewSessionStore(db, clk),
-		Settings: settings.NewStore(db, cipher, clk),
-		Audit:    audit.NewLogger(db, clk),
-		Cipher:   cipher,
+		Settings: settings.NewStoreWithDefaults(db, cipher, clk, map[string]string{
+			"campus_name": cfg.CampusName,
+			"timezone":    cfg.Timezone,
+		}),
+		Audit:  audit.NewLogger(db, clk),
+		Cipher: cipher,
 	}
 
 	s.setupRoutes(registrars...)

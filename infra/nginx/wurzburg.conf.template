@@ -4,7 +4,7 @@ server {
     server_name _;
 
     # 強制將所有 HTTP 請求轉址至 HTTPS
-    return 301 https://$host$request_uri;
+    return 301 https://$host:${WURZBURG_HTTPS_PORT}$request_uri;
 }
 
 server {

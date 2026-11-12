@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/crypto/argon2"
 )
@@ -24,7 +25,7 @@ func ValidatePasswordPolicy(password string, minLength int) error {
 	if minLength <= 0 {
 		minLength = 12
 	}
-	if len(password) < minLength {
+	if utf8.RuneCountInString(password) < minLength {
 		return fmt.Errorf("密碼長度至少需 %d 個字元", minLength)
 	}
 	return nil

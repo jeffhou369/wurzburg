@@ -68,20 +68,41 @@ func ResetAdminPassword(ctx context.Context, db *sql.DB, clk clock.Clock, userna
 		return err
 	}
 
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("重設密碼失敗: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var userID int64
+	err = tx.QueryRowContext(
+		ctx,
+		`SELECT id FROM users WHERE username = ? AND role = 'admin' AND auth_source = 'local' FOR UPDATE`,
+		username,
+	).Scan(&userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("找不到本機系統管理員帳號: %s", username)
+	}
+	if err != nil {
+		return fmt.Errorf("重設密碼失敗: %w", err)
+	}
+
 	now := clk.Now()
-	res, err := db.ExecContext(
+	_, err = tx.ExecContext(
 		ctx,
 		`UPDATE users
 		 SET password_hash = ?, requires_password_change = FALSE, failed_login_count = 0, locked_until = NULL, enabled = TRUE, updated_at = ?
-		 WHERE username = ? AND role = 'admin' AND auth_source = 'local'`,
-		hash, now, username,
+		 WHERE id = ?`,
+		hash, now, userID,
 	)
 	if err != nil {
 		return fmt.Errorf("重設密碼失敗: %w", err)
 	}
-	rows, _ := res.RowsAffected()
-	if rows == 0 {
-		return fmt.Errorf("找不到本機系統管理員帳號: %s", username)
+	if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userID); err != nil {
+		return fmt.Errorf("撤銷管理員工作階段失敗: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("重設密碼失敗: %w", err)
 	}
 	return nil
 }

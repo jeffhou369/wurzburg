@@ -102,7 +102,7 @@ func (h *Handler) isPasswordChangeRequired(ctx context.Context, userID int64) bo
 }
 
 func (h *Handler) handleLoginLocal(w http.ResponseWriter, r *http.Request) {
-	if !h.rateLimiter.Allow(r.RemoteAddr) {
+	if !h.rateLimiter.Allow(rateLimitKey(r.RemoteAddr)) {
 		auth.WriteError(w, http.StatusTooManyRequests, "rate_limited", "嘗試登入過於頻繁，請稍後再試")
 		return
 	}
@@ -207,7 +207,7 @@ func (h *Handler) handleLoginLocal(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleLoginOrg(w http.ResponseWriter, r *http.Request) {
-	if !h.rateLimiter.Allow(r.RemoteAddr) {
+	if !h.rateLimiter.Allow(rateLimitKey(r.RemoteAddr)) {
 		auth.WriteError(w, http.StatusTooManyRequests, "rate_limited", "嘗試登入過於頻繁")
 		return
 	}

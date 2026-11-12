@@ -1,6 +1,7 @@
 package accounts
 
 import (
+	"net"
 	"sync"
 	"time"
 
@@ -26,6 +27,14 @@ func NewRateLimiter(clk clock.Clock, maxHits int, window time.Duration) *RateLim
 		window:   window,
 		attempts: make(map[string][]time.Time),
 	}
+}
+
+func rateLimitKey(remoteAddr string) string {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err == nil {
+		return host
+	}
+	return remoteAddr
 }
 
 // Allow 檢查指定來源鍵（例如 IP）是否仍允許進行登入嘗試。

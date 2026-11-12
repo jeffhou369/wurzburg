@@ -596,6 +596,10 @@ export class SubnetsPage implements OnInit {
                 confirmLabel: this.text.unmanageDialog.confirm,
                 danger: true,
               },
+              role: 'alertdialog',
+              ariaLabel: this.text.unmanageDialog.title,
+              ariaLabelledBy: 'confirm-dialog-title',
+              ariaDescribedBy: 'confirm-dialog-message',
             });
             ref.closed.subscribe((ok) => {
               if (ok) execute(prev.preview_token);
@@ -648,6 +652,10 @@ export class SubnetsPage implements OnInit {
                 confirmLabel: this.text.exclusionDialog.confirm,
                 danger: true,
               },
+              role: 'alertdialog',
+              ariaLabel: this.text.exclusionDialog.title,
+              ariaLabelledBy: 'confirm-dialog-title',
+              ariaDescribedBy: 'confirm-dialog-message',
             });
             ref.closed.subscribe((ok) => {
               if (ok) execute(prev.preview_token);

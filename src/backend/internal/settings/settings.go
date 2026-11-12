@@ -37,9 +37,10 @@ var Defaults = map[string]string{
 
 // Store 封裝系統參數與加密機敏資料的讀寫操作。
 type Store struct {
-	db     *sql.DB
-	cipher *crypto.Cipher
-	clock  clock.Clock
+	db       *sql.DB
+	cipher   *crypto.Cipher
+	clock    clock.Clock
+	defaults map[string]string
 }
 
 // NewStore 建立設定儲存庫。若不需要存取機敏資料可傳入 nil cipher（寫入 secret 時仍會攔截）。
@@ -48,6 +49,18 @@ func NewStore(db *sql.DB, cipher *crypto.Cipher, clk clock.Clock) *Store {
 		clk = clock.NewRealClock()
 	}
 	return &Store{db: db, cipher: cipher, clock: clk}
+}
+
+// NewStoreWithDefaults 建立具有部署預設值的設定儲存庫；資料庫已儲存的設定仍優先。
+func NewStoreWithDefaults(db *sql.DB, cipher *crypto.Cipher, clk clock.Clock, defaults map[string]string) *Store {
+	store := NewStore(db, cipher, clk)
+	store.defaults = make(map[string]string, len(defaults))
+	for key, value := range defaults {
+		if value != "" {
+			store.defaults[key] = value
+		}
+	}
+	return store
 }
 
 // Get 讀取字串設定，找不到時回傳規格定義的預設值。
@@ -72,6 +85,9 @@ func (s *Store) Get(ctx context.Context, key string) (string, error) {
 		}
 	}
 
+	if def, ok := s.defaults[key]; ok {
+		return def, nil
+	}
 	if def, ok := Defaults[key]; ok {
 		return def, nil
 	}

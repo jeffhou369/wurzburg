@@ -692,6 +692,10 @@ export class SwitchesPage implements OnInit {
         confirmLabel: this.text.deleteDialog.confirm,
         danger: true,
       },
+      role: 'alertdialog',
+      ariaLabel: this.text.deleteDialog.title(sw.name),
+      ariaLabelledBy: 'confirm-dialog-title',
+      ariaDescribedBy: 'confirm-dialog-message',
     });
     ref.closed.subscribe((ok) => {
       if (ok) {

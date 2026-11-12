@@ -737,7 +737,7 @@ func TestScalePollCycle_RunCycleReturnsPipelineErrors(t *testing.T) {
 		if scope.calls != 1 || recon.calls != 0 {
 			t.Fatalf("範圍步驟失敗後不應進入整併: scope=%d recon=%d", scope.calls, recon.calls)
 		}
-		if inProgress, _, last := sched.Status(); inProgress || last == nil {
+		if inProgress, _, last, _ := sched.Status(); inProgress || last == nil {
 			t.Fatalf("管線失敗後排程狀態應已收尾: inProgress=%v last=%v", inProgress, last)
 		}
 	})
