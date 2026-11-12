@@ -22,14 +22,24 @@ type RouteRegistrar interface {
 
 // Server 封裝 HTTP 路由、共用基礎服務與伺服器設定。
 type Server struct {
-	cfg      *config.Config
-	db       *sql.DB
-	clock    clock.Clock
-	router   chi.Router
-	Sessions *auth.SessionStore
-	Settings *settings.Store
-	Audit    *audit.Logger
-	Cipher   *crypto.Cipher
+	cfg       *config.Config
+	db        *sql.DB
+	clock     clock.Clock
+	router    chi.Router
+	apiRouter chi.Router
+	Sessions  *auth.SessionStore
+	Settings  *settings.Store
+	Audit     *audit.Logger
+	Cipher    *crypto.Cipher
+}
+
+// Mount 將功能模組之路由掛載至 /api/v1 路由群組下。
+func (s *Server) Mount(registrars ...RouteRegistrar) {
+	for _, reg := range registrars {
+		if reg != nil {
+			reg.RegisterRoutes(s.apiRouter)
+		}
+	}
 }
 
 // New 建立並配置一個新的 Server 實例，並掛載傳入的功能路由。
@@ -80,6 +90,7 @@ func (s *Server) setupRoutes(registrars ...RouteRegistrar) {
 
 	// API 路由群組
 	r.Route("/api/v1", func(api chi.Router) {
+		s.apiRouter = api
 		api.Use(auth.AuthenticateMiddleware(s.Sessions, s.Settings, allowTestHeaders))
 		api.Use(auth.CSRFMiddleware)
 

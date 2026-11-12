@@ -8,8 +8,12 @@ import { NotificationsPage } from './features/notifications/notifications.page';
 import { AuditPage } from './features/audit/audit.page';
 import { SettingsPage } from './features/settings/settings.page';
 import { ShowcasePage } from './features/showcase/showcase.page';
+import { LoginPage } from './features/auth/login.page';
+import { ChangePasswordPage } from './features/auth/change-password.page';
 
 export const routes: Routes = [
+  { path: 'login', component: LoginPage },
+  { path: 'change-password', component: ChangePasswordPage },
   {
     path: '',
     component: ShellLayoutComponent,
