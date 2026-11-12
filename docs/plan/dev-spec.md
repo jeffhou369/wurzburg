@@ -290,7 +290,7 @@ Würzburg 是內部用的 IPv4 管理系統。它定時讀取交換器的 ARP ta
 - 框架是 Angular（ADR 0014）。版本與 Lucide 在 Angular 上的用法在開始前端工作時查最新文件後確定。
 - 元件自己寫，行為的部分（浮層、對話框的焦點管理、鍵盤操作、無障礙屬性、表格）用 Angular CDK。不使用 Angular Material 或其他元件庫的外觀。
 - 樣式以 `docs/Wurzburg-UI-Style-Kit.zip` 的原始檔為準，其次是樣式包內的 `CLIProxyAPI-UI-style-reference.md`，最後是 PRD 第 10 節。設計 token 以 CSS 變數集中管理。
-- 設計過程使用 UI UX Pro Max：以「內部營運／IP 管理儀表板」產生設計系統並執行交付前檢查，產出存成 `design-system/ip-mgmt/MASTER.md`；它產生的色盤不得覆蓋樣式包的色票。這個 skill 目前沒有安裝，開始前端工作前要先裝好。
+- 設計過程使用 UI UX Pro Max：以「內部營運／IP 管理儀表板」產生設計系統並執行交付前檢查，產出存成 `design-system/ip-mgmt/MASTER.md`；它產生的色盤不得覆蓋樣式包的色票。這個 skill 裝在使用者層級（名稱 `ui-ux-pro-max`），不在儲存庫裡；在別的機器或環境工作時，先確認它可用。
 - MVP 完成淺色主題（EasyCLIProxyAPI `light`），並保留主題切換的機制。
 - 介面語言是繁體中文；文字集中管理，不散落在元件裡。
 - 版型、各畫面的結構、燈號與灰階規則、無障礙檢查清單照 PRD 第 10 節。
@@ -406,5 +406,5 @@ VRF 相關的公開範例最難取得，因此 VRF 讀取設定是最可能在�
 
 1. Jeff 審閱本規格，特別是標有 ※ 的條目。
 2. 規格確認後，把工作項目拆到 `docs/task/`。
-3. 前端工作開始前安裝 UI UX Pro Max。
+3. 前端工作開始前確認 UI UX Pro Max 可用。
 4. 採集模組開發前蒐集兩個平台的回應範例。
