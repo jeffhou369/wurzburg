@@ -28,7 +28,7 @@ Blocked by: 01
 
 已完成 20 — HTTPS 範例：
 - `infra/docker-compose.https.yml`：透過 `!reset []` 移除 `app` 主機端對外埠，加入 `nginx:1.27-alpine` 負責 TLS 終止。
-- `infra/nginx/wurzburg.conf`：配置 80 轉 443（301 永久轉址）、TLSv1.2/1.3、HSTS 與 `X-Forwarded-Proto: https`。
+- `infra/nginx/default.conf.template`（nginx 官方映像以 envsubst 產生 `conf.d/default.conf`，取代映像內建站台）：配置 80 轉 443（301 永久轉址）、TLSv1.2/1.3、HSTS 與 `X-Forwarded-Proto: https`。
 - `infra/HTTPS-README.md`：提供繁體中文操作文件與測試用自簽憑證指令。
 - `.gitignore`：加入 `infra/certs/`、`*.crt`、`*.key`、`*.pem` 防止誤提交機敏憑證。
 - 已於本地以測試自簽憑證啟動完整 Compose 疊加設定，驗證 HTTP 301 轉址與 HTTPS `/api/v1/health` 回應皆正常。

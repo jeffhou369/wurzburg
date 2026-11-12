@@ -24,7 +24,7 @@ services:
     environment:
       WURZBURG_HTTPS_PORT: ${WURZBURG_HTTPS_PORT:-443}
     volumes:
-      - ./nginx/wurzburg.conf.template:/etc/nginx/templates/wurzburg.conf.template:ro
+      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ${WURZBURG_TLS_CERT_PATH:-./certs/wurzburg.crt}:/etc/nginx/certs/wurzburg.crt:ro
       - ${WURZBURG_TLS_KEY_PATH:-./certs/wurzburg.key}:/etc/nginx/certs/wurzburg.key:ro
     networks:
