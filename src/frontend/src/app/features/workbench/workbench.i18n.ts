@@ -10,6 +10,7 @@ export const WORKBENCH_TEXT = {
   subtitle: '納管網段內所有 IPv4 位址之即時狀態、ARP 觀測與登記管理',
   sync: {
     running: '同步中',
+    never: '尚未同步',
     succeeded: '最近同步成功',
     failed: '同步有失敗項目',
   },

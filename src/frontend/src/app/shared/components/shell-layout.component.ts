@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import {
   LucideLayoutDashboard,
   LucideNetwork,
@@ -14,6 +14,7 @@ import {
   LucideMoon,
   LucideMenu,
   LucideX,
+  LucideLogOut,
 } from '@lucide/angular';
 import { SHELL_TEXT } from '../../core/i18n/shell.i18n';
 import { ThemeService } from '../../core/theme.service';
@@ -41,6 +42,7 @@ import { ToastContainerComponent } from './toast-container.component';
     LucideMoon,
     LucideMenu,
     LucideX,
+    LucideLogOut,
   ],
   template: `
     <div class="app-shell">
@@ -198,6 +200,11 @@ import { ToastContainerComponent } from './toast-container.component';
               <svg lucideSun [size]="16" [strokeWidth]="2"></svg>
               <span>{{ text.theme.light }}</span>
             }
+          </button>
+
+          <button type="button" class="btn btn-ghost btn-sm theme-btn" (click)="logout()">
+            <svg lucideLogOut [size]="16" [strokeWidth]="2"></svg>
+            <span>{{ text.user.logout }}</span>
           </button>
         </div>
       </aside>
@@ -438,9 +445,15 @@ export class ShellLayoutComponent implements OnInit {
   protected readonly text = SHELL_TEXT;
   protected readonly themeService = inject(ThemeService);
   protected readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
   protected readonly badges = inject(SidebarBadgesService);
   protected readonly mobileSidebarOpen = signal(false);
   protected readonly campusName = signal<string>(SHELL_TEXT.appName);
+
+  /** 登出後回到登入頁；不保留目的地，下一位使用者登入後從首頁開始。 */
+  protected logout(): void {
+    this.auth.logout().subscribe(() => void this.router.navigateByUrl('/login'));
+  }
 
   ngOnInit(): void {
     this.http.get<{ campus_name: string }>('/api/v1/settings/campus').subscribe({

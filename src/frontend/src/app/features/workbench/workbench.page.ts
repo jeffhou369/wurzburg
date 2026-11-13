@@ -67,6 +67,8 @@ type BatchActionResult = components['schemas']['BatchActionResult'];
         <div class="sync-header-badge">
           @if (st.sync_in_progress) {
             <app-status-pill variant="online" [label]="text.sync.running" />
+          } @else if (!st.last_sync_at) {
+            <app-status-pill variant="offline" [label]="text.sync.never" />
           } @else if (st.last_sync_success) {
             <app-status-pill variant="online" [label]="text.sync.succeeded" />
           } @else {

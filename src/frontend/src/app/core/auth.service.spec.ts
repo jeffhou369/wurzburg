@@ -153,4 +153,47 @@ describe('AuthService', () => {
     expect(auth.isAdmin()).toBeTrue();
     expect(auth.currentUser()?.username).toBe('alice');
   });
+
+  function loginAsAdmin() {
+    auth.restoreSession().subscribe();
+    httpTesting.expectOne('/api/v1/auth/me').flush({
+      id: 7,
+      username: 'admin',
+      display_name: '系統管理員',
+      role: 'admin',
+      auth_source: 'local',
+      requires_password_change: false,
+    });
+    expect(auth.isAuthenticated()).toBeTrue();
+  }
+
+  it('logout 應呼叫 POST /api/v1/auth/logout 並清除使用者', () => {
+    loginAsAdmin();
+    let done = false;
+    auth.logout().subscribe(() => (done = true));
+
+    const req = httpTesting.expectOne('/api/v1/auth/logout');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.headers.get('X-Requested-With')).toBe('XMLHttpRequest');
+    expect(auth.isAuthenticated()).toBeTrue(); // 後端回應前還不算登出
+    req.flush(null, { status: 204, statusText: 'No Content' });
+
+    expect(done).toBeTrue();
+    expect(auth.currentUser()).toBeNull();
+  });
+
+  it('logout 即使後端回應失敗也要清除使用者', () => {
+    loginAsAdmin();
+    let done = false;
+    auth.logout().subscribe(() => (done = true));
+    httpTesting
+      .expectOne('/api/v1/auth/logout')
+      .flush(
+        { code: 'unauthorized', message: '請先登入系統' },
+        { status: 401, statusText: 'Unauthorized' },
+      );
+
+    expect(done).toBeTrue();
+    expect(auth.currentUser()).toBeNull();
+  });
 });

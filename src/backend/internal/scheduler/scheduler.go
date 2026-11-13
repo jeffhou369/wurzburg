@@ -84,13 +84,12 @@ func (s *Scheduler) handleStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Scheduler) handleTrigger(w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	if s.inProgress {
-		s.mu.Unlock()
+	// 在回應之前就標記這一輪已開始：呼叫端收到 202 後會查詢同步狀態來判斷何時結束，
+	// 若等背景工作排到才標記，緊接著的查詢會看到「沒有在同步」而誤以為這一輪已經結束。
+	if !s.begin() {
 		auth.WriteError(w, http.StatusConflict, "sync_in_progress", "目前已有同步輪次正在執行中")
 		return
 	}
-	s.mu.Unlock()
 
 	u := auth.UserFromContext(r.Context())
 	if s.audit != nil && u != nil {
@@ -100,7 +99,7 @@ func (s *Scheduler) handleTrigger(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		bgCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 		defer cancel()
-		if err := s.RunCycle(bgCtx); err != nil {
+		if err := s.runStarted(bgCtx); err != nil {
 			slog.Warn("手動觸發的同步輪次執行異常", "error", err)
 		}
 	}()
@@ -133,17 +132,31 @@ type switchBatch struct {
 }
 
 // RunCycle 執行完整的一輪 SNMP 輪詢。若上一輪尚未結束，設定 roundIncomplete 並立即略過。
-func (s *Scheduler) RunCycle(ctx context.Context) (cycleErr error) {
-	s.mu.Lock()
-	if s.inProgress {
+func (s *Scheduler) RunCycle(ctx context.Context) error {
+	if !s.begin() {
+		s.mu.Lock()
 		s.roundIncomplete = true
 		s.mu.Unlock()
 		return errors.New("上一輪輪詢尚未結束，跳過本次啟動")
 	}
+	return s.runStarted(ctx)
+}
+
+// begin 標記一輪輪詢開始。已有輪次在執行時回傳 false，不改動任何狀態。
+// 回傳 true 之後必須呼叫 runStarted，由它在結束時清除進行中的標記。
+func (s *Scheduler) begin() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.inProgress {
+		return false
+	}
 	s.inProgress = true
 	s.roundIncomplete = false
-	s.mu.Unlock()
+	return true
+}
 
+// runStarted 執行已由 begin 標記開始的一輪輪詢。
+func (s *Scheduler) runStarted(ctx context.Context) (cycleErr error) {
 	defer func() {
 		now := s.clock.Now()
 		s.mu.Lock()

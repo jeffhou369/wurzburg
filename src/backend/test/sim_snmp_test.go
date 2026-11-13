@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/gosnmp/gosnmp"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -65,7 +67,22 @@ type snmpSim struct {
 // 必須涵蓋測試會用到的所有 community 與 context。
 func startSNMPSim(t *testing.T, initial map[string][]byte) *snmpSim {
 	t.Helper()
+	return startSNMPSimOn(t, initial, 0)
+}
+
+// startSNMPSimOn 與 startSNMPSim 相同，但可以指定模擬器在主機上的 UDP 埠；hostPort 為 0 時由 Docker 挑選。
+// 瀏覽器流程使用 161：介面上沒有 SNMP 埠的欄位，交換器一律以預設的 161 埠讀取。
+func startSNMPSimOn(t *testing.T, initial map[string][]byte, hostPort int) *snmpSim {
+	t.Helper()
 	ctx := context.Background()
+	var hostConfig func(*container.HostConfig)
+	if hostPort > 0 {
+		hostConfig = func(hc *container.HostConfig) {
+			hc.PortBindings = network.PortMap{
+				network.MustParsePort("161/udp"): {{HostPort: strconv.Itoa(hostPort)}},
+			}
+		}
+	}
 
 	files := []testcontainers.ContainerFile{{
 		Reader:            strings.NewReader("1.3.6.1.2.1.1.1.0|4|snmpsim readiness probe\n"),
@@ -87,8 +104,9 @@ func startSNMPSim(t *testing.T, initial map[string][]byte) *snmpSim {
 	}
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
-			Image:        snmpSimImage,
-			ExposedPorts: []string{"161/udp"},
+			Image:              snmpSimImage,
+			ExposedPorts:       []string{"161/udp"},
+			HostConfigModifier: hostConfig,
 			Env: map[string]string{
 				"SNMPTRAPD_ENABLED": "0",
 				"EXTRA_FLAGS":       strings.Join(flags, " "),
@@ -99,6 +117,9 @@ func startSNMPSim(t *testing.T, initial map[string][]byte) *snmpSim {
 		Started: true,
 	})
 	if err != nil {
+		if hostPort > 0 {
+			t.Fatalf("啟動 SNMP 模擬器失敗（需要主機的 UDP %d 埠，請確認沒有其他程式佔用）: %v", hostPort, err)
+		}
 		t.Fatalf("啟動 SNMP 模擬器失敗: %v", err)
 	}
 	t.Cleanup(func() { _ = testcontainers.TerminateContainer(c) })

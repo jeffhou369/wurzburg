@@ -42,6 +42,12 @@ npm test                                      # 以 ChromeHeadless 執行全部�
 npx ng test --watch=false --browsers=ChromeHeadless --include=src/app/app.spec.ts  # 執行單一前端測試檔
 ```
 
+**瀏覽器關鍵流程（`test/browser`）：** 對真實後端跑登入、設定精靈、登記、批次重新確認、裁決衝突與網段不納管。需要 Docker、Go、Node.js；第一次先在 `test/browser` 執行 `npm ci` 與 `npx playwright install chromium`。
+
+```sh
+test/browser/run.sh
+```
+
 **容器建置與啟動：**
 ```sh
 docker build -t wurzburg:dev .
@@ -52,6 +58,7 @@ docker compose -f infra/docker-compose.yml up -d --no-build
 
 - 後端：`gofmt`、`go vet`、golangci-lint（版本鎖定於工作流程內），以及 `go test -race -count=1 ./...`（含 Testcontainers 整合測試）
 - 前端：`npm run lint`、`npm run format:check`、OpenAPI 產生型別一致性（`npm run generate:api` 後以 Prettier 排版比對）、`npm run build`、`npm test`
+- 瀏覽器：Playwright 關鍵流程（真實後端與 Testcontainers 模擬的 SNMP、LDAP、郵件伺服器）
 - 工作流程語法：actionlint
 
 另有 CodeQL、OSV-Scanner、Trivy 與 SBOM 等安全性工作流程。新增 action 一律鎖定 40 字元 commit SHA。

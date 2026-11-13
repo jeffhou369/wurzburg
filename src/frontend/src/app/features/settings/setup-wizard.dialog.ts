@@ -3,15 +3,21 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { DialogRef } from '@angular/cdk/dialog';
 import { LucideCheck, LucideX, LucideWand2, LucidePlay, LucideRefreshCw } from '@lucide/angular';
+import { EMPTY, Observable, catchError, expand, last, of, switchMap, tap, timer } from 'rxjs';
 import { ToastService } from '../../shared/components/toast.service';
 import { SETUP_WIZARD_TEXT } from './setup-wizard.i18n';
 import type { components } from '../../core/api.types';
+import { isValidPublicBaseUrl } from './public-base-url';
 
 type Subnet = components['schemas']['Subnet'];
+type SwitchResponse = components['schemas']['Switch'];
+type TestReadResult = components['schemas']['TestReadResult'];
+type SyncStatus = components['schemas']['SyncStatus'];
 
 interface AuthFormData {
   active_source: 'ad' | 'radius';
   ad_url?: string;
+  ad_use_tls?: boolean;
   ad_bind_dn?: string;
   ad_bind_password?: string;
   ad_base_dn?: string;
@@ -115,6 +121,17 @@ interface SwitchFormData {
                   />
                   <span class="field-help">{{ text.step1.timezoneHelp }}</span>
                 </div>
+                <div class="field-group">
+                  <label for="wzPublicUrl">{{ text.step1.publicBaseUrl }}</label>
+                  <input
+                    id="wzPublicUrl"
+                    type="url"
+                    class="form-input font-mono"
+                    [(ngModel)]="campusForm.public_base_url"
+                    placeholder="https://ip.example.com"
+                  />
+                  <span class="field-help">{{ text.step1.publicBaseUrlHelp }}</span>
+                </div>
               </div>
             </section>
           }
@@ -157,6 +174,10 @@ interface SwitchFormData {
                       placeholder="ldaps://ad.example.com:636"
                     />
                   </div>
+                  <label class="check-row" for="wzAdUseTls">
+                    <input id="wzAdUseTls" type="checkbox" [(ngModel)]="authForm.ad_use_tls" />
+                    <span>{{ text.step2.adUseTls }}</span>
+                  </label>
                   <div class="field-row">
                     <div class="field-group">
                       <label for="wzAdBindDn">{{ text.step2.adBindDn }}</label>
@@ -486,25 +507,23 @@ interface SwitchFormData {
                 }
               </div>
 
-              @if (switchCreatedId()) {
-                <div class="test-box">
-                  <div class="test-box-title">{{ text.step4.testTitle }}</div>
-                  <button
-                    type="button"
-                    class="btn btn-secondary"
-                    (click)="testReadSwitch()"
-                    [disabled]="testingSwitch()"
-                  >
-                    <svg lucidePlay [size]="14"></svg>
-                    <span>{{ testingSwitch() ? text.step4.testRunning : text.step4.testRun }}</span>
-                  </button>
-                  @if (switchTestResult()) {
-                    <div class="test-feedback" [class.success]="switchTestResult()!.success">
-                      {{ switchTestResult()!.message }}
-                    </div>
-                  }
-                </div>
-              }
+              <div class="test-box">
+                <div class="test-box-title">{{ text.step4.testTitle }}</div>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  (click)="testReadSwitch()"
+                  [disabled]="testingSwitch()"
+                >
+                  <svg lucidePlay [size]="14"></svg>
+                  <span>{{ testingSwitch() ? text.step4.testRunning : text.step4.testRun }}</span>
+                </button>
+                @if (switchTestResult()) {
+                  <div class="test-feedback" [class.success]="switchTestResult()!.success">
+                    {{ switchTestResult()!.message }}
+                  </div>
+                }
+              </div>
             </section>
           }
 
@@ -700,6 +719,14 @@ interface SwitchFormData {
         flex-direction: column;
         gap: 14px;
       }
+      .check-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: var(--font-size-meta);
+        color: var(--color-text-secondary);
+        cursor: pointer;
+      }
       .field-row {
         display: flex;
         gap: 12px;
@@ -826,12 +853,13 @@ export class SetupWizardDialogComponent implements OnInit {
   protected readonly step4Skipped = signal(false);
 
   // Step 1
-  protected campusForm = { campus_name: 'Würzburg', timezone: 'Asia/Taipei' };
+  protected campusForm = { campus_name: 'Würzburg', timezone: 'Asia/Taipei', public_base_url: '' };
 
   // Step 2
   protected authForm: AuthFormData = {
     active_source: 'ad',
     ad_url: '',
+    ad_use_tls: true,
     ad_bind_dn: '',
     ad_bind_password: '',
     ad_base_dn: '',
@@ -893,9 +921,14 @@ export class SetupWizardDialogComponent implements OnInit {
         error: () => {},
       });
 
-    this.http.get<{ campus_name: string; timezone: string }>('/api/v1/settings/campus').subscribe({
-      // 只取精靈會編輯的兩個欄位；公開網址不在精靈內，PUT 省略即保留既有值
-      next: (res) => (this.campusForm = { campus_name: res.campus_name, timezone: res.timezone }),
+    this.http.get<components['schemas']['CampusSettings']>('/api/v1/settings/campus').subscribe({
+      // 公開網址：已設定就沿用，儲存時原樣送回、不會被清除；尚未設定時先帶入目前瀏覽器使用的網址供確認
+      next: (res) =>
+        (this.campusForm = {
+          campus_name: res.campus_name,
+          timezone: res.timezone,
+          public_base_url: res.public_base_url || window.location.origin,
+        }),
       error: () => {},
     });
   }
@@ -905,10 +938,20 @@ export class SetupWizardDialogComponent implements OnInit {
     const step = this.currentStep();
 
     if (step === 1) {
+      const publicBaseUrl = this.campusForm.public_base_url.trim();
+      if (!isValidPublicBaseUrl(publicBaseUrl)) {
+        this.savingStep.set(false);
+        this.toast.show(this.text.toast.saveFailed, 'danger', this.text.step1.publicBaseUrlInvalid);
+        return;
+      }
       this.http
         .put(
           '/api/v1/settings/campus',
-          { campus_name: this.campusForm.campus_name, timezone: this.campusForm.timezone },
+          {
+            campus_name: this.campusForm.campus_name,
+            timezone: this.campusForm.timezone,
+            public_base_url: publicBaseUrl,
+          },
           { headers: { 'X-Requested-With': 'XMLHttpRequest' } },
         )
         .subscribe({
@@ -925,72 +968,77 @@ export class SetupWizardDialogComponent implements OnInit {
           },
         });
     } else if (step === 2) {
-      this.http
-        .put('/api/v1/settings/auth-source', this.authForm, {
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        })
-        .subscribe({
-          next: () => this.advanceStep(3),
-          error: (err) => {
-            this.savingStep.set(false);
-            this.toast.show(
-              this.text.toast.saveFailed,
-              'danger',
-              err?.error?.message ?? this.text.toast.checkFields,
-            );
-          },
-        });
+      this.saveAuthSource().subscribe({
+        next: () => this.advanceStep(3),
+        error: (err) => this.reportSaveError(err, this.text.toast.checkFields),
+      });
     } else if (step === 3) {
-      const rcpts = this.adminRcptsText
-        .split(',')
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-      const payload: Record<string, any> = {
-        ...this.mailForm,
-        admin_recipients: rcpts,
-      };
-      if (this.mailPassword) {
-        payload['smtp_password'] = this.mailPassword;
-      }
-      this.http
-        .put('/api/v1/settings/mail', payload, {
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        })
-        .subscribe({
-          next: () => this.advanceStep(4),
-          error: (err) => {
-            this.savingStep.set(false);
-            this.toast.show(
-              this.text.toast.saveFailed,
-              'danger',
-              err?.error?.message ?? this.text.toast.checkFields,
-            );
-          },
-        });
+      this.saveMailSettings().subscribe({
+        next: () => this.advanceStep(4),
+        error: (err) => this.reportSaveError(err, this.text.toast.checkFields),
+      });
     } else if (step === 4) {
       if (!this.switchForm.name || !this.switchForm.mgmt_ip) {
         this.savingStep.set(false);
         this.toast.show(this.text.toast.nameAndIpRequired, 'danger');
         return;
       }
-      this.http
-        .post<{ id: number }>('/api/v1/switches', this.switchForm, {
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        })
-        .subscribe({
-          next: (res) => {
-            this.switchCreatedId.set(res.id);
-            this.step4Skipped.set(false);
-            this.advanceStep(5);
-            // 進入步驟 5 自動觸發一次同步讀取網段
-            this.triggerSyncAndReloadSubnets();
-          },
-          error: (err) => {
-            this.savingStep.set(false);
-            this.toast.show(this.text.toast.switchCreateFailed, 'danger', err?.error?.message);
-          },
-        });
+      this.saveSwitch().subscribe({
+        next: () => {
+          this.step4Skipped.set(false);
+          this.advanceStep(5);
+          // 進入步驟 5 自動觸發一次同步讀取網段
+          this.triggerSyncAndReloadSubnets();
+        },
+        error: (err) => {
+          this.savingStep.set(false);
+          this.toast.show(this.text.toast.switchCreateFailed, 'danger', err?.error?.message);
+        },
+      });
     }
+  }
+
+  private reportSaveError(err: any, fallback: string): void {
+    this.savingStep.set(false);
+    this.toast.show(this.text.toast.saveFailed, 'danger', err?.error?.message ?? fallback);
+  }
+
+  // 各步驟的「測試」按鈕測的是後端已儲存的設定，所以一律先把畫面上的內容存起來再測試；
+  // 否則全新安裝時後端還沒有任何設定，測試必定失敗。
+
+  private saveAuthSource(): Observable<unknown> {
+    return this.http.put('/api/v1/settings/auth-source', this.authForm, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    });
+  }
+
+  private saveMailSettings(): Observable<unknown> {
+    const rcpts = this.adminRcptsText
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    const payload: Record<string, unknown> = {
+      ...this.mailForm,
+      admin_recipients: rcpts,
+    };
+    if (this.mailPassword) {
+      payload['smtp_password'] = this.mailPassword;
+    }
+    return this.http.put('/api/v1/settings/mail', payload, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    });
+  }
+
+  /** 新增交換器；已在本步驟新增過（先按了測試讀取）則改為更新，避免重複建立。回傳交換器資料。 */
+  private saveSwitch(): Observable<SwitchResponse> {
+    const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+    const existingId = this.switchCreatedId();
+    const request = existingId
+      ? this.http.put<SwitchResponse>(`/api/v1/switches/${existingId}`, this.switchForm, {
+          headers,
+        })
+      : this.http.post<SwitchResponse>('/api/v1/switches', this.switchForm, { headers });
+    return request.pipe(tap((sw) => this.switchCreatedId.set(sw.id)));
   }
 
   skipCurrentStep(): void {
@@ -1018,11 +1066,15 @@ export class SetupWizardDialogComponent implements OnInit {
     if (!this.authTestUser) return;
     this.testingAuth.set(true);
     this.authTestResult.set(null);
-    this.http
-      .post<{ success: boolean; message: string }>(
-        '/api/v1/settings/auth-source/test',
-        { username: this.authTestUser, password: this.authTestPass },
-        { headers: { 'X-Requested-With': 'XMLHttpRequest' } },
+    this.saveAuthSource()
+      .pipe(
+        switchMap(() =>
+          this.http.post<{ success: boolean; message: string }>(
+            '/api/v1/settings/auth-source/test',
+            { username: this.authTestUser, password: this.authTestPass },
+            { headers: { 'X-Requested-With': 'XMLHttpRequest' } },
+          ),
+        ),
       )
       .subscribe({
         next: (res) => {
@@ -1043,11 +1095,15 @@ export class SetupWizardDialogComponent implements OnInit {
     if (!this.testMailRecipient) return;
     this.testingMail.set(true);
     this.mailTestResult.set(null);
-    this.http
-      .post<{ success: boolean; message: string }>(
-        '/api/v1/settings/mail/test',
-        { recipient: this.testMailRecipient },
-        { headers: { 'X-Requested-With': 'XMLHttpRequest' } },
+    this.saveMailSettings()
+      .pipe(
+        switchMap(() =>
+          this.http.post<{ success: boolean; message: string }>(
+            '/api/v1/settings/mail/test',
+            { recipient: this.testMailRecipient },
+            { headers: { 'X-Requested-With': 'XMLHttpRequest' } },
+          ),
+        ),
       )
       .subscribe({
         next: (res) => {
@@ -1065,55 +1121,71 @@ export class SetupWizardDialogComponent implements OnInit {
   }
 
   testReadSwitch(): void {
-    const swId = this.switchCreatedId();
-    if (!swId) return;
+    if (!this.switchForm.name || !this.switchForm.mgmt_ip) {
+      this.toast.show(this.text.toast.nameAndIpRequired, 'danger');
+      return;
+    }
     this.testingSwitch.set(true);
     this.switchTestResult.set(null);
-    // 取得預設 vrf id 執行 test-read
-    this.http.get<any>(`/api/v1/switches/${swId}`).subscribe({
-      next: (sw) => {
-        const vrfId = sw.vrfs?.[0]?.id ?? 1;
-        this.http
-          .post<any>(
-            `/api/v1/switches/${swId}/vrfs/${vrfId}/test-read`,
+    this.saveSwitch()
+      .pipe(
+        switchMap((sw) => {
+          // 新交換器一定帶一筆預設 VRF 讀取設定，測試讀取就讀它
+          const vrfId = sw.vrf_configs[0]?.id;
+          return this.http.post<TestReadResult>(
+            `/api/v1/switches/${sw.id}/vrfs/${vrfId}/test-read`,
             {},
             { headers: { 'X-Requested-With': 'XMLHttpRequest' } },
-          )
-          .subscribe({
-            next: (tr) => {
-              this.testingSwitch.set(false);
-              this.switchTestResult.set({
-                success: tr.is_success,
-                message: tr.is_success
-                  ? this.text.step4.testSucceeded(tr.learned_count)
-                  : this.text.step4.testReadFailed(tr.error_class),
-              });
-            },
-            error: (err) => {
-              this.testingSwitch.set(false);
-              this.switchTestResult.set({
-                success: false,
-                message: err?.error?.message ?? this.text.step4.testRequestFailed,
-              });
-            },
+          );
+        }),
+      )
+      .subscribe({
+        next: (tr) => {
+          this.testingSwitch.set(false);
+          this.switchTestResult.set({
+            success: tr.success,
+            message: tr.success
+              ? this.text.step4.testSucceeded(tr.arp_count, tr.subnet_count)
+              : this.text.step4.testReadFailed(tr.error_class ?? '', tr.error_summary ?? ''),
           });
-      },
-      error: () => this.testingSwitch.set(false),
-    });
+        },
+        error: (err) => {
+          this.testingSwitch.set(false);
+          this.switchTestResult.set({
+            success: false,
+            message: err?.error?.message ?? this.text.step4.testRequestFailed,
+          });
+        },
+      });
   }
 
   triggerSyncAndReloadSubnets(): void {
     this.syncing.set(true);
     this.http
       .post('/api/v1/sync/trigger', {}, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .pipe(
+        // 已有同步在執行（409）也一樣等它結束
+        catchError(() => of(null)),
+        switchMap(() => this.waitForSyncToFinish()),
+      )
       .subscribe({
-        next: () => {
-          this.loadSubnets();
-        },
-        error: () => {
-          this.loadSubnets();
-        },
+        next: () => this.loadSubnets(),
+        error: () => this.loadSubnets(),
       });
+  }
+
+  /**
+   * 等目前這一輪同步結束。同步在後端的背景執行，觸發後馬上讀網段清單會讀到同步前的內容。
+   * 每秒查一次同步狀態，最多等 3 分鐘（後端一輪的上限）。
+   */
+  private waitForSyncToFinish(): Observable<SyncStatus> {
+    const check = () => this.http.get<SyncStatus>('/api/v1/sync/status');
+    return check().pipe(
+      expand((st, attempt) =>
+        st.in_progress && attempt < 180 ? timer(1000).pipe(switchMap(check)) : EMPTY,
+      ),
+      last(),
+    );
   }
 
   loadSubnets(): void {
