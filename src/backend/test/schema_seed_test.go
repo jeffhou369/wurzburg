@@ -37,7 +37,7 @@ func TestDatabaseSchemaConstraintsAndSeeder(t *testing.T) {
 		t.Fatalf("取得連線字串失敗: %v", err)
 	}
 
-	db, err := database.Connect(ctx, dsn)
+	db, err := connectTestDB(t, ctx, dsn)
 	if err != nil {
 		t.Fatalf("連線 MariaDB 失敗: %v", err)
 	}

@@ -51,7 +51,7 @@ func startContractDB(t *testing.T) *sql.DB {
 	if err != nil {
 		t.Fatalf("取得連線字串失敗: %v", err)
 	}
-	db, err := database.Connect(ctx, dsn)
+	db, err := connectTestDB(t, ctx, dsn)
 	if err != nil {
 		t.Fatalf("連線資料庫失敗: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestAPIContractCoverage(t *testing.T) {
 	secretKey := "0123456789abcdef0123456789abcdef"
 
 	srv := server.New(&config.Config{Port: 8080, CampusName: "Würzburg", AppEnv: "test", SecretKey: secretKey}, db, clk)
-	fakeMailer := interfaces.NewFakeMailer()
+	fakeMailer := newFakeMailer(t)
 	ouiSvc := oui.NewService(db, clk, srv.Audit)
 	if err := ouiSvc.EnsureLoaded(ctx); err != nil {
 		t.Fatalf("載入內建 OUI 資料失敗: %v", err)

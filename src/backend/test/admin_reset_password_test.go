@@ -25,7 +25,7 @@ func TestResetAdminPasswordRevokesSessionsAtomically(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := accounts.ResetAdminPassword(ctx, f.db, f.clk, "review-admin", "new-secure-password", 12); err != nil {
+	if err := accounts.ResetAdminPassword(ctx, f.db, f.clk, "review-admin", useSecret(t, "本機帳號密碼", "new-secure-password"), 12); err != nil {
 		t.Fatal(err)
 	}
 	for _, token := range adminTokens {

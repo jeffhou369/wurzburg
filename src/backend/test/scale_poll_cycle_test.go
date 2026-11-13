@@ -288,7 +288,7 @@ func newScaleEnv(t *testing.T) *scaleEnv {
 	if err != nil {
 		t.Fatalf("取得連線字串失敗: %v", err)
 	}
-	db, err := database.Connect(ctx, dsn)
+	db, err := connectTestDB(t, ctx, dsn)
 	if err != nil {
 		t.Fatalf("連線資料庫失敗: %v", err)
 	}
@@ -437,7 +437,7 @@ func (e *scaleEnv) login(password string) (*http.Cookie, bool) {
 // bootstrapAdmin 依正式流程：EnsureFirstAdmin -> 初始密碼登入 -> 強制改密碼 -> 以新密碼重新登入。
 func (e *scaleEnv) bootstrapAdmin() {
 	e.t.Helper()
-	if err := accounts.EnsureFirstAdmin(e.ctx, e.db, e.clk, scaleAdminUser, scaleInitialPW); err != nil {
+	if err := accounts.EnsureFirstAdmin(e.ctx, e.db, e.clk, scaleAdminUser, useSecret(e.t, "本機帳號密碼", scaleInitialPW)); err != nil {
 		e.t.Fatalf("建立初始系統管理員失敗: %v", err)
 	}
 	cookie, mustChange := e.login(scaleInitialPW)

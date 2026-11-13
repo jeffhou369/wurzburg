@@ -56,7 +56,7 @@ func TestAccounts_LoginSessionsAndAdminLifecycle(t *testing.T) {
 	})
 
 	dsn, _ := mariadbContainer.ConnectionString(ctx, "parseTime=true&loc=UTC")
-	db, err := database.Connect(ctx, dsn)
+	db, err := connectTestDB(t, ctx, dsn)
 	if err != nil {
 		t.Fatalf("連線資料庫失敗: %v", err)
 	}
@@ -70,12 +70,12 @@ func TestAccounts_LoginSessionsAndAdminLifecycle(t *testing.T) {
 	clk := clock.NewTestClock(now)
 
 	// 1. 透過環境變數建立第一位系統管理員
-	if err := accounts.EnsureFirstAdmin(ctx, db, clk, "rootadmin", "InitialStrongPass#1"); err != nil {
+	if err := accounts.EnsureFirstAdmin(ctx, db, clk, "rootadmin", useSecret(t, "本機帳號密碼", "InitialStrongPass#1")); err != nil {
 		t.Fatalf("EnsureFirstAdmin 失敗: %v", err)
 	}
 
 	// 若再次執行 EnsureFirstAdmin（即使換不同密碼），不可新增或覆蓋
-	if err := accounts.EnsureFirstAdmin(ctx, db, clk, "rootadmin", "DifferentPassword#99"); err != nil {
+	if err := accounts.EnsureFirstAdmin(ctx, db, clk, "rootadmin", useSecret(t, "本機帳號密碼", "DifferentPassword#99")); err != nil {
 		t.Fatalf("EnsureFirstAdmin 重複執行錯誤: %v", err)
 	}
 
@@ -87,7 +87,7 @@ func TestAccounts_LoginSessionsAndAdminLifecycle(t *testing.T) {
 	}
 
 	fakeAuth := interfaces.NewFakeAuthSource()
-	fakeAuth.Users["chen"] = "OrgUserPass123!"
+	fakeAuth.Users["chen"] = useSecret(t, "組織帳號密碼", "OrgUserPass123!")
 	fakeAuth.Info["chen"] = &interfaces.OrgUserInfo{
 		Username:    "chen",
 		DisplayName: "陳工程師",
@@ -139,7 +139,7 @@ func TestAccounts_LoginSessionsAndAdminLifecycle(t *testing.T) {
 
 	// 新密碼不符長度政策應回 422
 	recShortPw := postJSON(router, "/api/v1/auth/change-password", map[string]string{
-		"new_password": "short",
+		"new_password": "Tiny#Pw9x", // 9 個字元：低於 12 個字元的政策下限，但夠長、可供 Secret 掃描辨識
 	}, adminCookie)
 	if recShortPw.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("過短密碼預期回 422，實際 %d", recShortPw.Code)
@@ -216,7 +216,7 @@ func TestAccounts_LoginSessionsAndAdminLifecycle(t *testing.T) {
 	}
 
 	// 6. 驗證主機端 ResetAdminPassword 指令函式
-	if err := accounts.ResetAdminPassword(ctx, db, clk, "rootadmin", "CliResetPass#2026", 12); err != nil {
+	if err := accounts.ResetAdminPassword(ctx, db, clk, "rootadmin", useSecret(t, "本機帳號密碼", "CliResetPass#2026"), 12); err != nil {
 		t.Fatalf("CLI 重設密碼失敗: %v", err)
 	}
 	recCliLogin := postJSON(router, "/api/v1/auth/login/local", map[string]string{

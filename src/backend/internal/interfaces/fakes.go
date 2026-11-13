@@ -96,6 +96,9 @@ type FakeMailer struct {
 	mu      sync.Mutex
 	Sent    []MailMessage
 	FailErr error
+	// OnSend 若有設定，每次呼叫 Send 時都會收到訊息（含模擬寄送失敗的），不受 Reset／PopAll 影響。
+	// 供測試在寄出當下檢查每一封信。
+	OnSend func(MailMessage)
 }
 
 func NewFakeMailer() *FakeMailer {
@@ -105,6 +108,9 @@ func NewFakeMailer() *FakeMailer {
 func (f *FakeMailer) Send(ctx context.Context, msg MailMessage) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.OnSend != nil {
+		f.OnSend(msg)
+	}
 	if f.FailErr != nil {
 		return f.FailErr
 	}

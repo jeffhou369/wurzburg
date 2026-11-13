@@ -117,7 +117,7 @@ Würzburg 是內部用的 IPv4 管理系統：定時以 SNMP 讀取 Cisco 交換
 - **擁有者是帳號。** 權限只看帳號，擁有者信箱不決定任何權限（ADR 0012）。授權一律在 API 逐筆判斷，藏按鈕不算存取控制。
 - **網段不靠猜。** 網段來自介面位址表或手動新增，絕不從主機位址假設遮罩（ADR 0011）。
 - **狀態不能只靠顏色表達。** 介面、HTML 郵件、純文字郵件、Excel 匯出都要有狀態文字。
-- **Secret** 儲存後不回顯，不出現在日誌、稽核紀錄、錯誤頁、URL 與郵件本文。
+- **Secret** 儲存後不回顯，不出現在日誌、稽核紀錄、錯誤頁、URL 與郵件本文。後端整合測試會自動掃描 HTTP 回應、寄出的信、應用程式日誌與資料庫的所有文字欄位；測試要經由 `src/backend/test/contract_harness_test.go` 的 `apiRouter`、`newFakeMailer`、`connectTestDB` 取得路由器、郵件替身與資料庫連線，不經 API 寫入系統的 Secret 以 `useSecret` 登錄，Secret 樣本至少 8 個字元。
 - **郵件** 一律 `multipart/alternative`，純文字與 HTML 資訊對等；HTML 用表格版型與 inline CSS，寬約 600px，不用 JavaScript、外部字型或背景圖。信中的連結只通往需登入的頁面。使用者輸入的文字要先跳脫。
 - **通知去重** 成功寄出才標為已通知；裝置離線不解除已通知的狀態。
 - **故障隔離：** SMTP 或驗證來源中斷不得影響採集與 Web；一筆 VRF 讀取設定失敗不得影響其他的。

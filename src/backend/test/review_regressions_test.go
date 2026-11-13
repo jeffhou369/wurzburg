@@ -52,7 +52,7 @@ func newReviewFixture(t *testing.T) *reviewFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	db, err := database.Connect(ctx, dsn)
+	db, err := connectTestDB(t, ctx, dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func newReviewFixture(t *testing.T) *reviewFixture {
 	clk := clock.NewTestClock(time.Date(2026, 11, 16, 1, 0, 0, 0, time.UTC))
 	srv := server.New(&config.Config{AppEnv: "test", SecretKey: "0123456789abcdef0123456789abcdef"}, db, clk)
 	seed := testutil.NewSeeder(t, db, clk)
-	fm := interfaces.NewFakeMailer()
+	fm := newFakeMailer(t)
 	mh := mailer.NewHandler(db, clk, srv.Settings, srv.Audit, mailer.NewSMTPMailer(db, clk, srv.Settings))
 	mh.SetTestMailer(fm)
 	srv.Mount(wizard.NewHandler(db, clk, srv.Settings, srv.Audit), mh, iprecords.NewHandler(db, clk, srv.Settings, srv.Audit), audit.NewHandler(db))
