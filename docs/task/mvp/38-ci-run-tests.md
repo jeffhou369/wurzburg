@@ -45,3 +45,7 @@ Blocked by: —
 ## Comments
 
 - 2026-11-13：PR #2 至 #5 期間發現本缺口。`TestClusterA_AuditOUIAndAutoPurge` 在 `main` 上失敗，但 CI 全綠，因為 CI 沒有執行任何測試。
+- 2026-11-13：接上 CI 後，`TestScopeLockSnapshotAndLogTx` 與 `TestScopeAtomicRollbackOnFailure` 在 CI 失敗（「等不到 N 個鎖等待中的交易」）。依「不在範圍內」原應另開工作項目，但不修就無法合併本工作項目，且原因已查明、只需改測試的觀察方式，因此在本工作項目一併處理：
+  - 根因：本機先前的 `mariadb:11.4` 是在 Apple Silicon 上模擬執行的 amd64 映像；重新拉取後換成原生 arm64，本機也能重現。兩者同為 11.4.13。在原生 amd64／arm64 上，請求確實被列鎖擋住（`SHOW ENGINE INNODB STATUS` 顯示 `LOCK WAIT … insert intention waiting`），但 `information_schema.INNODB_TRX` 仍回報 `RUNNING`，`INNODB_LOCK_WAITS` 為 0 筆。產品的鎖定行為正確，是測試偵測鎖等待的方式不可靠。
+  - 修正：`saWaitLockWaits` 改為同時計算 `SHOW ENGINE INNODB STATUS` 中的「TRX HAS BEEN WAITING」段落，取兩者較大值；逾時時把最後一次 InnoDB 狀態寫進測試日誌。斷言內容不變。
+  - 驗證：原生 arm64 與模擬 amd64 兩種映像都通過。另外暫時拿掉 `lockScopeRowsSQL` 的 `FOR UPDATE`，測試會如預期失敗，確認仍能抓到鎖定回歸。完整 `go test -race -count=1 ./...` 通過，`test` 套件在原生映像上約 176 秒。

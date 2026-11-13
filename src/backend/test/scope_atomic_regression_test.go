@@ -730,19 +730,35 @@ func TestScopeAtomicPreviewTokens(t *testing.T) {
 // 二、LockSnapshot 與 LogTx
 // ---------------------------------------------------------------------------
 
+// saWaitLockWaits 等到至少 want 個交易處於 InnoDB 列鎖等待。
+//
+// 以 SHOW ENGINE INNODB STATUS 中「TRX HAS BEEN WAITING」的段落計數為準：MariaDB 11.4.13 在原生
+// amd64／arm64 上，information_schema.INNODB_TRX 的 trx_state 與 INNODB_LOCK_WAITS 會漏報正在等待的
+// 交易（INNODB STATUS 已顯示 LOCK WAIT，視圖仍為 RUNNING／0 筆），只在模擬執行等較慢的環境碰巧正確。
+// 兩者取較大值，避免任一來源漏報造成誤判。
 func saWaitLockWaits(t *testing.T, db *sql.DB, want int) {
 	t.Helper()
 	deadline := time.Now().Add(20 * time.Second)
+	last := ""
 	for time.Now().Before(deadline) {
 		var n int
 		if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.INNODB_TRX WHERE trx_state = 'LOCK WAIT'`).Scan(&n); err != nil {
 			t.Fatalf("查詢鎖等待失敗: %v", err)
+		}
+		var typ, name, status string
+		if err := db.QueryRow(`SHOW ENGINE INNODB STATUS`).Scan(&typ, &name, &status); err != nil {
+			t.Fatalf("查詢 InnoDB 狀態失敗: %v", err)
+		}
+		last = status
+		if m := strings.Count(status, "TRX HAS BEEN WAITING"); m > n {
+			n = m
 		}
 		if n >= want {
 			return
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
+	t.Logf("最後一次 InnoDB 狀態：\n%s", last)
 	t.Fatalf("等不到 %d 個鎖等待中的交易", want)
 }
 
