@@ -1,6 +1,6 @@
 # 41 — 13 個端到端情境只用 API 與時鐘產生狀態
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 39, 40
 
 ## 要做什麼
@@ -33,13 +33,13 @@ Blocked by: 39, 40
 
 ## 驗收條件
 
-- [ ] 13 個情境各有自動化測試，從空的系統開始，不擺前置資料，全部通過
-- [ ] 情境程式中沒有直接操作資料庫或內部服務來建立、修改、讀取產品狀態
-- [ ] 沒有使用測試身分標頭；所有請求都帶登入取得的 cookie
-- [ ] SNMP、驗證來源、郵件都經過真正的用戶端模組連到模擬伺服器
-- [ ] 每個回應都通過 OpenAPI 驗證與 Secret 掃描
-- [ ] 改寫過程中發現的產品問題，修正並記在 `## Comments`，或另開工作項目
-- [ ] 後端 `gofmt`、`go vet`、golangci-lint、`go test -race -count=1 ./...` 通過，CI 通過
+- [x] 13 個情境各有自動化測試，從空的系統開始，不擺前置資料，全部通過
+- [x] 情境程式中沒有直接操作資料庫或內部服務來建立、修改、讀取產品狀態
+- [x] 沒有使用測試身分標頭；所有請求都帶登入取得的 cookie
+- [x] SNMP、驗證來源、郵件都經過真正的用戶端模組連到模擬伺服器
+- [x] 每個回應都通過 OpenAPI 驗證與 Secret 掃描
+- [x] 改寫過程中發現的產品問題，修正並記在 `## Comments`，或另開工作項目
+- [x] 後端 `gofmt`、`go vet`、golangci-lint、`go test -race -count=1 ./...` 通過，CI 通過
 
 ## Comments
 
@@ -86,4 +86,4 @@ Blocked by: 39, 40
   - `TestE2EScenarios` 13 個情境全部通過，約 32 秒。
   - 後端：`gofmt`、`go vet`、golangci-lint v2.15.0（0 issues）、`go test -race -count=1 ./...` 全部通過（`test` 套件約 221 秒）；API 契約涵蓋率與 Secret 掃描沒有發現問題。
   - 前端：產生型別一致，`lint`、`format:check`、`build` 通過，單元測試 155／155。
-
+- 2026-11-13：PR #9 的 CI 全部通過（18 項通過、1 項依設計略過），本張完成。第一次執行時 `TestSNMPSimulatorWithRealCollector` 在 CI 失敗，原因與處理見上方「觀察到但沒有處理的事項」最後一項。
