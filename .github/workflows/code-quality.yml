@@ -14,6 +14,8 @@
 #                     含以 Testcontainers 啟動 MariaDB 的整合測試（runner 內建 Docker）。
 #   - frontend-test 工作：與 frontend 相同條件，檢查 OpenAPI 產生的型別與 repo 一致、
 #                     建置前端，並以 ChromeHeadless 執行單元測試。
+#   - browser 工作 ：前後端都在時，以 Playwright 對真實後端跑瀏覽器關鍵流程
+#                     （Testcontainers 啟動 MariaDB 與模擬的 SNMP、LDAP、郵件伺服器）。
 #   - gate 工作     ：提供單一固定的必要狀態檢查（required status check）；
 #                     任一啟用的檢查或測試失敗、被取消時即失敗。
 #
@@ -331,6 +333,61 @@ jobs:
           set -euo pipefail
           npm test
 
+  browser:
+    name: Browser Flows (Playwright)
+    needs: detect
+    if: ${{ needs.detect.outputs.has_backend == 'true' && needs.detect.outputs.has_frontend == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: 取出原始碼
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 設定 Go 環境
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: src/backend/go.mod
+          cache-dependency-path: src/backend/go.sum
+
+      - name: 設定 Node.js 環境
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+
+      - name: 建置前端並內嵌進後端
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd src/frontend
+          npm ci
+          npm run build
+          cd ../..
+          find src/backend/internal/static/dist -mindepth 1 ! -name .gitkeep -delete
+          cp -R src/frontend/dist/frontend/browser/. src/backend/internal/static/dist/
+
+      - name: 安裝 Playwright 與 Chromium
+        shell: bash
+        working-directory: test/browser
+        run: |
+          set -euo pipefail
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: 執行瀏覽器關鍵流程
+        shell: bash
+        working-directory: src/backend
+        env:
+          WURZBURG_BROWSER_TESTS: "1"
+        run: |
+          set -euo pipefail
+          go test -count=1 -timeout 20m -run '^TestBrowserFlows$' ./test/
+
   gate:
     name: Code Quality gate
     if: ${{ always() }}
@@ -341,6 +398,7 @@ jobs:
       - frontend
       - backend-test
       - frontend-test
+      - browser
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
@@ -353,6 +411,7 @@ jobs:
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           BACKEND_TEST_RESULT: ${{ needs.backend-test.result }}
           FRONTEND_TEST_RESULT: ${{ needs.frontend-test.result }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
         run: |
           set -euo pipefail
           echo "Workflows lint 結果：${WORKFLOWS_RESULT}"
@@ -360,6 +419,7 @@ jobs:
           echo "Frontend lint 結果：${FRONTEND_RESULT}"
           echo "Backend tests 結果：${BACKEND_TEST_RESULT}"
           echo "Frontend tests 結果：${FRONTEND_TEST_RESULT}"
+          echo "Browser flows 結果：${BROWSER_RESULT}"
 
           # workflows 必須成功
           if [ "${WORKFLOWS_RESULT}" != "success" ]; then
@@ -388,6 +448,11 @@ jobs:
           # frontend-test 若有執行（非 skipped），必須為 success
           if [ "${FRONTEND_TEST_RESULT}" != "success" ] && [ "${FRONTEND_TEST_RESULT}" != "skipped" ]; then
             echo "::error::前端測試失敗 (${FRONTEND_TEST_RESULT})"
+            exit 1
+          fi
+
+          if [ "${BROWSER_RESULT}" != "success" ] && [ "${BROWSER_RESULT}" != "skipped" ]; then
+            echo "::error::瀏覽器關鍵流程失敗 (${BROWSER_RESULT})"
             exit 1
           fi
 

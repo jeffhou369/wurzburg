@@ -588,10 +588,28 @@ export class SwitchesPage implements OnInit {
         next: () => {
           this.syncInProgress.set(true);
           this.toast.show(this.text.toast.syncTriggered, 'info');
+          // 同步在背景執行；不接著查狀態的話，「同步中」會一直留在畫面上
+          this.pollUntilIdle();
         },
         error: (err) =>
           this.toast.show(this.text.toast.syncTriggerFailed, 'warning', err?.error?.message),
       });
+  }
+
+  /** 每秒查一次同步狀態，結束後更新徽章並重載交換器卡片。最多等 3 分鐘。 */
+  private pollUntilIdle(attempt = 0): void {
+    this.http.get<components['schemas']['SyncStatus']>('/api/v1/sync/status').subscribe({
+      next: (res) => {
+        if (res.in_progress && attempt < 180) {
+          setTimeout(() => this.pollUntilIdle(attempt + 1), 1000);
+          return;
+        }
+        this.syncInProgress.set(res.in_progress);
+        this.roundIncomplete.set(res.round_incomplete);
+        this.loadSwitches();
+      },
+      error: () => this.syncInProgress.set(false),
+    });
   }
 
   openAddSwitch(): void {

@@ -62,6 +62,20 @@ export class AuthService {
     );
   }
 
+  /**
+   * 登出：請後端讓工作階段失效，再清除前端的使用者。
+   * 後端回應失敗（例如工作階段早已逾時）也一樣清除，畫面上不可留下已登入的狀態。
+   */
+  logout(): Observable<void> {
+    return this.http
+      .post('/api/v1/auth/logout', null, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .pipe(
+        catchError(() => of(null)),
+        tap(() => this.currentUser.set(null)),
+        map(() => undefined),
+      );
+  }
+
   /** 已有使用者就直接回傳，否則向後端還原。 */
   ensureSession(): Observable<CurrentUser | null> {
     const existing = this.currentUser();

@@ -23,11 +23,17 @@ export const SETUP_WIZARD_TEXT = {
     campusName: '園區顯示名稱 *',
     timezone: '顯示時區 (IANA Timezone) *',
     timezoneHelp: '例如 Asia/Taipei、UTC 或 America/New_York。內部存儲一律使用 UTC。',
+    publicBaseUrl: '系統公開網址',
+    publicBaseUrlHelp:
+      '通知信件內的連結使用這個網址，請填使用者實際開啟本系統的網址。留空代表尚未設定，系統將停止寄送通知信（含步驟 3 的測試信）。',
+    publicBaseUrlInvalid:
+      '網址格式不正確：請輸入 HTTP 或 HTTPS 根網址，例如 https://ip.example.com，且不可含帳密、路徑、查詢參數或片段。',
   },
   step2: {
     title: '步驟 2：一般使用者驗證來源',
     description: '選擇並設定組織驗證來源（AD 或 RADIUS）。使用者登入後登記自己負責的位址。',
     adUrl: 'AD 伺服器網址 *',
+    adUseTls: '啟用 TLS 加密連線（強烈建議生產環境保持勾選）',
     adBindDn: '查詢帳號 DN',
     adBindPassword: '查詢密碼',
     adBaseDn: '搜尋 Base DN *',
@@ -39,7 +45,7 @@ export const SETUP_WIZARD_TEXT = {
     testUsername: '測試帳號',
     testPassword: '測試密碼',
     testRunning: '驗證中...',
-    testRun: '測試登入',
+    testRun: '儲存並測試登入',
     testFailed: '測試失敗',
   },
   step3: {
@@ -57,7 +63,7 @@ export const SETUP_WIZARD_TEXT = {
     testTitle: '寄送測試信',
     testRecipient: '收件信箱',
     testRunning: '寄送中...',
-    testRun: '寄出測試信',
+    testRun: '儲存並寄出測試信',
     testFailed: '測試失敗',
   },
   step4: {
@@ -77,9 +83,11 @@ export const SETUP_WIZARD_TEXT = {
     privPassword: '加密密碼',
     testTitle: '測試讀取（確認 SNMP 憑證與連線）',
     testRunning: '讀取中...',
-    testRun: '立即測試讀取',
-    testSucceeded: (learnedCount: number) => `讀取成功，共學得 ${learnedCount} 筆 ARP`,
-    testReadFailed: (errorClass: string) => `讀取失敗：${errorClass}`,
+    testRun: '儲存並測試讀取',
+    testSucceeded: (arpCount: number, subnetCount: number) =>
+      `讀取成功，共讀到 ${arpCount} 筆 ARP、${subnetCount} 個介面位址`,
+    testReadFailed: (errorClass: string, errorSummary: string) =>
+      `讀取失敗（${errorClass}）：${errorSummary}`,
     testRequestFailed: '讀取測試失敗',
   },
   step5: {
