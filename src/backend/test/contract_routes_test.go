@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"net/http"
 	"sort"
 	"strings"
@@ -9,26 +10,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/jeffhou369/wurzburg/backend/internal/accounts"
-	"github.com/jeffhou369/wurzburg/backend/internal/audit"
-	"github.com/jeffhou369/wurzburg/backend/internal/authsource"
+	"github.com/jeffhou369/wurzburg/backend/internal/app"
 	"github.com/jeffhou369/wurzburg/backend/internal/clock"
 	"github.com/jeffhou369/wurzburg/backend/internal/config"
-	"github.com/jeffhou369/wurzburg/backend/internal/conflicts"
-	"github.com/jeffhou369/wurzburg/backend/internal/dashboard"
-	"github.com/jeffhou369/wurzburg/backend/internal/interfaces"
-	"github.com/jeffhou369/wurzburg/backend/internal/iprecords"
-	"github.com/jeffhou369/wurzburg/backend/internal/mailer"
-	"github.com/jeffhou369/wurzburg/backend/internal/oui"
-	"github.com/jeffhou369/wurzburg/backend/internal/pipeline"
-	"github.com/jeffhou369/wurzburg/backend/internal/purge"
-	"github.com/jeffhou369/wurzburg/backend/internal/reconciliation"
-	"github.com/jeffhou369/wurzburg/backend/internal/scheduler"
 	"github.com/jeffhou369/wurzburg/backend/internal/server"
-	"github.com/jeffhou369/wurzburg/backend/internal/subnets"
-	"github.com/jeffhou369/wurzburg/backend/internal/switches"
 	"github.com/jeffhou369/wurzburg/backend/internal/testutil/apicontract"
-	"github.com/jeffhou369/wurzburg/backend/internal/wizard"
 )
 
 // TestRegisteredRoutesMatchSpec 比對「後端實際註冊的路由」與 OpenAPI 描述檔，兩邊必須完全一致。
@@ -37,32 +23,12 @@ import (
 // 後端多註冊了描述檔沒有的端點（前端若使用它，就沒有任何型別與契約保護），或描述檔寫了後端沒有的端點。
 // 不需要資料庫：只建立路由，不送出請求。
 //
-// 模組清單要與 cmd/wurzburg/modules.go 的 mountFeatureModules 一致；新增功能模組時兩邊都要加。
+// 路由以正式環境的組裝（app.Mount）建立，新增功能模組時不需要改這個測試。
 func TestRegisteredRoutesMatchSpec(t *testing.T) {
 	clk := clock.NewTestClock(time.Date(2026, 11, 16, 1, 0, 0, 0, time.UTC))
 	srv := server.New(&config.Config{AppEnv: "production", SecretKey: "0123456789abcdef0123456789abcdef"}, nil, clk)
 
-	ouiSvc := oui.NewService(nil, clk, srv.Audit)
-	authSrc := authsource.NewDynamicManager(nil, srv.Settings, srv.Audit)
-	scopeSvc := subnets.NewScopeService(nil, clk, srv.Audit, "")
-	reconcileSvc := reconciliation.NewService(nil, clk, srv.Settings, subnets.NewResolver(nil), ouiSvc)
-	collector := interfaces.NewFakeCollector()
-	sched := scheduler.New(nil, clk, srv.Cipher, srv.Settings, srv.Audit, collector, pipeline.New(scopeSvc, reconcileSvc))
-	srv.Mount(
-		accounts.NewHandler(nil, clk, srv.Sessions, srv.Settings, srv.Audit, authSrc),
-		authSrc,
-		audit.NewHandler(nil),
-		ouiSvc,
-		purge.NewService(nil, clk, srv.Settings, srv.Audit),
-		switches.NewHandler(nil, clk, srv.Cipher, srv.Audit, collector),
-		sched,
-		scopeSvc,
-		conflicts.NewHandler(nil, clk, srv.Audit, ouiSvc),
-		dashboard.NewHandler(nil, clk, sched),
-		iprecords.NewHandler(nil, clk, srv.Settings, srv.Audit),
-		mailer.NewHandler(nil, clk, srv.Settings, srv.Audit, mailer.NewSMTPMailer(nil, clk, srv.Settings)),
-		wizard.NewHandler(nil, clk, srv.Settings, srv.Audit),
-	)
+	app.Mount(context.Background(), srv, nil, clk)
 
 	// 伺服器內建的權限檢測示範端點，供基礎測試與診斷使用，不屬於產品契約。
 	internalOnly := map[string]bool{

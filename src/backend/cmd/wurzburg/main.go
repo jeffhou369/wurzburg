@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/jeffhou369/wurzburg/backend/internal/accounts"
+	"github.com/jeffhou369/wurzburg/backend/internal/app"
 	"github.com/jeffhou369/wurzburg/backend/internal/clock"
 	"github.com/jeffhou369/wurzburg/backend/internal/config"
 	"github.com/jeffhou369/wurzburg/backend/internal/database"
@@ -98,7 +99,10 @@ func run() error {
 	}
 
 	srv := server.New(cfg, db, clk)
-	mountFeatureModules(ctx, srv, db, clk)
+	modules := app.Mount(ctx, srv, db, clk)
+	if db != nil {
+		modules.StartBackgroundLoops(ctx)
+	}
 
 	httpServer := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),

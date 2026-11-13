@@ -330,6 +330,9 @@ components:
           type: string
         notes:
           type: string
+        v3_username:
+          type: string
+          description: SNMPv3 使用者名稱（僅 SNMPv3 且已設定時回傳）
         has_v3_warning:
           type: boolean
           description: 若未設定額外 VRF 讀取設定，提示可能缺少 VRF 內位址

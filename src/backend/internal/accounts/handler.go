@@ -238,6 +238,11 @@ func (h *Handler) handleLoginOrg(w http.ResponseWriter, r *http.Request) {
 			auth.WriteError(w, http.StatusForbidden, "group_restricted", "此帳號不在允許登入之組織群組中")
 			return
 		}
+		// 驗證來源連不上時不可回報成帳密錯誤：使用者會以為自己打錯密碼而反覆嘗試或要求重設
+		if errors.Is(err, interfaces.ErrAuthUnavailable) {
+			auth.WriteError(w, http.StatusServiceUnavailable, "auth_unavailable", "組織驗證服務暫時無法使用，請稍後再試或聯繫系統管理員")
+			return
+		}
 		auth.WriteError(w, http.StatusUnauthorized, "invalid_credentials", "組織帳號或密碼錯誤")
 		return
 	}

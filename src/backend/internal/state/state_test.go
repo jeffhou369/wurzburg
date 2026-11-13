@@ -10,7 +10,9 @@ func TestComputeStateAllCombinations(t *testing.T) {
 	advanceDays := 14
 
 	expSoon := now.Add(14 * 24 * time.Hour)
-	expBoundaryNotSoon := now.Add(14*24*time.Hour + time.Second)
+	// 「即將到期」以日期判斷：到期日在 15 天後的第一秒，才是第一個不算即將到期的時間點
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	expBoundaryNotSoon := today.AddDate(0, 0, 15)
 	expPast := now.Add(-1 * time.Second)
 	expExact := now
 
@@ -70,7 +72,7 @@ func TestComputeStateAllCombinations(t *testing.T) {
 			wantLabel:      "在線 · 即將到期",
 		},
 		{
-			name:           "第 14 天又多 1 秒尚未進入即將到期",
+			name:           "到期日在 15 天後尚未進入即將到期",
 			sightingsCount: 1,
 			hasOwner:       true,
 			expiresAt:      &expBoundaryNotSoon,
@@ -93,7 +95,7 @@ func TestComputeStateAllCombinations(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := Compute(tc.sightingsCount, tc.hasOwner, tc.expiresAt, tc.conflict, advanceDays, now)
+			got := Compute(tc.sightingsCount, tc.hasOwner, tc.expiresAt, tc.conflict, advanceDays, now, time.UTC)
 			if got.Presence != tc.wantPresence {
 				t.Errorf("presence got %s, want %s", got.Presence, tc.wantPresence)
 			}
@@ -107,5 +109,49 @@ func TestComputeStateAllCombinations(t *testing.T) {
 				t.Errorf("label got %q, want %q", got.Label, tc.wantLabel)
 			}
 		})
+	}
+}
+
+// 「即將到期」以園區時區的日期判斷，與到期催認信相同：到期日距離今天不超過提前天數就算。
+// 催認信在到期日前 14 天的早上寄出；若改以精確時間判斷，下午才到期的登記在當天早上還不算即將到期，
+// 擁有者依信中連結打開清單會是空的。
+func TestExpiringSoonFollowsCampusCalendarDays(t *testing.T) {
+	loc, err := time.LoadLocation("Asia/Taipei")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expires := time.Date(2027, 11, 16, 11, 5, 0, 0, loc) // 到期日 11/16，上午 11:05 到期
+	cases := []struct {
+		name string
+		now  time.Time
+		want bool
+	}{
+		{"到期日前 15 天的深夜", time.Date(2027, 11, 1, 23, 59, 0, 0, loc), false},
+		{"到期日前 14 天剛過午夜", time.Date(2027, 11, 2, 0, 0, 0, 0, loc), true},
+		{"到期日前 14 天早上寄催認信的時間", time.Date(2027, 11, 2, 8, 0, 0, 0, loc), true},
+		{"到期日當天、到期時間之前", time.Date(2027, 11, 16, 9, 0, 0, 0, loc), true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := Compute(1, true, &expires, false, 14, tc.now.UTC(), loc)
+			if got.ExpiringSoon != tc.want {
+				t.Errorf("ExpiringSoon 得到 %v，預期 %v", got.ExpiringSoon, tc.want)
+			}
+			if got.Registration != RegRegistered {
+				t.Errorf("尚未到期的登記應為已登記，實際 %s", got.Registration)
+			}
+			if before := ExpiringSoonBefore(tc.now.UTC(), loc, 14); expires.Before(before) != tc.want {
+				t.Errorf("ExpiringSoonBefore 的界線與 Compute 不一致：%s", before.In(loc))
+			}
+		})
+	}
+
+	// 時區不同，同一個時間點落在不同的日期：以園區時區為準
+	utcEvening := time.Date(2027, 11, 1, 16, 30, 0, 0, time.UTC) // 台北已是 11/2 00:30
+	if got := Compute(1, true, &expires, false, 14, utcEvening, loc); !got.ExpiringSoon {
+		t.Error("園區時區已進入到期日前 14 天時應算即將到期")
+	}
+	if got := Compute(1, true, &expires, false, 14, utcEvening, time.UTC); got.ExpiringSoon {
+		t.Error("以 UTC 計算時同一個時間點還在到期日前 15 天")
 	}
 }

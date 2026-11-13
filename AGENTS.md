@@ -101,7 +101,7 @@ Würzburg 是內部用的 IPv4 管理系統：定時以 SNMP 讀取 Cisco 交換
 - **前端：** Angular，元件自己寫，行為用 Angular CDK，不用 Angular Material 的外觀（ADR 0014）。API 型別由 OpenAPI 描述檔產生。
 - **倉庫配置：** `src/backend`、`src/frontend`、`infra/`。
 - **採集：** 每 3 分鐘，對每筆 VRF 讀取設定讀 ARP 表、介面位址表與介面名稱。採集模組對外只輸出這三樣，平台差異封在模組內。失敗重試一次，總嘗試次數固定為 2，以 VRF 讀取設定為單位。
-- **測試：** 外部系統全部用模擬器，不依賴實體交換器。SNMP 的測試資料來自原廠文件與公開範例，尚未經實機確認（開發規格第 12 節）。
+- **測試：** 外部系統全部用模擬器，不依賴實體交換器。SNMP 的測試資料來自原廠文件與公開範例，尚未經實機確認（開發規格第 12 節）。端到端情境（`src/backend/test/e2e_scenarios_test.go` 的 `TestE2EScenarios`）以正式環境的組裝（`internal/app`）啟動整套系統，經由真正的用戶端模組連到以 Testcontainers 啟動的模擬伺服器：snmpsim（SNMP）、OpenLDAP（AD 形狀的目錄）、Mailpit（SMTP）；所有狀態只由 API 操作與推進測試時鐘產生，情境程式不直接讀寫資料庫。
 
 實際採用的程式庫與版本，在動手前查最新文件後確定。
 

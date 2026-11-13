@@ -51,7 +51,13 @@ func newFakeMailer(t testing.TB) *interfaces.FakeMailer {
 // scanSentMail 對一封信做 Secret 掃描。測試自行實作郵件替身時，要在 Send 的一開始呼叫它。
 func scanSentMail(t testing.TB, msg interfaces.MailMessage) {
 	t.Helper()
-	for _, f := range secretscan.Shared().ScanMail(msg.To, msg.Cc, msg.Subject, msg.TextBody, msg.HTMLBody) {
+	scanSentMailParts(t, msg.To, msg.Cc, msg.Subject, msg.TextBody, msg.HTMLBody)
+}
+
+// scanSentMailParts 對一封信的各部分做 Secret 掃描；供郵件替身與郵件模擬伺服器共用。
+func scanSentMailParts(t testing.TB, to, cc []string, subject, textBody, htmlBody string) {
+	t.Helper()
+	for _, f := range secretscan.Shared().ScanMail(to, cc, subject, textBody, htmlBody) {
 		t.Errorf("Secret 洩漏：%s", f)
 	}
 }

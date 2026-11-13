@@ -1,4 +1,8 @@
-package main
+// Package app 組裝 Würzburg 的全部功能模組。
+//
+// 正式執行檔（cmd/wurzburg）與端到端測試使用同一份組裝：真正的 SNMP 採集、SMTP 寄信、AD／RADIUS 驗證，
+// 差別只在時鐘與背景迴圈——正式環境以實際時間驅動背景迴圈，測試則推進測試時鐘後直接觸發到期工作。
+package app
 
 import (
 	"context"
@@ -26,8 +30,18 @@ import (
 	"github.com/jeffhou369/wurzburg/backend/internal/wizard"
 )
 
-// mountFeatureModules 集中掛載所有業務功能模組之路由並啟動排程。
-func mountFeatureModules(ctx context.Context, srv *server.Server, db *sql.DB, clk clock.Clock) {
+// Modules 是組裝完成的功能模組中，需要由外部驅動的排程入口。
+type Modules struct {
+	// Scheduler 的 RunCycle 執行一輪 SNMP 輪詢。
+	Scheduler *scheduler.Scheduler
+	// Notifications 的 Tick 依時鐘觸發到期的通知工作（未登記彙整、每週總表、到期催認）。
+	Notifications *notifications.SchedulerTracker
+	// Maintenance 的 Tick 依時鐘觸發每日維護（自動清除）。
+	Maintenance *purge.MaintenanceScheduler
+}
+
+// Mount 建立所有業務功能模組並把路由掛載到 srv。
+func Mount(ctx context.Context, srv *server.Server, db *sql.DB, clk clock.Clock) *Modules {
 	ouiSvc := oui.NewService(db, clk, srv.Audit)
 	if err := ouiSvc.EnsureLoaded(ctx); err != nil {
 		slog.Warn("初始化本地 OUI 資料庫失敗", "error", err)
@@ -72,9 +86,17 @@ func mountFeatureModules(ctx context.Context, srv *server.Server, db *sql.DB, cl
 		wizardHandler,
 	)
 
-	if db != nil {
-		go sched.StartBackgroundLoop(ctx)
-		go notifTracker.StartBackgroundLoop(ctx)
-		go purge.NewMaintenanceScheduler(purgeSvc, clk).StartBackgroundLoop(ctx)
+	return &Modules{
+		Scheduler:     sched,
+		Notifications: notifTracker,
+		Maintenance:   purge.NewMaintenanceScheduler(purgeSvc, clk),
 	}
+}
+
+// StartBackgroundLoops 啟動以實際時間驅動的背景迴圈：每 3 分鐘一輪 SNMP 輪詢、通知排程與每日維護。
+// 各迴圈在 ctx 結束時停止。
+func (m *Modules) StartBackgroundLoops(ctx context.Context) {
+	go m.Scheduler.StartBackgroundLoop(ctx)
+	go m.Notifications.StartBackgroundLoop(ctx)
+	go m.Maintenance.StartBackgroundLoop(ctx)
 }
