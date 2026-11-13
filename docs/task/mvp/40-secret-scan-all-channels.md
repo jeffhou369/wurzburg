@@ -1,6 +1,6 @@
 # 40 — 全管道 Secret 掃描
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 39
 
 ## 要做什麼
@@ -28,12 +28,12 @@ Blocked by: 39
 
 ## 驗收條件
 
-- [ ] 所有後端整合測試使用的 Secret 都已登錄，且都是可辨識的字串
-- [ ] HTTP 回應、請求 URL、每一封寄出的信、應用程式日誌、稽核與通知資料表都在掃描範圍，任一處出現登錄的 Secret 時測試失敗
-- [ ] Secret 沒有以明文出現在任何資料表
-- [ ] 分別在一個管道故意洩漏一次（回應、信件、日誌、稽核紀錄），確認掃描器都能抓到；結果記在 `## Comments`
-- [ ] 掃描發現的實際洩漏全部修正並逐項記錄
-- [ ] 後端 `gofmt`、`go vet`、golangci-lint、`go test -race -count=1 ./...` 通過，CI 通過
+- [x] 所有後端整合測試使用的 Secret 都已登錄，且都是可辨識的字串
+- [x] HTTP 回應、請求 URL、每一封寄出的信、應用程式日誌、稽核與通知資料表都在掃描範圍，任一處出現登錄的 Secret 時測試失敗
+- [x] Secret 沒有以明文出現在任何資料表
+- [x] 分別在一個管道故意洩漏一次（回應、信件、日誌、稽核紀錄），確認掃描器都能抓到；結果記在 `## Comments`
+- [x] 掃描發現的實際洩漏全部修正並逐項記錄
+- [x] 後端 `gofmt`、`go vet`、golangci-lint、`go test -race -count=1 ./...` 通過，CI 通過
 
 ## Comments
 
@@ -81,4 +81,4 @@ Blocked by: 39
   - 請求 URL 是測試自己組的，這項檢查只能防止 API 設計成要把 Secret 放在 URL；前端是否把 Secret 放進 URL 要由第 42 張的瀏覽器流程確認。
   - 真正的 SMTP 寄信（`mailer.SMTPMailer`）與 SNMP、LDAP、RADIUS 用戶端在整合測試中由替身取代，它們自己的日誌要等第 41 張接上模擬伺服器後才會被掃描到。
   - `e2e_pipeline_test.go` 原本的 `Security_SecretScan` 子測試保留未動，第 41 張改寫情境時一併移除。
-
+- 2026-11-13：PR #8 的 CI 全部通過（18 項通過、1 項依設計略過），本張完成。
