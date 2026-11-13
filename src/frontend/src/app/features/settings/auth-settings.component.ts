@@ -4,24 +4,9 @@ import { HttpClient } from '@angular/common/http';
 import { LucideTriangleAlert } from '@lucide/angular';
 import { ToastService } from '../../shared/components/toast.service';
 import { AUTH_SETTINGS_TEXT } from './auth-settings.i18n';
+import type { components } from '../../core/api.types';
 
-interface AuthConfigResponse {
-  active_source: 'none' | 'ad' | 'radius';
-  affected_registered_count: number;
-  ad_url: string;
-  ad_use_tls: boolean;
-  ad_bind_dn: string;
-  ad_has_bind_password: boolean;
-  ad_base_dn: string;
-  ad_allowed_group: string;
-  ad_user_attr: string;
-  ad_mail_attr: string;
-  ad_name_attr: string;
-  radius_host: string;
-  radius_port: number;
-  radius_timeout_ms: number;
-  radius_has_secret: boolean;
-}
+type AuthConfigResponse = components['schemas']['AuthSourceSettings'];
 
 @Component({
   selector: 'app-auth-settings',
@@ -375,7 +360,7 @@ export class AuthSettingsComponent implements OnInit {
   };
 
   ngOnInit(): void {
-    this.http.get<AuthConfigResponse>('/api/v1/settings/auth-source/config').subscribe({
+    this.http.get<AuthConfigResponse>('/api/v1/settings/auth-source').subscribe({
       next: (res) => {
         this.initialSource.set(res.active_source);
         this.affectedCount.set(res.affected_registered_count);

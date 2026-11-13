@@ -53,7 +53,7 @@ func TestWizardAndCampusSettings(t *testing.T) {
 	srv := server.New(&config.Config{Port: 8080, CampusName: "Würzburg", AppEnv: "test"}, db, clk)
 	wizHandler := wizard.NewHandler(db, clk, srv.Settings, srv.Audit)
 	srv.Mount(wizHandler)
-	router := srv.Router()
+	router := apiRouter(t, srv)
 
 	seeder := testutil.NewSeeder(t, db, clk)
 	adminID := seeder.SeedAdmin("admin")

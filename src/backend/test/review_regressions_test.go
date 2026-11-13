@@ -30,6 +30,7 @@ type reviewFixture struct {
 	db            *sql.DB
 	clk           *clock.TestClock
 	srv           *server.Server
+	router        http.Handler
 	seed          *testutil.Seeder
 	adminID       int64
 	mail          *interfaces.FakeMailer
@@ -66,12 +67,12 @@ func newReviewFixture(t *testing.T) *reviewFixture {
 	mh := mailer.NewHandler(db, clk, srv.Settings, srv.Audit, mailer.NewSMTPMailer(db, clk, srv.Settings))
 	mh.SetTestMailer(fm)
 	srv.Mount(wizard.NewHandler(db, clk, srv.Settings, srv.Audit), mh, iprecords.NewHandler(db, clk, srv.Settings, srv.Audit), audit.NewHandler(db))
-	return &reviewFixture{db: db, clk: clk, srv: srv, seed: seed, adminID: seed.SeedAdmin("review-admin"), mail: fm, notifications: notifications.NewService(db, clk, srv.Settings, srv.Audit, fm)}
+	return &reviewFixture{db: db, clk: clk, srv: srv, router: apiRouter(t, srv), seed: seed, adminID: seed.SeedAdmin("review-admin"), mail: fm, notifications: notifications.NewService(db, clk, srv.Settings, srv.Audit, fm)}
 }
 
 func (f *reviewFixture) request(method, path string, body any, userID int64, role string) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
-	f.srv.Router().ServeHTTP(w, testutil.NewAuthRequest(method, path, body, userID, role, "review-user"))
+	f.router.ServeHTTP(w, testutil.NewAuthRequest(method, path, body, userID, role, "review-user"))
 	return w
 }
 

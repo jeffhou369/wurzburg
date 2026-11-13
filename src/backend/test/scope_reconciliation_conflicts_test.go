@@ -66,7 +66,7 @@ func TestScopeReconciliationAndConflicts(t *testing.T) {
 	conflictsHandler := conflicts.NewHandler(db, clk, srv.Audit, fakeOUI)
 
 	srv.Mount(scopeSvc, conflictsHandler)
-	router := srv.Router()
+	router := apiRouter(t, srv)
 
 	seeder := testutil.NewSeeder(t, db, clk)
 	adminID := seeder.SeedAdmin("admin")

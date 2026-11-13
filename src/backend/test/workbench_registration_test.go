@@ -61,7 +61,7 @@ func TestWorkbenchRegistrationAndExport(t *testing.T) {
 	dashHandler := dashboard.NewHandler(db, clk, nil)
 	ipHandler := iprecords.NewHandler(db, clk, srv.Settings, srv.Audit)
 	srv.Mount(dashHandler, ipHandler)
-	router := srv.Router()
+	router := apiRouter(t, srv)
 
 	seeder := testutil.NewSeeder(t, db, clk)
 	adminID := seeder.SeedAdmin("admin")

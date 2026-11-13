@@ -26,8 +26,18 @@ paths:
                 $ref: '#/components/schemas/AuthSessionResponse'
         '401':
           description: 帳號或密碼錯誤
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
         '423':
           description: 登入失敗過多已暫時鎖定
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   login_org:
     post:
@@ -55,8 +65,18 @@ paths:
                 $ref: '#/components/schemas/AuthSessionResponse'
         '401':
           description: 帳密錯誤或驗證失敗
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
         '403':
           description: 未在此園區允許登入的組織群組內
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   logout:
     post:
@@ -65,6 +85,8 @@ paths:
       responses:
         '204':
           description: 成功登出
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   me:
     get:
@@ -79,6 +101,12 @@ paths:
                 $ref: '#/components/schemas/CurrentUser'
         '401':
           description: 未登入
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   change_password:
     post:
@@ -102,8 +130,18 @@ paths:
       responses:
         '200':
           description: 密碼已成功變更
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/MessageResponse'
         '422':
           description: 新密碼不符長度或複雜度政策
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
 components:
   schemas:

@@ -105,6 +105,7 @@ func (s *Scheduler) handleTrigger(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusAccepted)
 	_, _ = w.Write([]byte(`{"message":"已觸發立即同步"}`))
 }

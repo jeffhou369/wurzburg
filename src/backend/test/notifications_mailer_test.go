@@ -120,7 +120,7 @@ func TestMailerAndNotificationsE2E(t *testing.T) {
 	purgeSvc := purge.NewService(db, clk, srv.Settings, srv.Audit)
 
 	srv.Mount(mailHandler, ipHandler, purgeSvc)
-	router := srv.Router()
+	router := apiRouter(t, srv)
 
 	notifSvc := notifications.NewService(db, clk, srv.Settings, srv.Audit, fm)
 	tracker := notifications.NewSchedulerTracker(notifSvc)

@@ -75,6 +75,8 @@ paths:
                       $ref: '#/components/schemas/IPRecordSummary'
                   pagination:
                     $ref: './common.yaml#/components/schemas/PaginationMeta'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   ip_records_export:
     get:
@@ -126,6 +128,8 @@ paths:
               schema:
                 type: string
                 format: binary
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   ip_records_item:
     get:
@@ -145,6 +149,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/IPRecordDetail'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
     put:
       tags: [Registration]
       summary: 編輯既有的登記資料（擁有者或系統管理員）
@@ -181,6 +187,12 @@ paths:
                 $ref: '#/components/schemas/IPRecordDetail'
         '403':
           description: 非該筆紀錄擁有者且非系統管理員
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   action_register:
     post:
@@ -199,6 +211,8 @@ paths:
             application/json:
               schema:
                 $ref: './common.yaml#/components/schemas/BatchActionResult'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   action_confirm:
     post:
@@ -217,6 +231,8 @@ paths:
             application/json:
               schema:
                 $ref: './common.yaml#/components/schemas/BatchActionResult'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   action_release:
     post:
@@ -235,6 +251,8 @@ paths:
             application/json:
               schema:
                 $ref: './common.yaml#/components/schemas/BatchActionResult'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   action_reassign:
     post:
@@ -253,6 +271,8 @@ paths:
             application/json:
               schema:
                 $ref: './common.yaml#/components/schemas/BatchActionResult'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
 components:
   schemas:
@@ -267,6 +287,7 @@ components:
         - registration
         - expiring_soon
         - has_conflict
+        - state_label
         - vendor_name
         - last_seen_at
       properties:
@@ -314,6 +335,9 @@ components:
           type: boolean
         has_conflict:
           type: boolean
+        state_label:
+          type: string
+          description: 由在線、登記、即將到期、衝突四個面向組成的狀態文字（例如「在線 · 未登記」），與 Excel 匯出的狀態欄相同
         expires_at:
           type: string
           format: date-time

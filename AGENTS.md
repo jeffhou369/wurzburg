@@ -64,7 +64,7 @@ docker compose -f infra/docker-compose.yml up -d --no-build
 - **資料庫遷移檔案**：一律放在 `src/backend/migrations/`，檔名採用 `YYYYMMDDHHMMSS_<slug>.sql` 時間戳記前綴（Goose 格式），避免平行開發產生序號衝突。
 - **後端功能模組**：每個功能在 `src/backend/internal/<feature>/` 建立獨立套件，並實作模組提供的路由註冊函式。
 - **前端功能模組**：每個功能在 `src/frontend/src/app/features/<feature>/` 建立獨立的頁面元件與自己的文字檔（繁體中文），掛載進第 03 張預留的路由或插槽。
-- **API 契約**：每個資源一份獨立的 OpenAPI 描述檔（由第 05 張定義位置）；若功能開發中發現契約缺漏，做最小補充並記在該工作項目檔案的 `## Comments` 中，由第 33 張統一收斂。
+- **API 契約**：每個資源一份獨立的 OpenAPI 描述檔（由第 05 張定義位置）；若功能開發中發現契約缺漏，做最小補充並記在該工作項目檔案的 `## Comments` 中，由第 33 張統一收斂。後端整合測試會自動比對實際回應、已註冊的路由與描述檔（見 `docs/api/README.md` 的「契約檢查」）：新增或修改端點時要同時更新描述檔並重新產生前端型別，整合測試要經由 `apiRouter` 取得路由器。
 
 ## 文件與優先順序
 

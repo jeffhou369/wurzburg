@@ -572,15 +572,13 @@ export class SwitchesPage implements OnInit {
   }
 
   loadSyncStatus(): void {
-    this.http
-      .get<{ in_progress: boolean; round_incomplete: boolean }>('/api/v1/sync/status')
-      .subscribe({
-        next: (res) => {
-          this.syncInProgress.set(res.in_progress);
-          this.roundIncomplete.set(res.round_incomplete);
-        },
-        error: () => {},
-      });
+    this.http.get<components['schemas']['SyncStatus']>('/api/v1/sync/status').subscribe({
+      next: (res) => {
+        this.syncInProgress.set(res.in_progress);
+        this.roundIncomplete.set(res.round_incomplete);
+      },
+      error: () => {},
+    });
   }
 
   triggerSync(): void {

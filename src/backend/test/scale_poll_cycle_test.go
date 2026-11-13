@@ -332,7 +332,7 @@ func newScaleEnv(t *testing.T) *scaleEnv {
 	)
 
 	return &scaleEnv{
-		t: t, ctx: ctx, db: db, clk: clk, ciph: ciph, srv: srv, router: srv.Router(),
+		t: t, ctx: ctx, db: db, clk: clk, ciph: ciph, srv: srv, router: apiRouter(t, srv),
 		scope: scopeSvc, recon: reconSvc, timers: timers, sched: sched, col: col,
 	}
 }

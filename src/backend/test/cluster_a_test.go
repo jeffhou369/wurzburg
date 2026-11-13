@@ -65,7 +65,7 @@ func TestClusterA_AuditOUIAndAutoPurge(t *testing.T) {
 	auditHandler := audit.NewHandler(db)
 	purgeSvc := purge.NewService(db, clk, srv.Settings, srv.Audit)
 	srv.Mount(auditHandler, ouiSvc, purgeSvc)
-	router := srv.Router()
+	router := apiRouter(t, srv)
 
 	seeder := testutil.NewSeeder(t, db, clk)
 	adminID := seeder.SeedAdmin("admin")

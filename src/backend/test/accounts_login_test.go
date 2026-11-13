@@ -98,7 +98,7 @@ func TestAccounts_LoginSessionsAndAdminLifecycle(t *testing.T) {
 	srv := server.New(cfg, db, clk)
 	accHandler := accounts.NewHandler(db, clk, srv.Sessions, srv.Settings, srv.Audit, fakeAuth)
 	srv.Mount(accHandler)
-	router := srv.Router()
+	router := apiRouter(t, srv)
 
 	var adminCookie *http.Cookie
 

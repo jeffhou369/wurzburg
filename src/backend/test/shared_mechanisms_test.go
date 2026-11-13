@@ -173,7 +173,7 @@ func TestSharedMechanisms_IntegrationMariaDB(t *testing.T) {
 	// 1. 驗證模組自行註冊路由運作正常
 	reqCustom := httptest.NewRequest(http.MethodGet, "/api/v1/custom-ping", nil)
 	recCustom := httptest.NewRecorder()
-	srv.Router().ServeHTTP(recCustom, reqCustom)
+	apiRouter(t, srv).ServeHTTP(recCustom, reqCustom)
 	if recCustom.Code != http.StatusOK || recCustom.Body.String() != "pong" {
 		t.Fatalf("自訂路由未生效: code=%d body=%s", recCustom.Code, recCustom.Body.String())
 	}
@@ -183,7 +183,7 @@ func TestSharedMechanisms_IntegrationMariaDB(t *testing.T) {
 		// 未登入 -> 401
 		reqUnauth := httptest.NewRequest(http.MethodGet, "/api/v1/auth/check", nil)
 		recUnauth := httptest.NewRecorder()
-		srv.Router().ServeHTTP(recUnauth, reqUnauth)
+		apiRouter(t, srv).ServeHTTP(recUnauth, reqUnauth)
 		if recUnauth.Code != http.StatusUnauthorized {
 			t.Errorf("未登入預期 401，實際 %d", recUnauth.Code)
 		}
@@ -191,7 +191,7 @@ func TestSharedMechanisms_IntegrationMariaDB(t *testing.T) {
 		// 缺少 CSRF 標頭之變更請求 -> 403
 		reqNoCSRF := httptest.NewRequest(http.MethodPost, "/api/v1/auth/admin-check", nil)
 		recNoCSRF := httptest.NewRecorder()
-		srv.Router().ServeHTTP(recNoCSRF, reqNoCSRF)
+		apiRouter(t, srv).ServeHTTP(recNoCSRF, reqNoCSRF)
 		if recNoCSRF.Code != http.StatusForbidden {
 			t.Errorf("缺 CSRF 標頭預期 403，實際 %d", recNoCSRF.Code)
 		}
@@ -199,7 +199,7 @@ func TestSharedMechanisms_IntegrationMariaDB(t *testing.T) {
 		// 一般使用者呼叫需管理員權限端點 -> 403
 		reqUser := testutil.NewAuthRequest(http.MethodPost, "/api/v1/auth/admin-check", nil, userID, "user", "chen")
 		recUser := httptest.NewRecorder()
-		srv.Router().ServeHTTP(recUser, reqUser)
+		apiRouter(t, srv).ServeHTTP(recUser, reqUser)
 		if recUser.Code != http.StatusForbidden {
 			t.Errorf("一般使用者呼叫管理員端點預期 403，實際 %d", recUser.Code)
 		}
@@ -207,7 +207,7 @@ func TestSharedMechanisms_IntegrationMariaDB(t *testing.T) {
 		// 系統管理員一行輔助請求 -> 200
 		reqAdmin := testutil.NewAuthRequest(http.MethodPost, "/api/v1/auth/admin-check", nil, adminID, "admin", "admin")
 		recAdmin := httptest.NewRecorder()
-		srv.Router().ServeHTTP(recAdmin, reqAdmin)
+		apiRouter(t, srv).ServeHTTP(recAdmin, reqAdmin)
 		if recAdmin.Code != http.StatusOK {
 			t.Errorf("管理員呼叫預期 200，實際 %d", recAdmin.Code)
 		}
@@ -225,7 +225,7 @@ func TestSharedMechanisms_IntegrationMariaDB(t *testing.T) {
 
 		// 剛建立應有效
 		rec := httptest.NewRecorder()
-		srv.Router().ServeHTTP(rec, reqWithCookie)
+		apiRouter(t, srv).ServeHTTP(rec, reqWithCookie)
 		if rec.Code != http.StatusOK {
 			t.Fatalf("有效工作階段應回 200，實際 %d", rec.Code)
 		}
@@ -233,7 +233,7 @@ func TestSharedMechanisms_IntegrationMariaDB(t *testing.T) {
 		// 推進 9 小時（超過 8 小時閒置）應失效回 401
 		clk.Advance(9 * time.Hour)
 		recExpired := httptest.NewRecorder()
-		srv.Router().ServeHTTP(recExpired, reqWithCookie)
+		apiRouter(t, srv).ServeHTTP(recExpired, reqWithCookie)
 		if recExpired.Code != http.StatusUnauthorized {
 			t.Fatalf("閒置逾時後應回 401，實際 %d", recExpired.Code)
 		}
