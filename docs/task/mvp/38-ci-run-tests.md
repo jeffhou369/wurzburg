@@ -1,6 +1,6 @@
 # 38 — 讓 CI 執行後端與前端測試
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: —
 
 ## 要做什麼
@@ -35,12 +35,12 @@ Blocked by: —
 
 ## 驗收條件
 
-- [ ] PR 與推送到 `main` 時，CI 執行後端 `go test -race -count=1 ./...`，含需要 Docker 的整合測試，且全部通過
-- [ ] CI 執行前端 `npm run build` 與 ChromeHeadless 單元測試，且全部通過
-- [ ] CI 檢查 OpenAPI 產生的前端型別與 repo 內的檔案一致
-- [ ] `Code Quality gate` 會因任一測試 job 失敗而失敗：在分支上故意讓一個後端測試、一個前端測試各失敗一次，確認閘門變紅後再還原，並在 `## Comments` 附上那次執行的連結
-- [ ] 新增的 action 都鎖定 40 字元 SHA；`actionlint` 通過
-- [ ] 文件已說明 CI 執行的檢查項目
+- [x] PR 與推送到 `main` 時，CI 執行後端 `go test -race -count=1 ./...`，含需要 Docker 的整合測試，且全部通過
+- [x] CI 執行前端 `npm run build` 與 ChromeHeadless 單元測試，且全部通過
+- [x] CI 檢查 OpenAPI 產生的前端型別與 repo 內的檔案一致
+- [x] `Code Quality gate` 會因任一測試 job 失敗而失敗：在分支上故意讓一個後端測試、一個前端測試各失敗一次，確認閘門變紅後再還原，並在 `## Comments` 附上那次執行的連結
+- [x] 新增的 action 都鎖定 40 字元 SHA；`actionlint` 通過
+- [x] 文件已說明 CI 執行的檢查項目
 
 ## Comments
 
@@ -49,3 +49,7 @@ Blocked by: —
   - 根因：本機先前的 `mariadb:11.4` 是在 Apple Silicon 上模擬執行的 amd64 映像；重新拉取後換成原生 arm64，本機也能重現。兩者同為 11.4.13。在原生 amd64／arm64 上，請求確實被列鎖擋住（`SHOW ENGINE INNODB STATUS` 顯示 `LOCK WAIT … insert intention waiting`），但 `information_schema.INNODB_TRX` 仍回報 `RUNNING`，`INNODB_LOCK_WAITS` 為 0 筆。產品的鎖定行為正確，是測試偵測鎖等待的方式不可靠。
   - 修正：`saWaitLockWaits` 改為同時計算 `SHOW ENGINE INNODB STATUS` 中的「TRX HAS BEEN WAITING」段落，取兩者較大值；逾時時把最後一次 InnoDB 狀態寫進測試日誌。斷言內容不變。
   - 驗證：原生 arm64 與模擬 amd64 兩種映像都通過。另外暫時拿掉 `lockScopeRowsSQL` 的 `FOR UPDATE`，測試會如預期失敗，確認仍能抓到鎖定回歸。完整 `go test -race -count=1 ./...` 通過，`test` 套件在原生映像上約 176 秒。
+- 2026-11-13：在 PR #6 實作完成。
+  - PR #6 的 CI 全部通過。`Backend Tests (Go)` 約 6 分 15 秒，`Frontend Tests (Angular)` 約 1 分 11 秒。
+  - 閘門驗證：在暫時分支 `ci/verify-gate-failure` 加入一個故意失敗的後端測試與一個前端測試，以 workflow_dispatch 執行（https://github.com/jeffhou369/wurzburg/actions/runs/43360034335）。兩個測試 job 都失敗，`Code Quality gate` 隨之失敗；失敗清單只列出那兩個故意失敗的測試。驗證後已刪除該分支。
+  - ChromeHeadless 在代管 runner（Ubuntu 26.04 映像）上不需要 `--no-sandbox`，未修改 Karma 設定。
