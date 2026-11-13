@@ -1,6 +1,6 @@
 # 41 — 13 個端到端情境只用 API 與時鐘產生狀態
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: 39, 40
 
 ## 要做什麼
@@ -33,14 +33,57 @@ Blocked by: 39, 40
 
 ## 驗收條件
 
-- [ ] 13 個情境各有自動化測試，從空的系統開始，不擺前置資料，全部通過
-- [ ] 情境程式中沒有直接操作資料庫或內部服務來建立、修改、讀取產品狀態
-- [ ] 沒有使用測試身分標頭；所有請求都帶登入取得的 cookie
-- [ ] SNMP、驗證來源、郵件都經過真正的用戶端模組連到模擬伺服器
-- [ ] 每個回應都通過 OpenAPI 驗證與 Secret 掃描
-- [ ] 改寫過程中發現的產品問題，修正並記在 `## Comments`，或另開工作項目
-- [ ] 後端 `gofmt`、`go vet`、golangci-lint、`go test -race -count=1 ./...` 通過，CI 通過
+- [x] 13 個情境各有自動化測試，從空的系統開始，不擺前置資料，全部通過
+- [x] 情境程式中沒有直接操作資料庫或內部服務來建立、修改、讀取產品狀態
+- [x] 沒有使用測試身分標頭；所有請求都帶登入取得的 cookie
+- [x] SNMP、驗證來源、郵件都經過真正的用戶端模組連到模擬伺服器
+- [x] 每個回應都通過 OpenAPI 驗證與 Secret 掃描
+- [x] 改寫過程中發現的產品問題，修正並記在 `## Comments`，或另開工作項目
+- [x] 後端 `gofmt`、`go vet`、golangci-lint、`go test -race -count=1 ./...` 通過，CI 通過
 
 ## Comments
 
 - 2026-11-13：由第 33 張拆出。
+- 2026-11-13：實作完成。
+
+  **做法**
+  - 舊的 `TestFullE2EIntegration13Scenarios`（`e2e_pipeline_test.go`）整個移除，改寫為 `TestE2EScenarios`（`src/backend/test/e2e_scenarios_test.go`），環境在 `e2e_env_test.go`。
+  - **以正式方式組裝**：模組組裝由 `cmd/wurzburg/modules.go` 移到可匯入的 `internal/app`（`app.Mount`、`StartBackgroundLoops`），主程式與測試共用同一份。測試的 `AppEnv` 不是 `test`，測試身分標頭不會生效。`TestRegisteredRoutesMatchSpec` 也改用 `app.Mount`，不再手寫模組清單。
+  - **真正的登入**：每個請求都帶登入取得的 cookie。時鐘大幅推進使工作階段逾時時，收到 401 就重新登入一次，與使用者在瀏覽器上的行為相同。
+  - **狀態只由 API 與時鐘產生**：情境程式沒有任何資料庫存取，也不呼叫內部服務；識別碼從 API 回應取得，結果只看 API 回應、收到的信與匯出檔。排程到期的工作以推進測試時鐘後呼叫與背景迴圈相同的入口觸發（`Scheduler.RunCycle`、`Notifications.Tick`、`Maintenance.Tick`）。
+    - 到期催認：真的登記後把時鐘推進約一年，依序收到到期前 14 天、到期當天、逾期 7／14／21／28 天共 6 封信。
+    - 自動清除：讓位址真的離線，再推進 91 天。
+  - **模擬伺服器**（Testcontainers，映像都鎖定 digest）
+    - SNMP：`ghcr.io/lextudio/docker-snmpsim`。IOS-XE 那台用 SNMPv2c，資料由情境動態產生並在執行中更換；NX-OS 那台用 SNMPv3（SHA 驗證加 AES 加密），預設 VRF 與 VRF PROD 回放 `test/testdata/snmp/nx-os/` 的兩個資料檔。
+    - 驗證來源：`vegardit/openldap`，以自備的設定啟動成 AD 形狀的目錄（`user` 類別、`sAMAccountName`、`memberOf`），經過真正的 AD 驗證模組與設定 API。
+    - 郵件：`axllent/mailpit`，SMTP 需要帳密驗證；以它的錯誤注入模擬郵件伺服器暫時拒收。
+    - 三個模擬伺服器各有一個冒煙測試，直接以真正的用戶端模組驗證（`sim_*_smoke_test.go`），端到端失敗時可分辨是模擬器還是產品的問題。
+  - 每個回應都經過第 39、40 張的 OpenAPI 驗證與 Secret 掃描；模擬伺服器端的 Secret 也登錄到掃描器，Mailpit 收到的每封信都經過掃描。
+  - 情境依時間先後執行（時鐘只能往前），順序是 1、2、3、4、5、6、8、11、7、9、10、12、13。
+
+  **改寫過程中發現並修正的產品問題**
+
+  | 問題 | 修正 |
+  | --- | --- |
+  | 「即將到期」的判斷不一致：到期催認信依園區時區的日期，在到期日前 14 天的早上寄出；清單的 `pending_confirmation`、`expiring_soon` 篩選與狀態標示卻依精確時間。登記時間在當天較晚時，擁有者早上收到信、依信中連結打開待確認清單會是空的，要等到登記的時刻才出現 | 新增 `state.ExpiringSoonBefore`，清單篩選、狀態標示與催認信都以園區時區的日期為準；`state.Compute` 多一個時區參數。兩個以舊規則寫的單元測試案例改為新規則，另加邊界與時區測試 |
+  | 驗證來源連不上時，組織帳號登入回 401「組織帳號或密碼錯誤」，使用者會誤以為自己打錯密碼 | 改回 503 `auth_unavailable`，訊息說明是驗證服務暫時無法使用；描述檔的 `POST /auth/login/org` 明確列出 503 |
+  | 建立 SNMPv3 交換器的回應帶有描述檔沒有的 `v3_username`（先前沒有測試經 API 建過 v3 交換器） | 描述檔的 `Switch` 補上 `v3_username` |
+
+  **觀察到但沒有處理的事項**（不影響情境通過；是否要處理由第 33 張收尾時決定）
+  - 未設定信任代理時，稽核紀錄的來源位址帶有埠號（例如 `192.0.2.1:1234`），設定信任代理後則沒有，兩種情況格式不一致。
+  - 單筆 VRF 讀取失敗只記在資料庫與 API（交換器頁面、儀表板看得到），應用程式日誌沒有對應的輸出。
+  - `PUT /ip-records/{id}` 先驗證輸入才檢查擁有權，非擁有者送出不完整的內容會得到 422 而不是 403。
+  - 採集模組讀取介面名稱（`ifName`）失敗時不算讀取失敗：只要後面的介面位址表與 ARP 表讀得到，這一輪就記為成功，但介面名稱是空的。CI 第一次執行時遇到這個情況——SNMP 模擬器剛啟動、第一個請求沒有得到回應，測試讀到的介面名稱是空的。測試端已改為先確認模擬器有回應才開始；產品端是否要把介面名稱讀取逾時也視為讀取失敗（由排程器重試一次），需要實機驗證（第 36 張）時一併確認，這裡沒有更動。
+
+  **模擬的範圍與限制**
+  - LDAP 模擬伺服器是 AD 形狀的 OpenLDAP，不是真正的 Active Directory：巢狀群組、帳號停用、密碼過期等行為不在範圍。`memberOf` 直接寫在使用者項目上。
+  - RADIUS 沒有納入端到端情境；RADIUS 用戶端在 `internal/authsource` 有對真實 UDP 伺服器的測試。
+  - SMTP 連線不加密（`smtp_tls_mode` 為 `none`）；STARTTLS 與 SMTPS 需要受信任的憑證，沒有涵蓋。
+  - SNMP 的資料來自原廠文件與公開範例，模擬器只是照實回放；交換器的實際行為仍要由第 36 張的實機驗證確認。`ios-xe/default-vrf.walk` 沒有在端到端情境中回放（IOS-XE 那台用動態產生的資料），`ios-xe/vrf-corp.walk` 只在冒煙測試使用。
+  - 兩台模擬交換器共用同一個模擬器，以不同的管理 IP 區分，所以執行環境需要 127.0.0.1 以外的第二個 IPv4 位址；CI 上找不到時測試失敗，本機找不到時略過情境 12。
+
+  **驗證**
+  - `TestE2EScenarios` 13 個情境全部通過，約 32 秒。
+  - 後端：`gofmt`、`go vet`、golangci-lint v2.15.0（0 issues）、`go test -race -count=1 ./...` 全部通過（`test` 套件約 221 秒）；API 契約涵蓋率與 Secret 掃描沒有發現問題。
+  - 前端：產生型別一致，`lint`、`format:check`、`build` 通過，單元測試 155／155。
+- 2026-11-13：PR #9 的 CI 全部通過（18 項通過、1 項依設計略過），本張完成。第一次執行時 `TestSNMPSimulatorWithRealCollector` 在 CI 失敗，原因與處理見上方「觀察到但沒有處理的事項」最後一項。

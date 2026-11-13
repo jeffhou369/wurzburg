@@ -199,6 +199,15 @@ export interface paths {
             'application/json': components['schemas']['ErrorResponse'];
           };
         };
+        /** @description 驗證來源（AD 或 RADIUS）暫時無法連線（`auth_unavailable`）；不是帳密錯誤 */
+        503: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
         default: components['responses']['Error'];
       };
     };
@@ -2592,6 +2601,8 @@ export interface components {
       enabled: boolean;
       role_label: string;
       notes?: string;
+      /** @description SNMPv3 使用者名稱（僅 SNMPv3 且已設定時回傳） */
+      v3_username?: string;
       /** @description 若未設定額外 VRF 讀取設定，提示可能缺少 VRF 內位址 */
       has_v3_warning?: boolean;
       /** @description 是否已儲存 SNMPv3 驗證密碼（Secret 本身不回顯） */

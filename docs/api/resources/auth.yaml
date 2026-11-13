@@ -75,6 +75,12 @@ paths:
             application/json:
               schema:
                 $ref: './common.yaml#/components/schemas/ErrorResponse'
+        '503':
+          description: 驗證來源（AD 或 RADIUS）暫時無法連線（`auth_unavailable`）；不是帳密錯誤
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
         default:
           $ref: './common.yaml#/components/responses/Error'
 

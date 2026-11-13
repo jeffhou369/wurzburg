@@ -31,7 +31,23 @@ type ComputedState struct {
 	Label        string
 }
 
+// ExpiringSoonBefore 回傳「即將到期」的界線：到期時間早於這個時間點、且尚未到期的登記，視為即將到期。
+//
+// 以園區時區的日期計算：到期日距離今天不超過 advanceDays 天就算，界線是「今天加 advanceDays 天」那一天的結束。
+// 到期催認信也是依日期在到期日前 advanceDays 天寄出；清單篩選、狀態標示與催認信必須用同一條界線，
+// 否則擁有者收到信之後，依信中連結打開的待確認清單可能還看不到那筆登記。
+// loc 為 nil 時以 UTC 計算。
+func ExpiringSoonBefore(now time.Time, loc *time.Location, advanceDays int) time.Time {
+	if loc == nil {
+		loc = time.UTC
+	}
+	local := now.In(loc)
+	startOfToday := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, loc)
+	return startOfToday.AddDate(0, 0, advanceDays+1)
+}
+
 // Compute 依循開發規格第 3 節之規則，根據基礎欄位推算完整顯示狀態。
+// loc 是園區時區，用來判斷「即將到期」（見 ExpiringSoonBefore）。
 func Compute(
 	sightingsCount int,
 	hasOwner bool,
@@ -39,6 +55,7 @@ func Compute(
 	hasActiveConflict bool,
 	advanceDays int,
 	now time.Time,
+	loc *time.Location,
 ) ComputedState {
 	presence := PresenceOffline
 	if sightingsCount > 0 {
@@ -54,11 +71,8 @@ func Compute(
 			reg = RegExpired
 		} else {
 			reg = RegRegistered
-			if expiresAt != nil && advanceDays > 0 {
-				threshold := now.Add(time.Duration(advanceDays) * 24 * time.Hour)
-				if !expiresAt.After(threshold) {
-					expiringSoon = true
-				}
+			if expiresAt != nil && advanceDays > 0 && expiresAt.Before(ExpiringSoonBefore(now, loc, advanceDays)) {
+				expiringSoon = true
 			}
 		}
 	}

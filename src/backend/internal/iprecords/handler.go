@@ -99,7 +99,24 @@ func parseFiltersFromRequest(r *http.Request) FilterParams {
 	}
 }
 
-func (h *Handler) buildWhereClause(f FilterParams, userID int64, now time.Time, advanceDays int) (string, []any) {
+// campusLocation 回傳園區時區；設定無效時退回 Asia/Taipei。
+func (h *Handler) campusLocation(ctx context.Context) *time.Location {
+	tzName := "Asia/Taipei"
+	if h.settings != nil {
+		if tz, err := h.settings.Get(ctx, "timezone"); err == nil && tz != "" {
+			tzName = tz
+		}
+	}
+	loc, err := time.LoadLocation(tzName)
+	if err != nil {
+		return time.FixedZone("Asia/Taipei", 8*3600)
+	}
+	return loc
+}
+
+// buildWhereClause 組出清單的篩選條件。expiringBefore 是「即將到期」的界線（state.ExpiringSoonBefore），
+// 與每筆紀錄的狀態標示、到期催認信使用同一條。
+func (h *Handler) buildWhereClause(f FilterParams, userID int64, now, expiringBefore time.Time) (string, []any) {
 	var clauses []string
 	var args []any
 
@@ -131,14 +148,13 @@ func (h *Handler) buildWhereClause(f FilterParams, userID int64, now time.Time, 
 		args = append(args, now)
 	}
 	if f.ExpiringSoon {
-		threshold := now.Add(time.Duration(advanceDays) * 24 * time.Hour)
-		clauses = append(clauses, `r.owner_user_id IS NOT NULL AND r.expires_at IS NOT NULL AND r.expires_at > ? AND r.expires_at <= ?`)
-		args = append(args, now, threshold)
+		clauses = append(clauses, `r.owner_user_id IS NOT NULL AND r.expires_at IS NOT NULL AND r.expires_at > ? AND r.expires_at < ?`)
+		args = append(args, now, expiringBefore)
 	}
 	if f.PendingConfirmation {
-		threshold := now.AddDate(0, 0, advanceDays)
-		clauses = append(clauses, `r.owner_user_id IS NOT NULL AND r.expires_at IS NOT NULL AND r.expires_at <= ?`)
-		args = append(args, threshold)
+		// 待確認：即將到期，加上已到期
+		clauses = append(clauses, `r.owner_user_id IS NOT NULL AND r.expires_at IS NOT NULL AND r.expires_at < ?`)
+		args = append(args, expiringBefore)
 	}
 	if f.HasConflict {
 		clauses = append(clauses, `EXISTS (SELECT 1 FROM ip_conflicts c WHERE c.ip_record_id = r.id AND c.status IN ('open', 'in_progress'))`)
@@ -203,7 +219,8 @@ func (h *Handler) queryRecords(ctx context.Context, f FilterParams, userID int64
 		advanceDays = h.settings.GetInt(ctx, "expiry_advance_days", 14)
 	}
 
-	whereSQL, args := h.buildWhereClause(f, userID, now, advanceDays)
+	loc := h.campusLocation(ctx)
+	whereSQL, args := h.buildWhereClause(f, userID, now, state.ExpiringSoonBefore(now, loc, advanceDays))
 
 	var totalItems int
 	countSQL := `SELECT COUNT(*) FROM ip_records r LEFT JOIN users u ON r.owner_user_id = u.id` + whereSQL
@@ -263,7 +280,7 @@ func (h *Handler) queryRecords(ctx context.Context, f FilterParams, userID int64
 			dto.ExpiresAt = &t
 		}
 
-		computed := state.Compute(sightCnt, ownerID.Valid, expPtr, dto.HasConflict, advanceDays, now)
+		computed := state.Compute(sightCnt, ownerID.Valid, expPtr, dto.HasConflict, advanceDays, now, loc)
 		dto.Presence = string(computed.Presence)
 		dto.Registration = string(computed.Registration)
 		dto.ExpiringSoon = computed.ExpiringSoon
@@ -329,16 +346,8 @@ func (h *Handler) handleExportExcel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tzName := "Asia/Taipei"
-	if h.settings != nil {
-		if tz, err := h.settings.Get(r.Context(), "timezone"); err == nil && tz != "" {
-			tzName = tz
-		}
-	}
-	loc, err := time.LoadLocation(tzName)
-	if err != nil {
-		loc = time.FixedZone("Asia/Taipei", 8*3600)
-	}
+	loc := h.campusLocation(r.Context())
+	tzName := loc.String()
 
 	xf := excelize.NewFile()
 	defer func() { _ = xf.Close() }()
@@ -456,7 +465,7 @@ func (h *Handler) handleGetDetail(w http.ResponseWriter, r *http.Request) {
 		expPtr = &t
 		dto.ExpiresAt = &t
 	}
-	computed := state.Compute(sightCnt, ownerID.Valid, expPtr, dto.HasConflict, advanceDays, now)
+	computed := state.Compute(sightCnt, ownerID.Valid, expPtr, dto.HasConflict, advanceDays, now, h.campusLocation(r.Context()))
 	dto.Presence = string(computed.Presence)
 	dto.Registration = string(computed.Registration)
 	dto.ExpiringSoon = computed.ExpiringSoon
