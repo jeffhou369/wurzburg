@@ -88,7 +88,7 @@ func (s *Snapshot) ResolveIP(ipStr string) (IPResolutionResult, error) {
 		SubnetID:         matched.id,
 		SubnetCIDR:       matched.cidr,
 		SubnetState:      matched.state,
-		ShouldHaveRecord: matched.state == "managed",
+		ShouldHaveRecord: matched.state == StateManaged,
 	}, nil
 }
 

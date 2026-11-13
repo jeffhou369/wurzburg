@@ -11,9 +11,11 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
 	"github.com/jeffhou369/wurzburg/backend/internal/audit"
 	"github.com/jeffhou369/wurzburg/backend/internal/auth"
 	"github.com/jeffhou369/wurzburg/backend/internal/clock"
+	"github.com/jeffhou369/wurzburg/backend/internal/dedupkey"
 	"github.com/jeffhou369/wurzburg/backend/internal/interfaces"
 )
 
@@ -305,7 +307,7 @@ func (h *Handler) handleResolve(w http.ResponseWriter, r *http.Request) {
 				`UPDATE ip_records SET mac_address = ?, vendor_name = ?, owner_user_id = NULL, owner_mail = '', registration = 'unregistered', expires_at = NULL, updated_at = ? WHERE id = ?`,
 				newMAC, vendor, now, ipRecID,
 			)
-			_, _ = tx.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE CONCAT('unreg|', ?, '|%')`, ipAddr)
+			_, _ = tx.ExecContext(ctx, `DELETE FROM notification_states WHERE dedup_key LIKE ?`, dedupkey.UnregisteredPattern(ipAddr))
 		}
 
 		_, err = tx.ExecContext(

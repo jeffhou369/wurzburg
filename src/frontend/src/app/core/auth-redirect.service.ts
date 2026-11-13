@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { CurrentUser } from './auth.service';
-import { sanitizeReturnUrl } from './safe-return-url';
+import { returnUrlTree, sanitizeReturnUrl } from './safe-return-url';
 import type { components } from './api.types';
 
 type WizardStatus = components['schemas']['WizardStatus'];
@@ -33,7 +33,7 @@ export class AuthRedirectService {
         next: (wizard) => {
           const target = wizard.completed
             ? destination
-            : this.withReturnUrl('/?wizard=true', destination);
+            : this.withReturnUrl('/', destination, { wizard: 'true' });
           void this.router.navigateByUrl(target);
         },
         error: () => void this.router.navigateByUrl(destination),
@@ -45,11 +45,9 @@ export class AuthRedirectService {
   }
 
   /** 目的地為首頁時不需攜帶 returnUrl。 */
-  private withReturnUrl(base: string, destination: string): string {
-    if (destination === '/') {
-      return base;
-    }
-    const separator = base.includes('?') ? '&' : '?';
-    return `${base}${separator}returnUrl=${encodeURIComponent(destination)}`;
+  private withReturnUrl(path: string, destination: string, query?: Record<string, string>): string {
+    return this.router.serializeUrl(
+      returnUrlTree(this.router, path, destination, { query, omitHome: true }),
+    );
   }
 }

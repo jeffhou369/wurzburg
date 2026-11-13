@@ -1,3 +1,5 @@
+import type { Router, UrlTree } from '@angular/router';
+
 /**
  * 登入後導向目的地（returnUrl）的安全檢查。
  *
@@ -76,4 +78,25 @@ export function sanitizeReturnUrl(raw: unknown, fallback = '/'): string {
 /** 組成導向登入頁用的查詢參數；目的地一律先經過安全檢查。 */
 export function buildLoginReturnQuery(destination: string): { returnUrl: string } {
   return { returnUrl: sanitizeReturnUrl(destination) };
+}
+
+/**
+ * 組出攜帶目的地的站內網址，例如 `/login?returnUrl=%2Fsubnets`。所有 returnUrl 都從這裡組，
+ * 避免守衛與登入後導向各自實作而編碼不一致。
+ *
+ * - 目的地一律先經 sanitizeReturnUrl。
+ * - `query`：同時附加的其他查詢參數（例如精靈的 `wizard=true`）。
+ * - `omitHome`：目的地為首頁時不附加 returnUrl。
+ */
+export function returnUrlTree(
+  router: Router,
+  path: string,
+  destination: unknown,
+  options: { query?: Record<string, string>; omitHome?: boolean } = {},
+): UrlTree {
+  const returnQuery = buildLoginReturnQuery(typeof destination === 'string' ? destination : '');
+  const includeReturn = !(options.omitHome && returnQuery.returnUrl === '/');
+  return router.createUrlTree([path], {
+    queryParams: { ...options.query, ...(includeReturn ? returnQuery : {}) },
+  });
 }

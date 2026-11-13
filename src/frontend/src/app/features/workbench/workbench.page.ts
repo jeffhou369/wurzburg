@@ -25,6 +25,14 @@ import { UnfinishedChecklistComponent } from './unfinished-checklist.component';
 import { WORKBENCH_TEXT } from './workbench.i18n';
 import { SetupWizardDialogComponent } from '../settings/setup-wizard.dialog';
 import type { components } from '../../core/api.types';
+import {
+  defaultWorkbenchFilters,
+  filtersToBatchFilter,
+  filtersToHttpParams,
+  filtersToRouteQuery,
+  readFiltersFromQuery,
+  type WorkbenchFilters,
+} from './workbench.filters';
 
 type DashboardSummary = components['schemas']['DashboardSummary'];
 type IPRecordSummary = components['schemas']['IPRecordSummary'] & { state_label?: string };
@@ -971,19 +979,7 @@ export class WorkbenchPage implements OnInit {
   protected readonly batchRegisterOpen = signal(false);
   protected readonly batchReassignOpen = signal(false);
 
-  protected filters = {
-    search: '',
-    subnet_id: '',
-    presence: '',
-    registration: '',
-    expiring_soon: false,
-    has_conflict: false,
-    owner_me: false,
-    pending_confirmation: false,
-    sort_by: 'ip_address',
-    sort_dir: 'asc',
-    page: 1,
-  };
+  protected filters: WorkbenchFilters = defaultWorkbenchFilters();
 
   protected regForm = {
     owner_mail: '',
@@ -1007,15 +1003,7 @@ export class WorkbenchPage implements OnInit {
       if (params['wizard'] === 'true' && this.auth.isAdmin()) {
         this.openSetupWizard(params['returnUrl']);
       }
-      this.filters.search = params['search'] ?? '';
-      this.filters.subnet_id = params['subnet_id'] ?? '';
-      this.filters.presence = params['presence'] ?? '';
-      this.filters.registration = params['registration'] ?? '';
-      this.filters.expiring_soon = params['expiring_soon'] === 'true';
-      this.filters.has_conflict = params['has_conflict'] === 'true';
-      this.filters.owner_me = params['owner_me'] === 'true';
-      this.filters.pending_confirmation = params['pending_confirmation'] === 'true';
-      this.filters.page = Number(params['page'] ?? 1);
+      readFiltersFromQuery(params, this.filters);
       this.loadRecords();
     });
 
@@ -1082,17 +1070,7 @@ export class WorkbenchPage implements OnInit {
     this.clearSelection();
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: {
-        search: this.filters.search || null,
-        subnet_id: this.filters.subnet_id || null,
-        presence: this.filters.presence || null,
-        registration: this.filters.registration || null,
-        expiring_soon: this.filters.expiring_soon ? 'true' : null,
-        has_conflict: this.filters.has_conflict ? 'true' : null,
-        owner_me: this.filters.owner_me ? 'true' : null,
-        pending_confirmation: this.filters.pending_confirmation ? 'true' : null,
-        page: page > 1 ? page : null,
-      },
+      queryParams: filtersToRouteQuery(this.filters, page),
     });
   }
 
@@ -1107,17 +1085,7 @@ export class WorkbenchPage implements OnInit {
   }
 
   private buildHttpParams(): HttpParams {
-    let p = new HttpParams().set('page', String(this.filters.page)).set('page_size', '50');
-    if (this.filters.search) p = p.set('search', this.filters.search);
-    if (this.filters.subnet_id) p = p.set('subnet_id', this.filters.subnet_id);
-    if (this.filters.presence) p = p.set('presence', this.filters.presence);
-    if (this.filters.registration) p = p.set('registration', this.filters.registration);
-    if (this.filters.expiring_soon) p = p.set('expiring_soon', 'true');
-    if (this.filters.has_conflict) p = p.set('has_conflict', 'true');
-    if (this.filters.owner_me) p = p.set('owner_me', 'true');
-    if (this.filters.pending_confirmation) p = p.set('pending_confirmation', 'true');
-    p = p.set('sort_by', this.filters.sort_by).set('sort_dir', this.filters.sort_dir);
-    return p;
+    return filtersToHttpParams(this.filters, 50);
   }
 
   loadRecords(): void {
@@ -1296,16 +1264,7 @@ export class WorkbenchPage implements OnInit {
     if (this.selectAllFiltered()) {
       return {
         select_all_filtered: true,
-        filter: {
-          search: this.filters.search,
-          subnet_id: Number(this.filters.subnet_id) || 0,
-          presence: this.filters.presence,
-          registration: this.filters.registration,
-          expiring_soon: this.filters.expiring_soon,
-          has_conflict: this.filters.has_conflict,
-          owner_me: this.filters.owner_me,
-          pending_confirmation: this.filters.pending_confirmation,
-        },
+        filter: filtersToBatchFilter(this.filters),
       };
     }
     return { ip_record_ids: Array.from(this.selectedIds()) };

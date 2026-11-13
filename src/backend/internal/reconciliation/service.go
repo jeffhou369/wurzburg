@@ -15,6 +15,7 @@ import (
 	"github.com/jeffhou369/wurzburg/backend/internal/clock"
 	"github.com/jeffhou369/wurzburg/backend/internal/interfaces"
 	"github.com/jeffhou369/wurzburg/backend/internal/settings"
+	"github.com/jeffhou369/wurzburg/backend/internal/sqlutil"
 	"github.com/jeffhou369/wurzburg/backend/internal/subnets"
 )
 
@@ -358,16 +359,16 @@ func (s *Service) applyVRF(ctx context.Context, w *vrfWork, plan *roundPlan, gra
 	for i, t := range eligible {
 		eligibleIPs[i] = t.obs.ip
 	}
-	for _, chunk := range chunkStrings(eligibleIPs, sqlChunkSize) {
-		if _, err := tx.ExecContext(ctx, `DELETE FROM undetermined_prefixes WHERE ip_address IN (`+placeholders(len(chunk))+`)`, stringArgs(chunk)...); err != nil {
+	for _, chunk := range sqlutil.Chunk(eligibleIPs, sqlChunkSize) {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM undetermined_prefixes WHERE ip_address IN (`+sqlutil.Placeholders(len(chunk))+`)`, sqlutil.Args(chunk)...); err != nil {
 			return res, fmt.Errorf("清除未定前綴失敗: %w", err)
 		}
 	}
 
 	// 3. 查出既有的 IP 紀錄。既有位址依 ID 遞增處理，新位址排在其後，使加鎖次序固定。
 	existing := make(map[string]int64, len(eligible))
-	for _, chunk := range chunkStrings(eligibleIPs, sqlChunkSize) {
-		rows, err := tx.QueryContext(ctx, `SELECT id, ip_address FROM ip_records WHERE ip_address IN (`+placeholders(len(chunk))+`)`, stringArgs(chunk)...)
+	for _, chunk := range sqlutil.Chunk(eligibleIPs, sqlChunkSize) {
+		rows, err := tx.QueryContext(ctx, `SELECT id, ip_address FROM ip_records WHERE ip_address IN (`+sqlutil.Placeholders(len(chunk))+`)`, sqlutil.Args(chunk)...)
 		if err != nil {
 			return res, fmt.Errorf("查詢既有 IP 紀錄失敗: %w", err)
 		}
@@ -479,14 +480,14 @@ func (s *Service) applyMissed(ctx context.Context, tx *sql.Tx, vrfConfigID int64
 	sort.Slice(bump, func(i, j int) bool { return bump[i] < bump[j] })
 	sort.Slice(drop, func(i, j int) bool { return drop[i] < drop[j] })
 
-	for _, chunk := range chunkInt64s(bump, sqlChunkSize) {
-		args := append([]any{now}, int64Args(chunk)...)
-		if _, err := tx.ExecContext(ctx, `UPDATE arp_sightings SET missed_rounds = missed_rounds + 1, updated_at = ? WHERE id IN (`+placeholders(len(chunk))+`)`, args...); err != nil {
+	for _, chunk := range sqlutil.Chunk(bump, sqlChunkSize) {
+		args := append([]any{now}, sqlutil.Args(chunk)...)
+		if _, err := tx.ExecContext(ctx, `UPDATE arp_sightings SET missed_rounds = missed_rounds + 1, updated_at = ? WHERE id IN (`+sqlutil.Placeholders(len(chunk))+`)`, args...); err != nil {
 			return nil, fmt.Errorf("累計未見輪數失敗: %w", err)
 		}
 	}
-	for _, chunk := range chunkInt64s(drop, sqlChunkSize) {
-		if _, err := tx.ExecContext(ctx, `DELETE FROM arp_sightings WHERE id IN (`+placeholders(len(chunk))+`)`, int64Args(chunk)...); err != nil {
+	for _, chunk := range sqlutil.Chunk(drop, sqlChunkSize) {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM arp_sightings WHERE id IN (`+sqlutil.Placeholders(len(chunk))+`)`, sqlutil.Args(chunk)...); err != nil {
 			return nil, fmt.Errorf("移除逾時 ARP 觀測失敗: %w", err)
 		}
 	}
@@ -528,7 +529,7 @@ func (s *Service) decideIPs(ctx context.Context, st *roundState, graceRounds int
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 
 	var errs []error
-	for _, chunk := range chunkInt64s(ids, sqlChunkSize) {
+	for _, chunk := range sqlutil.Chunk(ids, sqlChunkSize) {
 		if err := ctx.Err(); err != nil {
 			errs = append(errs, err)
 			break
@@ -556,8 +557,8 @@ func (s *Service) decideChunk(ctx context.Context, ids []int64, st *roundState, 
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	idArgs := int64Args(ids)
-	in := placeholders(len(ids))
+	idArgs := sqlutil.Args(ids)
+	in := sqlutil.Placeholders(len(ids))
 
 	// 依 ID 遞增鎖定 IP 紀錄；範圍變更已在階段一鎖內處理，已被刪除的紀錄不會出現在這裡。
 	rows, err := tx.QueryContext(ctx, `SELECT id, ip_address, presence, mac_address, (owner_user_id IS NOT NULL) FROM ip_records WHERE id IN (`+in+`) ORDER BY id FOR UPDATE`, idArgs...)
@@ -586,8 +587,8 @@ func (s *Service) decideChunk(ctx context.Context, ids []int64, st *roundState, 
 	for i, r := range records {
 		liveIDs[i] = r.id
 	}
-	liveIn := placeholders(len(liveIDs))
-	liveArgs := int64Args(liveIDs)
+	liveIn := sqlutil.Placeholders(len(liveIDs))
+	liveArgs := sqlutil.Args(liveIDs)
 
 	// 讀取每個 IP 目前剩餘的觀測 MAC。
 	sightMACs := make(map[int64]map[string]bool, len(records))
@@ -676,9 +677,9 @@ func (s *Service) decideChunk(ctx context.Context, ids []int64, st *roundState, 
 			observedIDs = append(observedIDs, r.id)
 		}
 	}
-	for _, chunk := range chunkInt64s(observedIDs, sqlChunkSize) {
-		args := append([]any{now, now}, int64Args(chunk)...)
-		if _, err := tx.ExecContext(ctx, `UPDATE ip_records SET presence = 'online', last_seen_at = ?, updated_at = ? WHERE id IN (`+placeholders(len(chunk))+`)`, args...); err != nil {
+	for _, chunk := range sqlutil.Chunk(observedIDs, sqlChunkSize) {
+		args := append([]any{now, now}, sqlutil.Args(chunk)...)
+		if _, err := tx.ExecContext(ctx, `UPDATE ip_records SET presence = 'online', last_seen_at = ?, updated_at = ? WHERE id IN (`+sqlutil.Placeholders(len(chunk))+`)`, args...); err != nil {
 			return fmt.Errorf("更新在線狀態失敗: %w", err)
 		}
 	}
@@ -867,55 +868,6 @@ func unionSorted(macs []string, extra string) []string {
 		set[extra] = true
 	}
 	return sortedKeys(set)
-}
-
-func placeholders(n int) string {
-	if n <= 0 {
-		return ""
-	}
-	return strings.TrimSuffix(strings.Repeat("?,", n), ",")
-}
-
-func stringArgs(list []string) []any {
-	args := make([]any, len(list))
-	for i, v := range list {
-		args[i] = v
-	}
-	return args
-}
-
-func int64Args(list []int64) []any {
-	args := make([]any, len(list))
-	for i, v := range list {
-		args[i] = v
-	}
-	return args
-}
-
-func chunkStrings(list []string, size int) [][]string {
-	var out [][]string
-	for len(list) > 0 {
-		n := size
-		if n > len(list) {
-			n = len(list)
-		}
-		out = append(out, list[:n])
-		list = list[n:]
-	}
-	return out
-}
-
-func chunkInt64s(list []int64, size int) [][]int64 {
-	var out [][]int64
-	for len(list) > 0 {
-		n := size
-		if n > len(list) {
-			n = len(list)
-		}
-		out = append(out, list[:n])
-		list = list[n:]
-	}
-	return out
 }
 
 // addMAC 將 MAC 加入 ip 對應的集合。
