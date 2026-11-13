@@ -8,9 +8,14 @@
 #   - workflows 工作：每次均執行，以 actionlint 檢查 .github/workflows/*.yml 語法。
 #   - backend 工作  ：僅在出現 src/backend/go.mod 時執行 Go 格式檢查（gofmt）、
 #                     go vet 與 golangci-lint。
-#   - frontend 工作 ：僅在出現 src/frontend/package.json 時執行 npm ci 與
-#                     npm run lint。
-#   - gate 工作     ：提供單一固定的必要狀態檢查（required status check）。
+#   - frontend 工作 ：僅在出現 src/frontend/package.json 時執行 npm ci、
+#                     npm run lint 與 npm run format:check。
+#   - backend-test 工作 ：與 backend 相同條件，執行 go test -race -count=1 ./...，
+#                     含以 Testcontainers 啟動 MariaDB 的整合測試（runner 內建 Docker）。
+#   - frontend-test 工作：與 frontend 相同條件，檢查 OpenAPI 產生的型別與 repo 一致、
+#                     建置前端，並以 ChromeHeadless 執行單元測試。
+#   - gate 工作     ：提供單一固定的必要狀態檢查（required status check）；
+#                     任一啟用的檢查或測試失敗、被取消時即失敗。
 #
 # 初始無程式碼狀態：
 #   目前儲存庫僅有規格文件，無 Go 或 Angular 原始碼。detect 工作會正確偵測並
@@ -208,6 +213,124 @@ jobs:
             echo "package.json 未定義 format:check 腳本，略過此步驟"
           fi
 
+  backend-test:
+    name: Backend Tests (Go)
+    needs: detect
+    if: ${{ needs.detect.outputs.has_backend == 'true' }}
+    runs-on: ubuntu-latest
+    # 本機完整執行約 5 分鐘；CI 另需下載 MariaDB 映像並啟用 race detector，保留餘裕。
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: 取出原始碼
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 設定 Go 環境
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: src/backend/go.mod
+          cache-dependency-path: src/backend/go.sum
+
+      - name: 確認 Docker 可用（整合測試以 Testcontainers 啟動 MariaDB）
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker version
+
+      - name: 執行後端測試（含整合測試與 race detector）
+        shell: bash
+        working-directory: src/backend
+        run: |
+          set -euo pipefail
+          # -json 輸出供下一步整理失敗清單；失敗時下一步會印出失敗測試的完整輸出
+          go test -race -count=1 -json ./... > "${RUNNER_TEMP}/go-test.json"
+
+      - name: 列出失敗的後端測試
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          f="${RUNNER_TEMP}/go-test.json"
+          if [ ! -s "$f" ]; then
+            echo "::error::沒有測試輸出，可能是編譯失敗"
+            exit 0
+          fi
+          # 印出失敗測試的完整輸出，並在摘要列出失敗測試名稱
+          jq -r 'select(.Action=="fail") | "\(.Package) \(.Test // "(套件層級)")"' "$f" | sort -u > "${RUNNER_TEMP}/failed.txt"
+          while read -r pkg test; do
+            echo "::group::失敗：${pkg} ${test}"
+            if [ "$test" = "(套件層級)" ]; then
+              jq -j --arg p "$pkg" 'select(.Package==$p and (.Test==null) and .Action=="output") | .Output' "$f"
+            else
+              jq -j --arg p "$pkg" --arg t "$test" 'select(.Package==$p and .Test==$t and .Action=="output") | .Output' "$f"
+            fi
+            echo "::endgroup::"
+            echo "::error::後端測試失敗：${pkg} ${test}"
+          done < "${RUNNER_TEMP}/failed.txt"
+          {
+            echo "### 失敗的後端測試"
+            echo
+            sed 's/^/- /' "${RUNNER_TEMP}/failed.txt"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  frontend-test:
+    name: Frontend Tests (Angular)
+    needs: detect
+    if: ${{ needs.detect.outputs.has_frontend == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: 取出原始碼
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 設定 Node.js 環境
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: src/frontend/package*.json
+
+      - name: 安裝前端相依套件
+        shell: bash
+        working-directory: src/frontend
+        run: |
+          set -euo pipefail
+          npm ci
+
+      - name: 檢查 OpenAPI 產生的前端型別與 repo 一致
+        shell: bash
+        working-directory: src/frontend
+        run: |
+          set -euo pipefail
+          npm run generate:api
+          # repo 內的型別檔經 Prettier 排版，比對前先套用相同排版
+          npx prettier --write src/app/core/api.types.ts
+          if ! git diff --exit-code -- src/app/core/api.types.ts; then
+            echo "::error::src/app/core/api.types.ts 與 docs/api/openapi.yaml 不一致，請執行 npm run generate:api 後以 Prettier 排版再提交"
+            exit 1
+          fi
+
+      - name: 建置前端
+        shell: bash
+        working-directory: src/frontend
+        run: |
+          set -euo pipefail
+          npm run build
+
+      - name: 執行前端單元測試（ChromeHeadless）
+        shell: bash
+        working-directory: src/frontend
+        run: |
+          set -euo pipefail
+          npm test
+
   gate:
     name: Code Quality gate
     if: ${{ always() }}
@@ -216,6 +339,8 @@ jobs:
       - workflows
       - backend
       - frontend
+      - backend-test
+      - frontend-test
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
@@ -226,11 +351,15 @@ jobs:
           WORKFLOWS_RESULT: ${{ needs.workflows.result }}
           BACKEND_RESULT: ${{ needs.backend.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
+          BACKEND_TEST_RESULT: ${{ needs.backend-test.result }}
+          FRONTEND_TEST_RESULT: ${{ needs.frontend-test.result }}
         run: |
           set -euo pipefail
           echo "Workflows lint 結果：${WORKFLOWS_RESULT}"
           echo "Backend lint 結果：${BACKEND_RESULT}"
           echo "Frontend lint 結果：${FRONTEND_RESULT}"
+          echo "Backend tests 結果：${BACKEND_TEST_RESULT}"
+          echo "Frontend tests 結果：${FRONTEND_TEST_RESULT}"
 
           # workflows 必須成功
           if [ "${WORKFLOWS_RESULT}" != "success" ]; then
@@ -250,4 +379,16 @@ jobs:
             exit 1
           fi
 
-          echo "所有啟用的品質檢查均已順利通過。"
+          # backend-test 若有執行（非 skipped），必須為 success
+          if [ "${BACKEND_TEST_RESULT}" != "success" ] && [ "${BACKEND_TEST_RESULT}" != "skipped" ]; then
+            echo "::error::後端測試失敗 (${BACKEND_TEST_RESULT})"
+            exit 1
+          fi
+
+          # frontend-test 若有執行（非 skipped），必須為 success
+          if [ "${FRONTEND_TEST_RESULT}" != "success" ] && [ "${FRONTEND_TEST_RESULT}" != "skipped" ]; then
+            echo "::error::前端測試失敗 (${FRONTEND_TEST_RESULT})"
+            exit 1
+          fi
+
+          echo "所有啟用的品質檢查與測試均已順利通過。"
