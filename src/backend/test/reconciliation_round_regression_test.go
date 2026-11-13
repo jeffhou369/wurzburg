@@ -122,7 +122,7 @@ func newRRRig(t *testing.T) *rrRig {
 	if err != nil {
 		t.Fatalf("取得連線字串失敗: %v", err)
 	}
-	db, err := database.Connect(ctx, dsn)
+	db, err := connectTestDB(t, ctx, dsn)
 	if err != nil {
 		t.Fatalf("連線資料庫失敗: %v", err)
 	}

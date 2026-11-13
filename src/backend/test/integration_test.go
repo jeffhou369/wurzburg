@@ -132,7 +132,7 @@ func TestPrimarySeam_MariaDBAndMigrations(t *testing.T) {
 	}
 
 	// 1. 測試資料庫連線池
-	db, err := database.Connect(ctx, dsn)
+	db, err := connectTestDB(t, ctx, dsn)
 	if err != nil {
 		t.Fatalf("連線至測試 MariaDB 失敗: %v", err)
 	}

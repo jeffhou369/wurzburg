@@ -29,6 +29,7 @@ import (
 )
 
 type fakeMailer struct {
+	t        testing.TB
 	mu       sync.Mutex
 	messages []interfaces.MailMessage
 	failNext bool
@@ -36,6 +37,7 @@ type fakeMailer struct {
 }
 
 func (f *fakeMailer) Send(ctx context.Context, msg interfaces.MailMessage) error {
+	scanSentMail(f.t, msg) // 含模擬寄送失敗的信：內容已經組好，同樣要檢查
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.failNext {
@@ -90,7 +92,7 @@ func TestMailerAndNotificationsE2E(t *testing.T) {
 	})
 
 	dsn, _ := mariadbContainer.ConnectionString(ctx, "parseTime=true&loc=UTC")
-	db, err := database.Connect(ctx, dsn)
+	db, err := connectTestDB(t, ctx, dsn)
 	if err != nil {
 		t.Fatalf("連線資料庫失敗: %v", err)
 	}
@@ -112,7 +114,7 @@ func TestMailerAndNotificationsE2E(t *testing.T) {
 		SecretKey:  "0123456789abcdef0123456789abcdef",
 	}, db, clk)
 
-	fm := &fakeMailer{}
+	fm := &fakeMailer{t: t}
 	smtpM := mailer.NewSMTPMailer(db, clk, srv.Settings)
 	mailHandler := mailer.NewHandler(db, clk, srv.Settings, srv.Audit, smtpM)
 	mailHandler.SetTestMailer(fm)

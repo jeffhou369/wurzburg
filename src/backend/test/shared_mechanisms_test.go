@@ -68,7 +68,7 @@ func TestSharedMechanisms_UnitFakesAndCrypto(t *testing.T) {
 	if err != nil {
 		t.Fatalf("建立加密處理器失敗: %v", err)
 	}
-	encrypted, err := ciph.Encrypt("my_snmp_secret")
+	encrypted, err := ciph.Encrypt(useSecret(t, "SNMP community", "my_snmp_secret"))
 	if err != nil || encrypted == "my_snmp_secret" {
 		t.Fatalf("加密失敗或仍為明文: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestSharedMechanisms_UnitFakesAndCrypto(t *testing.T) {
 		t.Fatalf("預期查詢為 Cisco，實際取得: %s", v)
 	}
 
-	fakeMailer := interfaces.NewFakeMailer()
+	fakeMailer := newFakeMailer(t)
 	_ = fakeMailer.Send(ctx, interfaces.MailMessage{To: []string{"a@b.com"}, Subject: "test"})
 	if len(fakeMailer.SentMessages()) != 1 {
 		t.Fatalf("FakeMailer 應記錄 1 封信")
@@ -146,7 +146,7 @@ func TestSharedMechanisms_IntegrationMariaDB(t *testing.T) {
 	})
 
 	dsn, _ := mariadbContainer.ConnectionString(ctx, "parseTime=true&loc=UTC")
-	db, err := database.Connect(ctx, dsn)
+	db, err := connectTestDB(t, ctx, dsn)
 	if err != nil {
 		t.Fatalf("連線資料庫失敗: %v", err)
 	}
@@ -253,7 +253,7 @@ func TestSharedMechanisms_IntegrationMariaDB(t *testing.T) {
 			t.Fatalf("讀回設定預期新竹園區，實際 %q", gotCampus)
 		}
 
-		if err := srv.Settings.SetSecret(ctx, "smtp_password", "TopSecretSMTP#99"); err != nil {
+		if err := srv.Settings.SetSecret(ctx, "smtp_password", useSecret(t, "smtp_password", "TopSecretSMTP#99")); err != nil {
 			t.Fatalf("寫入 secret 失敗: %v", err)
 		}
 

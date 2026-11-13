@@ -39,7 +39,7 @@ func TestWizardAndCampusSettings(t *testing.T) {
 	})
 
 	dsn, _ := mariadbContainer.ConnectionString(ctx, "parseTime=true&loc=UTC")
-	db, err := database.Connect(ctx, dsn)
+	db, err := connectTestDB(t, ctx, dsn)
 	if err != nil {
 		t.Fatalf("連線資料庫失敗: %v", err)
 	}

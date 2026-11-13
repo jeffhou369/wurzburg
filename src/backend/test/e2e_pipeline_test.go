@@ -59,7 +59,7 @@ func TestFullE2EIntegration13Scenarios(t *testing.T) {
 	})
 
 	dsn, _ := mariadbContainer.ConnectionString(ctx, "parseTime=true&loc=UTC")
-	db, err := database.Connect(ctx, dsn)
+	db, err := connectTestDB(t, ctx, dsn)
 	if err != nil {
 		t.Fatalf("連線資料庫失敗: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestFullE2EIntegration13Scenarios(t *testing.T) {
 	// 外部系統替身
 	fakeAuth := interfaces.NewFakeAuthSource()
 	fakeCol := interfaces.NewFakeCollector()
-	fakeMailer := interfaces.NewFakeMailer()
+	fakeMailer := newFakeMailer(t)
 
 	srv := server.New(&config.Config{
 		Port:       8080,
@@ -172,7 +172,7 @@ func TestFullE2EIntegration13Scenarios(t *testing.T) {
 	// =========================================================================
 	t.Run("Scenario01_FreshInstall_Bootstrap_Wizard", func(t *testing.T) {
 		// 啟動建立初始系統管理員
-		if err := accounts.EnsureFirstAdmin(ctx, db, clk, "admin", "InitialAdminPass123!"); err != nil {
+		if err := accounts.EnsureFirstAdmin(ctx, db, clk, "admin", useSecret(t, "本機帳號密碼", "InitialAdminPass123!")); err != nil {
 			t.Fatalf("建立初始系統管理員失敗: %v", err)
 		}
 
@@ -224,11 +224,11 @@ func TestFullE2EIntegration13Scenarios(t *testing.T) {
 		}
 
 		// Step 2: 驗證來源（設定 AD 並註冊 fake 使用者）
-		fakeAuth.Users["user01"] = "UserPassword123!"
+		fakeAuth.Users["user01"] = useSecret(t, "組織帳號密碼", "UserPassword123!")
 		fakeAuth.Info["user01"] = &interfaces.OrgUserInfo{
 			Username: "user01", DisplayName: "王工程師", Mail: "user01@example.com", AuthSource: "ad",
 		}
-		fakeAuth.Users["user02"] = "UserPassword123!"
+		fakeAuth.Users["user02"] = useSecret(t, "組織帳號密碼", "UserPassword123!")
 		fakeAuth.Info["user02"] = &interfaces.OrgUserInfo{
 			Username: "user02", DisplayName: "李工程師", Mail: "user02@example.com", AuthSource: "ad",
 		}

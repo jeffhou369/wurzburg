@@ -30,6 +30,8 @@ import (
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/getkin/kin-openapi/routers"
 	"github.com/getkin/kin-openapi/routers/gorillamux"
+
+	"github.com/jeffhou369/wurzburg/backend/internal/testutil/httpcapture"
 )
 
 // TB 是 testing.TB 中本套件用到的部分。
@@ -101,12 +103,12 @@ func (c *Checker) Wrap(t TB, next http.Handler, ignore func(*http.Request) bool)
 		probe := r.Clone(r.Context())
 		probe.Body = http.NoBody
 
-		rec := &recorder{ResponseWriter: w, status: http.StatusOK}
+		rec := httpcapture.NewRecorder(w)
 		next.ServeHTTP(rec, r)
 
-		if err := c.Check(probe, rec.status, w.Header(), rec.body.Bytes()); err != nil {
+		if err := c.Check(probe, rec.Status(), w.Header(), rec.Body()); err != nil {
 			t.Helper()
-			t.Errorf("回應不符合 OpenAPI 描述檔：%s %s → %d\n%v\n回應本文：%s", r.Method, r.URL.Path, rec.status, err, excerpt(rec.body.Bytes()))
+			t.Errorf("回應不符合 OpenAPI 描述檔：%s %s → %d\n%v\n回應本文：%s", r.Method, r.URL.Path, rec.Status(), err, excerpt(rec.Body()))
 		}
 	})
 }
@@ -321,35 +323,3 @@ func excerpt(body []byte) string {
 func operationKey(method, path string) string {
 	return strings.ToUpper(method) + " " + path
 }
-
-// recorder 在寫入原本的 ResponseWriter 的同時，留下狀態碼與本文供驗證。
-type recorder struct {
-	http.ResponseWriter
-	status      int
-	wroteHeader bool
-	body        bytes.Buffer
-}
-
-func (r *recorder) WriteHeader(code int) {
-	if !r.wroteHeader {
-		r.status = code
-		r.wroteHeader = true
-	}
-	r.ResponseWriter.WriteHeader(code)
-}
-
-func (r *recorder) Write(p []byte) (int, error) {
-	r.wroteHeader = true
-	r.body.Write(p)
-	return r.ResponseWriter.Write(p)
-}
-
-// Flush 讓串流回應（例如匯出）照常運作。
-func (r *recorder) Flush() {
-	if f, ok := r.ResponseWriter.(http.Flusher); ok {
-		f.Flush()
-	}
-}
-
-// Unwrap 供 http.ResponseController 取得底層的 ResponseWriter。
-func (r *recorder) Unwrap() http.ResponseWriter { return r.ResponseWriter }
