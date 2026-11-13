@@ -75,8 +75,6 @@ func (h *Handler) RegisterRoutes(api chi.Router) {
 		r.Get("/admins", h.handleListAdmins)
 		r.Post("/admins", h.handleCreateAdmin)
 		r.Post("/admins/{id}/toggle", h.handleToggleAdmin)
-
-		r.Get("/settings/auth-source", h.handleGetAuthSourceSettings)
 	})
 }
 
@@ -392,6 +390,7 @@ func (h *Handler) handleChangePassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.audit.Log(ctx, u.Username, u.Role, r.RemoteAddr, "auth.password_changed", "user", u.Username, "本機管理員密碼修改成功", nil)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"message":"密碼已成功更新"}`))
 }
@@ -479,6 +478,7 @@ func (h *Handler) handleCreateAdmin(w http.ResponseWriter, r *http.Request) {
 
 	u := auth.UserFromContext(ctx)
 	h.audit.Log(ctx, u.Username, u.Role, r.RemoteAddr, "admin.create", "user", req.Username, "建立新系統管理員帳號", nil)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusCreated)
 	_, _ = w.Write([]byte(`{"message":"管理員帳號建立成功"}`))
 }
@@ -527,30 +527,7 @@ func (h *Handler) handleToggleAdmin(w http.ResponseWriter, r *http.Request) {
 
 	u := auth.UserFromContext(ctx)
 	h.audit.Log(ctx, u.Username, u.Role, r.RemoteAddr, "admin.toggle", "user", idStr, "切換管理員啟用狀態", map[string]any{"enabled": req.Enabled})
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"message":"狀態已成功更新"}`))
-}
-
-func (h *Handler) handleGetAuthSourceSettings(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	activeSource, _ := h.settings.Get(ctx, "active_auth_source")
-	if activeSource == "" {
-		activeSource = "none"
-	}
-
-	// 統計目前登記在既有驗證來源帳號名下的 IP 筆數
-	var affectedCount int
-	_ = h.db.QueryRowContext(
-		ctx,
-		`SELECT COUNT(*) FROM ip_records ip
-		 JOIN users u ON ip.owner_user_id = u.id
-		 WHERE u.auth_source = ?`,
-		activeSource,
-	).Scan(&affectedCount)
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"active_source":             activeSource,
-		"affected_registered_count": affectedCount,
-	})
 }

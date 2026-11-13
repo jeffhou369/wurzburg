@@ -28,7 +28,7 @@ func TestPrimarySeam_HealthEndpointsAndClock(t *testing.T) {
 	testClock := clock.NewTestClock(initialTime)
 
 	srv := server.New(cfg, nil, testClock)
-	router := srv.Router()
+	router := apiRouter(t, srv)
 
 	// 1. 測試 /healthz 基礎存活檢查
 	t.Run("GET /healthz", func(t *testing.T) {
@@ -159,7 +159,7 @@ func TestPrimarySeam_MariaDBAndMigrations(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
 	rec := httptest.NewRecorder()
-	srv.Router().ServeHTTP(rec, req)
+	apiRouter(t, srv).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("預期狀態碼 200，實際取得: %d", rec.Code)

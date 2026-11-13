@@ -65,7 +65,7 @@ func TestSwitchesAndSchedulerIntegration(t *testing.T) {
 	pipe := pipeline.New(nil, nil)
 	sched := scheduler.New(db, clk, ciph, srv.Settings, srv.Audit, fakeCol, pipe)
 	srv.Mount(swHandler, sched)
-	router := srv.Router()
+	router := apiRouter(t, srv)
 
 	seeder := testutil.NewSeeder(t, db, clk)
 	adminID := seeder.SeedAdmin("admin")

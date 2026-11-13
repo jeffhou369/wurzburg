@@ -16,6 +16,8 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Switch'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
     post:
       tags: [Switches]
       summary: 新增一台 ARP 來源交換器（含預設全域 VRF 讀取設定）
@@ -32,6 +34,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Switch'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   switches_item:
     get:
@@ -51,6 +55,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Switch'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
     put:
       tags: [Switches]
       summary: 更新交換器設定（憑證選填，未提供時保留原值）
@@ -70,6 +76,12 @@ paths:
       responses:
         '200':
           description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Switch'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
     delete:
       tags: [Switches]
       summary: 刪除交換器並立即移除其名下 ARP 觀測
@@ -83,6 +95,8 @@ paths:
       responses:
         '204':
           description: 已刪除
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   vrf_configs_collection:
     post:
@@ -104,6 +118,12 @@ paths:
       responses:
         '201':
           description: 建立成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VRFReadConfigList'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   vrf_configs_item:
     put:
@@ -131,6 +151,12 @@ paths:
       responses:
         '200':
           description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VRFReadConfigList'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
     delete:
       tags: [Switches]
       summary: 刪除 VRF 讀取設定（全域預設不可刪）
@@ -150,6 +176,8 @@ paths:
       responses:
         '204':
           description: 已刪除
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   vrf_test_read:
     post:
@@ -175,6 +203,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TestReadResult'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   sync_trigger:
     post:
@@ -183,9 +213,57 @@ paths:
       responses:
         '202':
           description: 已觸發同步
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/MessageResponse'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
+
+  sync_status:
+    get:
+      tags: [Sync]
+      summary: 取得目前同步輪次的狀態（交換器頁面輪詢使用）
+      responses:
+        '200':
+          description: 同步狀態
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncStatus'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
 components:
   schemas:
+    SyncStatus:
+      type: object
+      required: [in_progress, round_incomplete, last_sync_at, last_sync_success]
+      properties:
+        in_progress:
+          type: boolean
+          description: 是否有同步輪次正在執行
+        round_incomplete:
+          type: boolean
+          description: 最近一輪是否有 VRF 讀取設定讀取失敗
+        last_sync_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 最近一輪完成的時間；尚未執行過為 null
+        last_sync_success:
+          type: boolean
+
+    VRFReadConfigList:
+      type: object
+      required: [items]
+      description: 該交換器異動後的全部 VRF 讀取設定
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/VRFReadConfig'
+
     VRFReadConfig:
       type: object
       required: [id, switch_id, vrf_name, is_default, enabled, last_status, has_credential]
@@ -255,6 +333,9 @@ components:
         has_v3_warning:
           type: boolean
           description: 若未設定額外 VRF 讀取設定，提示可能缺少 VRF 內位址
+        has_v3_creds:
+          type: boolean
+          description: 是否已儲存 SNMPv3 驗證密碼（Secret 本身不回顯）
         vrf_configs:
           type: array
           items:

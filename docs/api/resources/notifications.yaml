@@ -26,6 +26,8 @@ paths:
                       $ref: '#/components/schemas/NotificationLog'
                   pagination:
                     $ref: './common.yaml#/components/schemas/PaginationMeta'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   notifications_states:
     get:
@@ -54,6 +56,8 @@ paths:
                       $ref: '#/components/schemas/NotificationState'
                   pagination:
                     $ref: './common.yaml#/components/schemas/PaginationMeta'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   notifications_state_reset:
     post:
@@ -68,6 +72,8 @@ paths:
       responses:
         '204':
           description: 已重設
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
 components:
   schemas:

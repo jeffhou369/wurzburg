@@ -28,6 +28,8 @@ paths:
                       $ref: '#/components/schemas/ConflictSummary'
                   pagination:
                     $ref: './common.yaml#/components/schemas/PaginationMeta'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   conflicts_item:
     get:
@@ -47,6 +49,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConflictDetail'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   conflicts_resolve:
     post:
@@ -74,8 +78,18 @@ paths:
                 $ref: '#/components/schemas/ConflictDetail'
         '403':
           description: 僅系統管理員可裁決
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
         '409':
           description: 衝突狀態已解消無法再裁決
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
 components:
   schemas:

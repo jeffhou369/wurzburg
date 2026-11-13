@@ -51,6 +51,8 @@ paths:
     $ref: './resources/switches.yaml#/paths/vrf_test_read'
   /api/v1/sync/trigger:
     $ref: './resources/switches.yaml#/paths/sync_trigger'
+  /api/v1/sync/status:
+    $ref: './resources/switches.yaml#/paths/sync_status'
 
   # Subnets, Gateways, Exclusions & Undetermined Prefixes
   /api/v1/subnets:

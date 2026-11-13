@@ -152,7 +152,7 @@ func (b *saBase) newEnv(t *testing.T, secret string) *saEnv {
 	srv := server.New(&config.Config{Port: 8080, CampusName: "Würzburg", AppEnv: "test"}, b.db, b.clk)
 	svc := subnets.NewScopeService(b.db, b.clk, srv.Audit, secret)
 	srv.Mount(svc, saCIDRPreviewRoute{svc: svc}, iprecords.NewHandler(b.db, b.clk, srv.Settings, srv.Audit), audit.NewHandler(b.db))
-	return &saEnv{saBase: b, srv: srv, svc: svc, resolver: subnets.NewResolver(b.db), router: srv.Router()}
+	return &saEnv{saBase: b, srv: srv, svc: svc, resolver: subnets.NewResolver(b.db), router: apiRouter(t, srv)}
 }
 
 func (e *saEnv) do(method, path string, body any) *httptest.ResponseRecorder {

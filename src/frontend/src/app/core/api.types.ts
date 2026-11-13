@@ -33,6 +33,7 @@ export interface paths {
             };
           };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -69,6 +70,7 @@ export interface paths {
             'application/json': components['schemas']['HealthStatus'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -121,15 +123,20 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
         };
         /** @description 登入失敗過多已暫時鎖定 */
         423: {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -179,15 +186,20 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
         };
         /** @description 未在此園區允許登入的組織群組內 */
         403: {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -222,6 +234,7 @@ export interface paths {
           };
           content?: never;
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -261,8 +274,11 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -306,15 +322,20 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['MessageResponse'];
+          };
         };
         /** @description 新密碼不符長度或複雜度政策 */
         422: {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -351,6 +372,7 @@ export interface paths {
             };
           };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -378,8 +400,11 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['MessageResponse'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -420,15 +445,20 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['MessageResponse'];
+          };
         };
         /** @description 無法停用最後一位啟用中的系統管理員 */
         409: {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -463,6 +493,7 @@ export interface paths {
             'application/json': components['schemas']['DashboardSummary'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -501,6 +532,7 @@ export interface paths {
             };
           };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -527,6 +559,7 @@ export interface paths {
             'application/json': components['schemas']['Switch'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -563,6 +596,7 @@ export interface paths {
             'application/json': components['schemas']['Switch'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     /** 更新交換器設定（憑證選填，未提供時保留原值） */
@@ -586,8 +620,11 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['Switch'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     post?: never;
@@ -610,6 +647,7 @@ export interface paths {
           };
           content?: never;
         };
+        default: components['responses']['Error'];
       };
     };
     options?: never;
@@ -647,8 +685,11 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['VRFReadConfigList'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -687,8 +728,11 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['VRFReadConfigList'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     post?: never;
@@ -712,6 +756,7 @@ export interface paths {
           };
           content?: never;
         };
+        default: components['responses']['Error'];
       };
     };
     options?: never;
@@ -750,6 +795,7 @@ export interface paths {
             'application/json': components['schemas']['TestReadResult'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -782,10 +828,50 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['MessageResponse'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/sync/status': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 取得目前同步輪次的狀態（交換器頁面輪詢使用） */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 同步狀態 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['SyncStatus'];
+          };
+        };
+        default: components['responses']['Error'];
+      };
+    };
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -823,6 +909,7 @@ export interface paths {
             };
           };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -849,8 +936,17 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** Format: int64 */
+              id: number;
+              cidr: string;
+              /** @enum {string} */
+              state: 'pending' | 'managed' | 'unmanaged';
+            };
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -887,6 +983,7 @@ export interface paths {
             'application/json': components['schemas']['SubnetDetail'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     /** 修正網段 CIDR 或說明（若有影響刪除紀錄需帶 preview_token） */
@@ -914,8 +1011,25 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** Format: int64 */
+              id: number;
+              cidr: string;
+              description: string;
+            };
+          };
         };
+        /** @description 尚未預覽確認，或預覽後資料已異動（`preview_mismatch`、`confirmation_required`）；需重新預覽 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        default: components['responses']['Error'];
       };
     };
     post?: never;
@@ -961,6 +1075,7 @@ export interface paths {
             'application/json': components['schemas']['DeletePreviewResponse'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -1003,6 +1118,7 @@ export interface paths {
             'application/json': components['schemas']['DeletePreviewResponse'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -1040,8 +1156,20 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['SubnetDetail'];
+          };
         };
+        /** @description 尚未預覽確認，或預覽後資料已異動（`preview_mismatch`、`confirmation_required`）；需重新預覽 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        default: components['responses']['Error'];
       };
     };
     post?: never;
@@ -1085,6 +1213,7 @@ export interface paths {
             'application/json': components['schemas']['DeletePreviewResponse'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -1123,8 +1252,20 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['ExclusionRange'];
+          };
         };
+        /** @description 尚未預覽確認，或預覽後資料已異動（`preview_mismatch`、`confirmation_required`）；需重新預覽 */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
+        };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -1163,6 +1304,7 @@ export interface paths {
           };
           content?: never;
         };
+        default: components['responses']['Error'];
       };
     };
     options?: never;
@@ -1198,6 +1340,7 @@ export interface paths {
             };
           };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -1253,6 +1396,7 @@ export interface paths {
             };
           };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -1299,6 +1443,7 @@ export interface paths {
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': string;
           };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -1337,6 +1482,7 @@ export interface paths {
             'application/json': components['schemas']['IPRecordDetail'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     /** 編輯既有的登記資料（擁有者或系統管理員） */
@@ -1375,8 +1521,11 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     post?: never;
@@ -1418,6 +1567,7 @@ export interface paths {
             'application/json': components['schemas']['BatchActionResult'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -1458,6 +1608,7 @@ export interface paths {
             'application/json': components['schemas']['BatchActionResult'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -1498,6 +1649,7 @@ export interface paths {
             'application/json': components['schemas']['BatchActionResult'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -1538,6 +1690,7 @@ export interface paths {
             'application/json': components['schemas']['BatchActionResult'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -1580,6 +1733,7 @@ export interface paths {
             };
           };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -1618,6 +1772,7 @@ export interface paths {
             'application/json': components['schemas']['ConflictDetail'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -1667,15 +1822,20 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
         };
         /** @description 衝突狀態已解消無法再裁決 */
         409: {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['ErrorResponse'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -1717,6 +1877,7 @@ export interface paths {
             };
           };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -1760,6 +1921,7 @@ export interface paths {
             };
           };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -1798,6 +1960,7 @@ export interface paths {
           };
           content?: never;
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -1838,6 +2001,7 @@ export interface paths {
             };
           };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -1874,6 +2038,7 @@ export interface paths {
             'application/json': components['schemas']['CampusSettings'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     /** 更新園區顯示名稱與時區 */
@@ -1895,8 +2060,11 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['CampusSettings'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     post?: never;
@@ -1932,6 +2100,7 @@ export interface paths {
             'application/json': components['schemas']['AuthSourceSettings'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     /** 更新驗證來源設定 */
@@ -1953,8 +2122,11 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['AuthSourceSettings'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     post?: never;
@@ -2005,6 +2177,7 @@ export interface paths {
             };
           };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -2039,6 +2212,7 @@ export interface paths {
             'application/json': components['schemas']['MailSettings'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     /** 更新 SMTP 郵件設定 */
@@ -2060,8 +2234,11 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['MailSettings'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     post?: never;
@@ -2109,6 +2286,7 @@ export interface paths {
             };
           };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -2143,6 +2321,7 @@ export interface paths {
             'application/json': components['schemas']['OUIStatus'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     put?: never;
@@ -2172,6 +2351,7 @@ export interface paths {
             'application/json': components['schemas']['OUIStatus'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     delete?: never;
@@ -2206,6 +2386,7 @@ export interface paths {
             'application/json': components['schemas']['RetentionPolicySettings'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     /** 更新保留期與到期催認設定 */
@@ -2227,8 +2408,11 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['RetentionPolicySettings'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     post?: never;
@@ -2264,6 +2448,7 @@ export interface paths {
             'application/json': components['schemas']['WizardStatus'];
           };
         };
+        default: components['responses']['Error'];
       };
     };
     /** 更新設定精靈步驟進度或完成狀態 */
@@ -2288,8 +2473,11 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': components['schemas']['WizardStatus'];
+          };
         };
+        default: components['responses']['Error'];
       };
     };
     post?: never;
@@ -2303,6 +2491,19 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    ErrorResponse: {
+      /**
+       * @description 機器可讀的錯誤代碼
+       * @example validation_error
+       */
+      code: string;
+      /** @description 給使用者閱讀的繁體中文說明 */
+      message: string;
+      /** @description 欄位層級驗證錯誤（僅 422 時提供） */
+      fields?: {
+        [key: string]: string;
+      };
+    };
     HealthStatus: {
       /** @example ok */
       status: string;
@@ -2327,6 +2528,10 @@ export interface components {
     };
     AuthSessionResponse: {
       user: components['schemas']['CurrentUser'];
+    };
+    MessageResponse: {
+      /** @description 給使用者閱讀的繁體中文說明 */
+      message: string;
     };
     AdminAccount: {
       /** Format: int64 */
@@ -2389,6 +2594,8 @@ export interface components {
       notes?: string;
       /** @description 若未設定額外 VRF 讀取設定，提示可能缺少 VRF 內位址 */
       has_v3_warning?: boolean;
+      /** @description 是否已儲存 SNMPv3 驗證密碼（Secret 本身不回顯） */
+      has_v3_creds?: boolean;
       vrf_configs: components['schemas']['VRFReadConfig'][];
     };
     SwitchCreateRequest: {
@@ -2428,12 +2635,28 @@ export interface components {
       /** @default true */
       enabled: boolean;
     };
+    /** @description 該交換器異動後的全部 VRF 讀取設定 */
+    VRFReadConfigList: {
+      items: components['schemas']['VRFReadConfig'][];
+    };
     TestReadResult: {
       success: boolean;
       arp_count: number;
       subnet_count: number;
       error_class?: string;
       error_summary?: string;
+    };
+    SyncStatus: {
+      /** @description 是否有同步輪次正在執行 */
+      in_progress: boolean;
+      /** @description 最近一輪是否有 VRF 讀取設定讀取失敗 */
+      round_incomplete: boolean;
+      /**
+       * Format: date-time
+       * @description 最近一輪完成的時間；尚未執行過為 null
+       */
+      last_sync_at: string | null;
+      last_sync_success: boolean;
     };
     Subnet: {
       /** Format: int64 */
@@ -2527,6 +2750,8 @@ export interface components {
       registration: 'unregistered' | 'registered' | 'expired';
       expiring_soon: boolean;
       has_conflict: boolean;
+      /** @description 由在線、登記、即將到期、衝突四個面向組成的狀態文字（例如「在線 · 未登記」），與 Excel 匯出的狀態欄相同 */
+      state_label: string;
       /** Format: date-time */
       expires_at?: string | null;
       /** Format: date-time */
@@ -2698,15 +2923,22 @@ export interface components {
       active_source: 'none' | 'ad' | 'radius';
       /** @description 若更換來源將受影響的既有登記筆數 */
       affected_registered_count: number;
-      ad_url?: string;
-      ad_use_tls?: boolean;
-      ad_bind_dn?: string;
-      ad_has_bind_password?: boolean;
-      ad_base_dn?: string;
-      ad_allowed_group?: string;
-      radius_host?: string;
-      radius_port?: number;
-      radius_has_secret?: boolean;
+      ad_url: string;
+      ad_use_tls: boolean;
+      ad_bind_dn: string;
+      ad_has_bind_password: boolean;
+      ad_base_dn: string;
+      ad_allowed_group: string;
+      /** @description 帳號名稱的 LDAP 屬性 */
+      ad_user_attr: string;
+      /** @description 信箱的 LDAP 屬性 */
+      ad_mail_attr: string;
+      /** @description 顯示名稱的 LDAP 屬性 */
+      ad_name_attr: string;
+      radius_host: string;
+      radius_port: number;
+      radius_timeout_ms: number;
+      radius_has_secret: boolean;
     };
     AuthSourceUpdateRequest: {
       /** @enum {string} */
@@ -2718,8 +2950,12 @@ export interface components {
       ad_bind_password?: string;
       ad_base_dn?: string;
       ad_allowed_group?: string;
+      ad_user_attr?: string;
+      ad_mail_attr?: string;
+      ad_name_attr?: string;
       radius_host?: string;
       radius_port?: number;
+      radius_timeout_ms?: number;
       /** Format: password */
       radius_secret?: string;
     };
@@ -2781,7 +3017,21 @@ export interface components {
       unfinished_items: components['schemas']['UnfinishedSetupItem'][];
     };
   };
-  responses: never;
+  responses: {
+    /**
+     * @description 錯誤回應。各操作未個別列出的錯誤狀態碼一律使用這個格式，常見的有：
+     *     401 未登入或工作階段逾時、403 權限不足（含首次登入尚未修改密碼）、404 找不到資源、
+     *     409 狀態不允許該動作、422 輸入驗證失敗、500 伺服器內部錯誤。
+     */
+    Error: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        'application/json': components['schemas']['ErrorResponse'];
+      };
+    };
+  };
   parameters: {
     PageParam: number;
     PageSizeParam: number;

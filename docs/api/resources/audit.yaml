@@ -21,6 +21,8 @@ paths:
                       $ref: '#/components/schemas/AuditLogEntry'
                   pagination:
                     $ref: './common.yaml#/components/schemas/PaginationMeta'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
 components:
   schemas:

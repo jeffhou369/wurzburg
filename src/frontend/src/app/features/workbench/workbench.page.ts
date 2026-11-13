@@ -35,8 +35,8 @@ import {
 } from './workbench.filters';
 
 type DashboardSummary = components['schemas']['DashboardSummary'];
-type IPRecordSummary = components['schemas']['IPRecordSummary'] & { state_label?: string };
-type IPRecordDetail = components['schemas']['IPRecordDetail'] & { state_label?: string };
+type IPRecordSummary = components['schemas']['IPRecordSummary'];
+type IPRecordDetail = components['schemas']['IPRecordDetail'];
 type PaginationMeta = components['schemas']['PaginationMeta'];
 type Subnet = components['schemas']['Subnet'];
 type BatchActionResult = components['schemas']['BatchActionResult'];

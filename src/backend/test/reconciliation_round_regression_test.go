@@ -146,7 +146,7 @@ func newRRRig(t *testing.T) *rrRig {
 		db:      db,
 		clk:     clk,
 		svc:     svc,
-		router:  srv.Router(),
+		router:  apiRouter(t, srv),
 		seeder:  seeder,
 		adminID: seeder.SeedAdmin("admin"),
 		userID:  seeder.SeedUser("chen", "user", "ad", "chen@example.com", "陳工程師"),

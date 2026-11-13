@@ -24,6 +24,8 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Subnet'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
     post:
       tags: [Subnets]
       summary: 手動新增網段
@@ -43,6 +45,22 @@ paths:
       responses:
         '201':
           description: 已建立
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, cidr, state]
+                properties:
+                  id:
+                    type: integer
+                    format: int64
+                  cidr:
+                    type: string
+                  state:
+                    type: string
+                    enum: [pending, managed, unmanaged]
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   subnets_item:
     get:
@@ -62,6 +80,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SubnetDetail'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
     put:
       tags: [Subnets]
       summary: 修正網段 CIDR 或說明（若有影響刪除紀錄需帶 preview_token）
@@ -89,6 +109,27 @@ paths:
       responses:
         '200':
           description: 已更新
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, cidr, description]
+                properties:
+                  id:
+                    type: integer
+                    format: int64
+                  cidr:
+                    type: string
+                  description:
+                    type: string
+        '409':
+          description: 尚未預覽確認，或預覽後資料已異動（`preview_mismatch`、`confirmation_required`）；需重新預覽
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   subnet_cidr_preview:
     post:
@@ -118,6 +159,8 @@ paths:
             application/json:
               schema:
                 $ref: './common.yaml#/components/schemas/DeletePreviewResponse'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   subnet_state_preview:
     post:
@@ -143,6 +186,8 @@ paths:
             application/json:
               schema:
                 $ref: './common.yaml#/components/schemas/DeletePreviewResponse'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   subnet_state:
     put:
@@ -164,6 +209,18 @@ paths:
       responses:
         '200':
           description: 已變更狀態
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubnetDetail'
+        '409':
+          description: 尚未預覽確認，或預覽後資料已異動（`preview_mismatch`、`confirmation_required`）；需重新預覽
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   exclusions_preview:
     post:
@@ -189,6 +246,8 @@ paths:
             application/json:
               schema:
                 $ref: './common.yaml#/components/schemas/DeletePreviewResponse'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   exclusions_collection:
     post:
@@ -210,6 +269,18 @@ paths:
       responses:
         '201':
           description: 已建立排除範圍
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExclusionRange'
+        '409':
+          description: 尚未預覽確認，或預覽後資料已異動（`preview_mismatch`、`confirmation_required`）；需重新預覽
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ErrorResponse'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   exclusions_item:
     delete:
@@ -231,6 +302,8 @@ paths:
       responses:
         '204':
           description: 已移除
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
   undetermined_prefixes:
     get:
@@ -249,6 +322,8 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/UndeterminedPrefix'
+        default:
+          $ref: './common.yaml#/components/responses/Error'
 
 components:
   schemas:

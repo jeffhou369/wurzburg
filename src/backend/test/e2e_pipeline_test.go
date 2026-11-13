@@ -130,7 +130,7 @@ func TestFullE2EIntegration13Scenarios(t *testing.T) {
 		mailHandler,
 		wizHandler,
 	)
-	router := srv.Router()
+	router := apiRouter(t, srv)
 
 	var adminCookie *http.Cookie
 	testingPasswordChangeBlock := false

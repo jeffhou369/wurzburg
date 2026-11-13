@@ -19,6 +19,15 @@ components:
             type: string
           description: 欄位層級驗證錯誤（僅 422 時提供）
 
+    MessageResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: 給使用者閱讀的繁體中文說明
+
     PaginationMeta:
       type: object
       required:
@@ -111,3 +120,14 @@ components:
         minimum: 1
         maximum: 200
         default: 50
+
+  responses:
+    Error:
+      description: |
+        錯誤回應。各操作未個別列出的錯誤狀態碼一律使用這個格式，常見的有：
+        401 未登入或工作階段逾時、403 權限不足（含首次登入尚未修改密碼）、404 找不到資源、
+        409 狀態不允許該動作、422 輸入驗證失敗、500 伺服器內部錯誤。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

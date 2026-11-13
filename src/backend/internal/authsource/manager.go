@@ -85,7 +85,7 @@ func (m *DynamicManager) buildRADIUSClient(ctx context.Context) (*RADIUSClient, 
 }
 
 func (m *DynamicManager) RegisterRoutes(api chi.Router) {
-	api.With(auth.RequireAdmin).Get("/settings/auth-source/config", m.handleGetConfig)
+	api.With(auth.RequireAdmin).Get("/settings/auth-source", m.handleGetConfig)
 	api.With(auth.RequireAdmin).Put("/settings/auth-source", m.handleUpdateConfig)
 	api.With(auth.RequireAdmin).Post("/settings/auth-source/test", m.handleTestAuth)
 }
@@ -93,6 +93,9 @@ func (m *DynamicManager) RegisterRoutes(api chi.Router) {
 func (m *DynamicManager) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	activeSource, _ := m.settings.Get(ctx, "active_auth_source")
+	if activeSource == "" {
+		activeSource = "none"
+	}
 	adURL, _ := m.settings.Get(ctx, "ad_url")
 	adUseTLS, _ := m.settings.Get(ctx, "ad_use_tls")
 	adBindDN, _ := m.settings.Get(ctx, "ad_bind_dn")
@@ -109,7 +112,7 @@ func (m *DynamicManager) handleGetConfig(w http.ResponseWriter, r *http.Request)
 	radHasSecret, _ := m.settings.HasSecret(ctx, "radius_secret")
 
 	var affectedCount int
-	if m.db != nil && activeSource != "" && activeSource != "none" {
+	if m.db != nil && activeSource != "none" {
 		_ = m.db.QueryRowContext(
 			ctx,
 			`SELECT COUNT(*) FROM ip_records ip JOIN users u ON ip.owner_user_id = u.id WHERE u.auth_source = ?`,
