@@ -1,6 +1,6 @@
 # 39 — 自動檢查實際 HTTP 回應符合 OpenAPI 描述檔
 
-Status: ready-for-agent
+Status: resolved
 Blocked by: —
 
 ## 要做什麼
@@ -30,12 +30,12 @@ Blocked by: —
 
 ## 驗收條件
 
-- [ ] 既有後端整合測試的每一次 API 回應都經過 OpenAPI 驗證，不符合時測試失敗，並指出端點、狀態碼與不符合的欄位
-- [ ] 描述檔載入時通過 OpenAPI 文件驗證
-- [ ] 描述檔中的每個操作至少被一個測試打到，或在 `## Comments` 記錄例外原因
-- [ ] 故意改壞一個回應欄位（例如型別改錯）時測試會失敗，確認檢查器有效；結果記在 `## Comments`
-- [ ] 發現的不一致全部修正並逐項記錄；修改描述檔後前端 `npm run generate:api`、`npm run lint`、`npm test` 通過
-- [ ] 後端 `gofmt`、`go vet`、golangci-lint、`go test -race -count=1 ./...` 通過，CI 通過
+- [x] 既有後端整合測試的每一次 API 回應都經過 OpenAPI 驗證，不符合時測試失敗，並指出端點、狀態碼與不符合的欄位
+- [x] 描述檔載入時通過 OpenAPI 文件驗證
+- [x] 描述檔中的每個操作至少被一個測試打到，或在 `## Comments` 記錄例外原因
+- [x] 故意改壞一個回應欄位（例如型別改錯）時測試會失敗，確認檢查器有效；結果記在 `## Comments`
+- [x] 發現的不一致全部修正並逐項記錄；修改描述檔後前端 `npm run generate:api`、`npm run lint`、`npm test` 通過
+- [x] 後端 `gofmt`、`go vet`、golangci-lint、`go test -race -count=1 ./...` 通過，CI 通過
 
 ## Comments
 
@@ -77,4 +77,4 @@ Blocked by: —
 
   **留給後續的事項**
   - `TestRegisteredRoutesMatchSpec` 的模組清單是照 `cmd/wurzburg/modules.go` 手寫的，新增功能模組時兩邊都要加。第 41 張需要以正式的組裝方式啟動整套系統，屆時把 `mountFeatureModules` 移到可匯入的套件，兩邊共用。
-
+- 2026-11-13：PR #7 的 CI 全部通過（18 項通過、1 項依設計略過），本張完成。
