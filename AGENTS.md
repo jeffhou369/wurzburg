@@ -48,6 +48,14 @@ docker build -t wurzburg:dev .
 docker compose -f infra/docker-compose.yml up -d --no-build
 ```
 
+**CI（`.github/workflows/code-quality.yml`）：** 對 `main` 的 PR 與推送會執行下列檢查，`Code Quality gate` 只有在全部通過（或因子系統不存在而略過）時才會通過：
+
+- 後端：`gofmt`、`go vet`、golangci-lint（版本鎖定於工作流程內），以及 `go test -race -count=1 ./...`（含 Testcontainers 整合測試）
+- 前端：`npm run lint`、`npm run format:check`、OpenAPI 產生型別一致性（`npm run generate:api` 後以 Prettier 排版比對）、`npm run build`、`npm test`
+- 工作流程語法：actionlint
+
+另有 CodeQL、OSV-Scanner、Trivy 與 SBOM 等安全性工作流程。新增 action 一律鎖定 40 字元 commit SHA。
+
 ## 目錄慣例與平行作業規則
 
 為了讓多個工作項目（07 到 32）能安全且最大化平行開發而不互相衝突，請嚴格遵守下列目錄邊界：
