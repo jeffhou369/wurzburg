@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gosnmp/gosnmp"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -36,6 +37,9 @@ import (
 const snmpSimImage = "ghcr.io/lextudio/docker-snmpsim@sha256:ff7878dc0f5651b96be88c0bf88b348b72a52f1bde2ead244454a9095d73731e"
 
 const snmpSimDataDir = "/data"
+
+// snmpSimProbeCommunity 是啟動時用來確認模擬器已能回應的 community，情境不使用它。
+const snmpSimProbeCommunity = "readiness-probe"
 
 // snmpSimV3DefaultContext 是 SNMPv3 以空白 context 讀取時，snmpsim 回應的資料檔名稱。
 // snmpsim 把資料目錄最上層名為 self 的資料檔登記為空白的 context（見 snmpsim/datafile.py 的 process_file_extension）。
@@ -63,7 +67,11 @@ func startSNMPSim(t *testing.T, initial map[string][]byte) *snmpSim {
 	t.Helper()
 	ctx := context.Background()
 
-	var files []testcontainers.ContainerFile
+	files := []testcontainers.ContainerFile{{
+		Reader:            strings.NewReader("1.3.6.1.2.1.1.1.0|4|snmpsim readiness probe\n"),
+		ContainerFilePath: snmpSimDataDir + "/" + snmpSimProbeCommunity + ".snmprec",
+		FileMode:          0o644,
+	}}
 	for name, content := range initial {
 		files = append(files, testcontainers.ContainerFile{
 			Reader:            bytes.NewReader(content),
@@ -99,7 +107,34 @@ func startSNMPSim(t *testing.T, initial map[string][]byte) *snmpSim {
 	if err != nil {
 		t.Fatalf("取得 SNMP 模擬器的埠失敗: %v", err)
 	}
-	return &snmpSim{container: c, host: "127.0.0.1", port: int(port.Num())}
+	sim := &snmpSim{container: c, host: "127.0.0.1", port: int(port.Num())}
+	sim.waitUntilAnswering(t)
+	return sim
+}
+
+// waitUntilAnswering 等到模擬器真的回應 SNMP 請求。
+// snmpsim 印出開始聆聽的訊息後，還要一小段時間才會處理請求；太早送出的第一個請求會沒有回應。
+func (s *snmpSim) waitUntilAnswering(t *testing.T) {
+	t.Helper()
+	deadline := time.Now().Add(60 * time.Second)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		g := &gosnmp.GoSNMP{
+			Target: s.host, Port: uint16(s.port), Transport: "udp",
+			Version: gosnmp.Version2c, Community: snmpSimProbeCommunity,
+			Timeout: time.Second, Retries: 0,
+		}
+		if lastErr = g.Connect(); lastErr == nil {
+			var result *gosnmp.SnmpPacket
+			result, lastErr = g.Get([]string{"1.3.6.1.2.1.1.1.0"})
+			_ = g.Conn.Close()
+			if lastErr == nil && len(result.Variables) == 1 && result.Variables[0].Type == gosnmp.OctetString {
+				return
+			}
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	t.Fatalf("SNMP 模擬器在期限內沒有回應: %v", lastErr)
 }
 
 // setData 寫入或取代一份資料檔。name 是 community（v2c）或 contextName（v3）。
