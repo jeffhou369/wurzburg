@@ -108,7 +108,7 @@ import { AuthRedirectService } from '../../core/auth-redirect.service';
 
       .login-card {
         width: 100%;
-        max-width: 440px;
+        max-width: 484px;
         padding: 32px;
       }
 

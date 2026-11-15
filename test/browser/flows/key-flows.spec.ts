@@ -28,6 +28,21 @@ test('登入：未登入時導向登入頁，初次登入強制改密碼', async
   await expect(page).toHaveURL(/\/login\?returnUrl=%2Fsubnets$/);
   await expect(page.getByRole('heading', { name: '登入 Würzburg' })).toBeVisible();
 
+  // 登入卡片加寬 10%，桌面頁籤維持單行，窄螢幕仍不得水平溢出。
+  expect((await page.locator('.login-card').boundingBox())!.width).toBe(484);
+  const orgLabel = page.getByRole('tab', { name: '組織帳號（AD / RADIUS）' }).locator('span');
+  expect(await orgLabel.evaluate((label) => {
+    const range = document.createRange();
+    range.selectNodeContents(label);
+    return range.getClientRects().length;
+  })).toBe(1);
+  await page.screenshot({ path: test.info().outputPath('login-width-desktop.png') });
+  const viewport = page.viewportSize()!;
+  await page.setViewportSize({ width: 375, height: 812 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath('login-width-mobile.png') });
+  await page.setViewportSize(viewport);
+
   // 錯誤的密碼：留在登入頁並顯示原因
   watch.allow(401, /^\/api\/v1\/auth\/login\/local$/);
   await loginLocal(page, env.admin.user, 'NotTheAdminPassword#1');
@@ -119,6 +134,145 @@ test('設定精靈：走完五個步驟', async () => {
   await expect(page.getByRole('heading', { name: '網段管理' })).toBeVisible();
   await expect(page.getByText('10.10.10.0/24')).toBeVisible();
   await expect(page.getByText('已記錄 4 筆')).toBeVisible();
+});
+
+test('外殼：側欄可折疊並記住偏好，右上操作不再放在側欄底部', async () => {
+  await page.goto('/');
+  const sidebar = page.locator('.sidebar');
+  await expect(sidebar).toBeVisible();
+  expect((await sidebar.boundingBox())!.width).toBe(264);
+  const workspaceBefore = (await page.locator('.workspace').boundingBox())!.width;
+  await expect(page.getByRole('button', { name: '收合側欄', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '收合側欄', exact: true }).click();
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBe(64);
+  expect((await page.locator('.workspace').boundingBox())!.width).toBeGreaterThan(workspaceBefore);
+  await expect(sidebar.getByRole('link', { name: '元件展示' })).toHaveCount(0);
+  await expect(sidebar.getByRole('button', { name: '登出', exact: true })).toHaveCount(0);
+  await expect(sidebar.getByRole('button', { name: '切換外觀主題' })).toHaveCount(0);
+  const theme = page.getByRole('button', { name: '切換外觀主題' });
+  const logout = page.getByRole('button', { name: '登出', exact: true });
+  expect((await theme.boundingBox())!.x).toBeLessThan((await logout.boundingBox())!.x);
+
+  // 滑鼠與鍵盤都能取得完整名稱，目前頁面與側欄寬度仍可辨識。
+  const homeLink = sidebar.getByRole('link', { name: '首頁工作臺', exact: true });
+  await expect(homeLink).toHaveAttribute('aria-current', 'page');
+  expect(await sidebar.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await homeLink.hover();
+  await expect(page.getByRole('tooltip')).toHaveText('首頁工作臺');
+  await page.mouse.move(700, 0);
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  // 鍵盤焦點的提示也不可被側欄捲動區裁切。
+  await homeLink.focus();
+  await expect(page.getByRole('tooltip')).toHaveText('首頁工作臺');
+  const hint = (await page.getByRole('tooltip').boundingBox())!;
+  expect(hint.x).toBeGreaterThanOrEqual(64);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  await sidebar.locator('.user-card').hover();
+  await expect(page.getByRole('tooltip')).toContainText('系統管理員');
+  await page.mouse.move(700, 0);
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  await sidebar.getByRole('group', { name: '系統管理員，系統管理員', exact: true }).focus();
+  await expect(page.getByRole('tooltip')).toContainText('系統管理員');
+  await page.keyboard.press('Escape');
+  await page.screenshot({ animations: 'disabled', path: test.info().outputPath('shell-collapsed-light.png') });
+
+  await theme.click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.screenshot({ animations: 'disabled', path: test.info().outputPath('shell-collapsed-dark.png') });
+  await page.reload();
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBe(64);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+  // 手機抽屜使用完整寬度，不受桌面折疊偏好影響；關閉後焦點回到選單按鈕。
+  const viewport = page.viewportSize()!;
+  await page.setViewportSize({ width: 375, height: 812 });
+  const menu = page.getByRole('button', { name: '切換導覽側欄', exact: true });
+  await expect(sidebar).toHaveCount(0);
+  await expect(menu).toBeVisible();
+  expect((await theme.boundingBox())!.x).toBeGreaterThan((await menu.boundingBox())!.x + 40);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ animations: 'disabled', path: test.info().outputPath('shell-mobile-dark.png') });
+  await menu.click();
+  await expect(sidebar).toBeVisible();
+  expect((await sidebar.boundingBox())!.width).toBe(264);
+  await expect.poll(async () => (await sidebar.boundingBox())!.x).toBe(0);
+  await expect(sidebar.locator('.nav-label').first()).toBeVisible();
+  const closeMenu = sidebar.getByRole('button', { name: '關閉導覽側欄', exact: true });
+  await expect(closeMenu).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(sidebar.getByRole('link', { name: '系統設定', exact: true })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(closeMenu).toBeFocused();
+  await page.screenshot({ animations: 'disabled', path: test.info().outputPath('shell-mobile-open.png') });
+  await page.keyboard.press('Escape');
+  await expect(sidebar).toHaveCount(0);
+  await expect(menu).toBeFocused();
+  await menu.click();
+  await sidebar.getByRole('link', { name: /^網段/ }).click();
+  await expect(sidebar).toHaveCount(0);
+  await expect(menu).toBeFocused();
+  await menu.click();
+  await closeMenu.click();
+  await expect(menu).toBeFocused();
+  await menu.click();
+  await page.locator('.mobile-backdrop').click({ position: { x: 350, y: 300 } });
+  await expect(menu).toBeFocused();
+  await page.setViewportSize({ width: 900, height: 812 });
+  await expect(menu).toBeVisible();
+  await expect(sidebar).toHaveCount(0);
+  await page.setViewportSize({ width: 901, height: 812 });
+  await expect(menu).toBeHidden();
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBe(64);
+  await page.setViewportSize(viewport);
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBe(64);
+  await page.getByRole('button', { name: '展開側欄', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBe(264);
+  await page.screenshot({ animations: 'disabled', path: test.info().outputPath('shell-expanded-dark.png') });
+  await theme.click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'dark');
+  await page.screenshot({ animations: 'disabled', path: test.info().outputPath('shell-expanded-light.png') });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.getByRole('button', { name: '收合側欄', exact: true }).click();
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBe(64);
+  expect(await page.locator('.app-shell').evaluate((element) =>
+    parseFloat(getComputedStyle(element).transitionDuration),
+  )).toBeLessThanOrEqual(0.001);
+  await page.getByRole('button', { name: '展開側欄', exact: true }).click();
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBe(264);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+});
+
+test('郵件設定：未另按儲存時，測試寄信仍採用新輸入的密碼', async () => {
+  await page.goto('/settings?tab=mail');
+  const settings = page.locator('app-mail-settings');
+  const password = settings.getByLabel('認證密碼', { exact: true });
+  await expect(settings.getByLabel('SMTP 伺服器主機 *')).toHaveValue(env.smtp.host);
+
+  // 先保存錯誤的舊密碼，再於畫面改正；測試必須先儲存新值才有辦法通過 SMTP 驗證。
+  await password.fill('BrowserWrongSmtp#2026');
+  await settings.getByRole('button', { name: '儲存郵件設定', exact: true }).click();
+  await expect(password).toHaveValue('');
+  await password.fill(env.smtp.pw);
+  await settings.getByPlaceholder('請輸入測試收件人信箱').fill(env.adminMailbox);
+
+  const mailCount = async () =>
+    (await receivedMails()).filter((m) => m.To.some((t) => t.Address === env.adminMailbox)).length;
+  const before = await mailCount();
+  await settings.getByRole('button', { name: /寄.*測試信/ }).click();
+  await expect(settings.locator('.test-result.success')).toBeVisible({ timeout: 12000 });
+  await expect.poll(mailCount).toBe(before + 1);
+  await expect(password).toHaveValue('');
+
+  // 重新載入後密碼欄保持空白，再測試應沿用剛才儲存的正確密碼。
+  await page.reload();
+  await expect(settings.getByLabel('SMTP 伺服器主機 *')).toHaveValue(env.smtp.host);
+  await expect(password).toHaveValue('');
+  await settings.getByPlaceholder('請輸入測試收件人信箱').fill(env.adminMailbox);
+  await settings.getByRole('button', { name: /寄.*測試信/ }).click();
+  await expect(settings.locator('.test-result.success')).toBeVisible();
+  await expect.poll(mailCount).toBe(before + 2);
 });
 
 test('工作臺：未登記位址以文字標示狀態', async () => {
