@@ -1,5 +1,6 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { FormsModule, NgForm } from '@angular/forms';
+import { finalize, switchMap, tap } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { ToastService } from '../../shared/components/toast.service';
 import type { components } from '../../core/api.types';
@@ -19,114 +20,116 @@ type MailSettings = components['schemas']['MailSettings'];
         {{ text.description }}
       </p>
 
-      <form class="form-grid" (ngSubmit)="save()">
-        <div class="field-group full">
-          <label for="smtpHost">{{ text.smtpHost.label }}</label>
-          <input
-            id="smtpHost"
-            name="smtpHost"
-            type="text"
-            required
-            class="form-input"
-            [(ngModel)]="form.smtp_host"
-            [placeholder]="text.smtpHost.placeholder"
-          />
-        </div>
+      <form #mailForm="ngForm" (ngSubmit)="save(mailForm)" [attr.aria-busy]="busy()">
+        <fieldset class="form-grid" [disabled]="busy()">
+          <div class="field-group full">
+            <label for="smtpHost">{{ text.smtpHost.label }}</label>
+            <input
+              id="smtpHost"
+              name="smtpHost"
+              type="text"
+              required
+              class="form-input"
+              [(ngModel)]="form.smtp_host"
+              [placeholder]="text.smtpHost.placeholder"
+            />
+          </div>
 
-        <div class="field-group">
-          <label for="smtpPort">{{ text.smtpPort }}</label>
-          <input
-            id="smtpPort"
-            name="smtpPort"
-            type="number"
-            min="1"
-            max="65535"
-            required
-            class="form-input font-mono"
-            [(ngModel)]="form.smtp_port"
-          />
-        </div>
+          <div class="field-group">
+            <label for="smtpPort">{{ text.smtpPort }}</label>
+            <input
+              id="smtpPort"
+              name="smtpPort"
+              type="number"
+              min="1"
+              max="65535"
+              required
+              class="form-input font-mono"
+              [(ngModel)]="form.smtp_port"
+            />
+          </div>
 
-        <div class="field-group">
-          <label for="tlsMode">{{ text.tlsMode.label }}</label>
-          <select id="tlsMode" name="tlsMode" class="form-input" [(ngModel)]="form.smtp_tls_mode">
-            <option value="starttls">{{ text.tlsMode.starttls }}</option>
-            <option value="smtps">{{ text.tlsMode.smtps }}</option>
-            <option value="none">{{ text.tlsMode.none }}</option>
-          </select>
-        </div>
+          <div class="field-group">
+            <label for="tlsMode">{{ text.tlsMode.label }}</label>
+            <select id="tlsMode" name="tlsMode" class="form-input" [(ngModel)]="form.smtp_tls_mode">
+              <option value="starttls">{{ text.tlsMode.starttls }}</option>
+              <option value="smtps">{{ text.tlsMode.smtps }}</option>
+              <option value="none">{{ text.tlsMode.none }}</option>
+            </select>
+          </div>
 
-        <div class="field-group">
-          <label for="smtpUser">{{ text.smtpUser.label }}</label>
-          <input
-            id="smtpUser"
-            name="smtpUser"
-            type="text"
-            class="form-input"
-            [(ngModel)]="form.smtp_username"
-            [placeholder]="text.smtpUser.placeholder"
-          />
-        </div>
+          <div class="field-group">
+            <label for="smtpUser">{{ text.smtpUser.label }}</label>
+            <input
+              id="smtpUser"
+              name="smtpUser"
+              type="text"
+              class="form-input"
+              [(ngModel)]="form.smtp_username"
+              [placeholder]="text.smtpUser.placeholder"
+            />
+          </div>
 
-        <div class="field-group">
-          <label for="smtpPass">{{ text.smtpPass.label }}</label>
-          <input
-            id="smtpPass"
-            name="smtpPass"
-            type="password"
-            class="form-input"
-            [(ngModel)]="passwordInput"
-            [placeholder]="
-              form.has_password ? text.smtpPass.placeholderKeep : text.smtpPass.placeholderNew
-            "
-          />
-        </div>
+          <div class="field-group">
+            <label for="smtpPass">{{ text.smtpPass.label }}</label>
+            <input
+              id="smtpPass"
+              name="smtpPass"
+              type="password"
+              class="form-input"
+              [(ngModel)]="passwordInput"
+              [placeholder]="
+                form.has_password ? text.smtpPass.placeholderKeep : text.smtpPass.placeholderNew
+              "
+            />
+          </div>
 
-        <div class="field-group">
-          <label for="senderAddress">{{ text.senderAddress }}</label>
-          <input
-            id="senderAddress"
-            name="senderAddress"
-            type="email"
-            required
-            class="form-input"
-            [(ngModel)]="form.sender_address"
-            placeholder="ipmgmt@example.com"
-          />
-        </div>
+          <div class="field-group">
+            <label for="senderAddress">{{ text.senderAddress }}</label>
+            <input
+              id="senderAddress"
+              name="senderAddress"
+              type="email"
+              required
+              class="form-input"
+              [(ngModel)]="form.sender_address"
+              placeholder="ipmgmt@example.com"
+            />
+          </div>
 
-        <div class="field-group">
-          <label for="weeklyCron">{{ text.weeklyCron.label }}</label>
-          <input
-            id="weeklyCron"
-            name="weeklyCron"
-            type="text"
-            required
-            class="form-input font-mono"
-            [(ngModel)]="form.weekly_summary_cron"
-            placeholder="0 9 * * 1"
-          />
-          <span class="field-help">{{ text.weeklyCron.help }}</span>
-        </div>
+          <div class="field-group">
+            <label for="weeklyCron">{{ text.weeklyCron.label }}</label>
+            <input
+              id="weeklyCron"
+              name="weeklyCron"
+              type="text"
+              required
+              class="form-input font-mono"
+              [(ngModel)]="form.weekly_summary_cron"
+              placeholder="0 9 * * 1"
+            />
+            <span class="field-help">{{ text.weeklyCron.help }}</span>
+          </div>
 
-        <div class="field-group full">
-          <label for="adminRecipients">{{ text.adminRecipients.label }}</label>
-          <textarea
-            id="adminRecipients"
-            name="adminRecipients"
-            rows="3"
-            class="form-input font-mono"
-            [(ngModel)]="recipientsText"
-            placeholder="admin1@example.com&#10;admin2@example.com"
-          ></textarea>
-          <span class="field-help">{{ text.adminRecipients.help }}</span>
-        </div>
+          <div class="field-group full">
+            <label for="adminRecipients">{{ text.adminRecipients.label }}</label>
+            <textarea
+              id="adminRecipients"
+              name="adminRecipients"
+              rows="3"
+              class="form-input font-mono"
+              [(ngModel)]="recipientsText"
+              placeholder="admin1@example.com&#10;admin2@example.com"
+            ></textarea>
+            <span class="field-help">{{ text.adminRecipients.help }}</span>
+          </div>
 
-        <div class="actions">
-          <button type="submit" class="btn btn-primary" [disabled]="saving()">
-            {{ saving() ? actions.saving : text.save }}
-          </button>
-        </div>
+          <div class="actions">
+            <button type="submit" class="btn btn-primary" [disabled]="busy() || mailForm.invalid">
+              {{ saving() ? actions.saving : text.save }}
+            </button>
+          </div>
+        </fieldset>
       </form>
 
       <div class="test-section">
@@ -140,14 +143,15 @@ type MailSettings = components['schemas']['MailSettings'];
             type="email"
             class="form-input"
             [placeholder]="text.test.recipientPlaceholder"
+            [attr.aria-label]="text.test.recipientPlaceholder"
             [(ngModel)]="testRecipient"
-            [disabled]="testingMail()"
+            [disabled]="busy()"
           />
           <button
             type="button"
             class="btn btn-secondary"
-            (click)="sendTestMail()"
-            [disabled]="testingMail() || !testRecipient.trim()"
+            (click)="sendTestMail(mailForm)"
+            [disabled]="busy() || mailForm.invalid || !testRecipient.trim()"
           >
             {{ testingMail() ? text.test.sending : text.test.send }}
           </button>
@@ -156,6 +160,7 @@ type MailSettings = components['schemas']['MailSettings'];
         @if (testResult()) {
           <div
             class="test-result"
+            role="status"
             [class.success]="testResult()!.success"
             [class.error]="!testResult()!.success"
           >
@@ -179,6 +184,10 @@ type MailSettings = components['schemas']['MailSettings'];
         color: var(--color-text-muted);
       }
       .form-grid {
+        border: 0;
+        margin: 0;
+        padding: 0;
+        min-width: 0;
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 16px;
@@ -257,6 +266,7 @@ export class MailSettingsComponent implements OnInit {
 
   protected readonly saving = signal(false);
   protected readonly testingMail = signal(false);
+  protected readonly busy = computed(() => this.saving() || this.testingMail());
   protected readonly testResult = signal<{ success: boolean; message: string } | null>(null);
 
   protected passwordInput = '';
@@ -284,8 +294,7 @@ export class MailSettingsComponent implements OnInit {
     });
   }
 
-  save(): void {
-    this.saving.set(true);
+  private saveSettings() {
     const rcpts = this.recipientsText
       .split('\n')
       .map((s) => s.trim())
@@ -304,19 +313,27 @@ export class MailSettingsComponent implements OnInit {
       payload['smtp_password'] = this.passwordInput;
     }
 
-    this.http
+    return this.http
       .put<MailSettings>('/api/v1/settings/mail', payload, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
       })
-      .subscribe({
-        next: (res) => {
+      .pipe(
+        tap((res) => {
           this.form = res;
           this.passwordInput = '';
-          this.saving.set(false);
-          this.toast.show(this.text.saved, 'success');
-        },
+        }),
+      );
+  }
+
+  save(mailForm: NgForm): void {
+    if (this.busy() || mailForm.invalid) return;
+    this.saving.set(true);
+    this.testResult.set(null);
+    this.saveSettings()
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: () => this.toast.show(this.text.saved, 'success'),
         error: (err) => {
-          this.saving.set(false);
           this.toast.show(
             this.text.saveFailed,
             'danger',
@@ -326,32 +343,48 @@ export class MailSettingsComponent implements OnInit {
       });
   }
 
-  sendTestMail(): void {
-    if (!this.testRecipient.trim()) return;
+  sendTestMail(mailForm: NgForm): void {
+    const recipient = this.testRecipient.trim();
+    if (this.busy() || mailForm.invalid || !recipient) return;
     this.testingMail.set(true);
     this.testResult.set(null);
+    let settingsSaved = false;
 
-    this.http
-      .post<{ success: boolean; message: string }>(
-        '/api/v1/settings/mail/test',
-        { recipient: this.testRecipient.trim() },
-        { headers: { 'X-Requested-With': 'XMLHttpRequest' } },
+    this.saveSettings()
+      .pipe(
+        switchMap(() => {
+          settingsSaved = true;
+          return this.http.post<{ success: boolean; message: string }>(
+            '/api/v1/settings/mail/test',
+            { recipient },
+            { headers: { 'X-Requested-With': 'XMLHttpRequest' } },
+          );
+        }),
+        finalize(() => this.testingMail.set(false)),
       )
       .subscribe({
         next: (res) => {
-          this.testingMail.set(false);
-          this.testResult.set(res);
-          if (res.success) {
-            this.toast.show(this.text.test.sent, 'success');
-          } else {
-            this.toast.show(this.text.test.failed, 'danger', res.message);
-          }
+          const message = res.success ? res.message : this.text.test.savedButFailed(res.message);
+          this.testResult.set({ success: res.success, message });
+          this.toast.show(
+            res.success ? this.text.test.sent : this.text.test.failed,
+            res.success ? 'success' : 'danger',
+            res.success ? undefined : message,
+          );
         },
         error: (err) => {
-          this.testingMail.set(false);
-          const msg = err?.error?.message ?? this.text.test.failedHint;
-          this.testResult.set({ success: false, message: msg });
-          this.toast.show(this.text.test.failed, 'danger', msg);
+          const detail =
+            err?.error?.message ??
+            (settingsSaved ? this.text.test.failedHint : this.text.saveFailedHint);
+          const message = settingsSaved
+            ? this.text.test.savedButFailed(detail)
+            : this.text.test.saveFailed(detail);
+          this.testResult.set({ success: false, message });
+          this.toast.show(
+            settingsSaved ? this.text.test.failed : this.text.saveFailed,
+            'danger',
+            message,
+          );
         },
       });
   }

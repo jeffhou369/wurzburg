@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -27,6 +27,14 @@ const NORMAL_USER: CurrentUser = {
   requiresPasswordChange: false,
 };
 
+function openSidebarIfMobile<T>(fixture: ComponentFixture<T>): void {
+  const element = fixture.nativeElement as HTMLElement;
+  if (!element.querySelector('.sidebar')) {
+    element.querySelector<HTMLButtonElement>('.mobile-menu-toggle')?.click();
+    fixture.detectChanges();
+  }
+}
+
 describe('App Shell and Design System', () => {
   let httpTesting: HttpTestingController;
 
@@ -45,6 +53,7 @@ describe('App Shell and Design System', () => {
     await router.navigateByUrl('/');
     fixture.detectChanges();
 
+    openSidebarIfMobile(fixture);
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.textContent).toContain('Würzburg');
     expect(compiled.textContent).toContain('首頁工作臺');
@@ -61,6 +70,7 @@ describe('App Shell and Design System', () => {
     await router.navigateByUrl('/');
     fixture.detectChanges();
 
+    openSidebarIfMobile(fixture);
     const compiled = fixture.nativeElement as HTMLElement;
     const navText = compiled.querySelector('.sidebar-nav')?.textContent ?? '';
     expect(navText).toContain('首頁工作臺');
@@ -113,6 +123,7 @@ describe('App Shell and Design System', () => {
     await router.navigateByUrl('/');
     fixture.detectChanges();
 
+    openSidebarIfMobile(fixture);
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.textContent).toContain('5');
     expect(compiled.textContent).toContain('3');
@@ -134,6 +145,7 @@ describe('ShellLayoutComponent 使用者為空時的安全性', () => {
     const fixture = TestBed.createComponent(ShellLayoutComponent);
     expect(() => fixture.detectChanges()).not.toThrow();
 
+    openSidebarIfMobile(fixture);
     const compiled = fixture.nativeElement as HTMLElement;
     const navText = compiled.querySelector('.sidebar-nav')?.textContent ?? '';
     expect(navText).not.toContain('系統設定');

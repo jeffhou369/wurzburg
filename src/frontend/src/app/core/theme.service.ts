@@ -9,9 +9,13 @@ export class ThemeService {
   readonly currentTheme = signal<AppTheme>('light');
 
   constructor() {
-    const saved = localStorage.getItem('wurzburg_theme') as AppTheme | null;
-    if (saved === 'dark' || saved === 'light') {
-      this.currentTheme.set(saved);
+    try {
+      const saved = localStorage.getItem('wurzburg_theme');
+      if (saved === 'dark' || saved === 'light') {
+        this.currentTheme.set(saved);
+      }
+    } catch {
+      // 無法讀取瀏覽器儲存時，仍以預設淺色主題啟動。
     }
 
     effect(() => {
@@ -23,7 +27,11 @@ export class ThemeService {
         } else {
           root.removeAttribute('data-theme');
         }
-        localStorage.setItem('wurzburg_theme', theme);
+        try {
+          localStorage.setItem('wurzburg_theme', theme);
+        } catch {
+          // 儲存遭封鎖不影響目前頁面的主題切換。
+        }
       }
     });
   }

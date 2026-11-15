@@ -135,7 +135,7 @@ Würzburg 是內部用的 IPv4 管理系統：定時以 SNMP 讀取 Cisco 交換
 - 來源不一致時的優先順序：樣式包內的原始檔，其次 `CLIProxyAPI-UI-style-reference.md`，最後是 PRD 第 10 節。
 - 預設主題是 EasyCLIProxyAPI 的 `light`：純白工作區、冷灰側欄 `#f7f8fa`、近黑強調色 `#222222`。主題必須整套切換，不可跨主題混用強調色或自行調色。
 - 樣式包中的 token 來源：`easycliproxyapi/src/styles/tokens/{semantic,base,components}.css` 與 `easycliproxyapi/src/themes/*.ts`。token 以 CSS 變數集中管理，不要到處散落色碼。
-- 版型：左側固定側欄（264px）加右側白色內容區，沒有頂部導覽列。首頁是工作臺，上半部 KPI 卡，下半部 IP 表。編輯在右側 Sheet 或對話框完成。
+- 版型：左側側欄預設展開 264px，可收合為 64px 圖示列；手機使用獨立的完整導覽抽屜。右側白色內容區右上依序放主題切換與登出操作，沒有額外的頂部導覽列；側欄底部只保留登入者資訊，不放元件展示入口。首頁是工作臺，上半部 KPI 卡，下半部 IP 表。編輯在右側 Sheet 或對話框完成。
 - 介面語言為繁體中文。IP、MAC、CIDR、埠號與時間一律用等寬字族並啟用 `tabular-nums`。圖示用 Lucide。
 - 前端設計要使用 UI UX Pro Max skill（`nextlevelbuilder/ui-ux-pro-max-skill`），產出存成 `design-system/ip-mgmt/MASTER.md`；它產生的色盤不得覆蓋樣式包的色票。這個 skill 裝在使用者層級（名稱 `ui-ux-pro-max`），不在儲存庫裡；在別的機器或環境工作時，先確認它可用。
 - 樣式包的上游檔案為 MIT 授權，複製使用時要保留 `LICENSE`。

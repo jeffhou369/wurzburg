@@ -18,3 +18,6 @@ src/frontend/.angular/
 
 # 瀏覽器測試的本機快照與工作階段資料
 .playwright-cli/
+
+# 專案記憶的本機綁定、歷史索引與同步收據不發布至 Git
+.project-memory/

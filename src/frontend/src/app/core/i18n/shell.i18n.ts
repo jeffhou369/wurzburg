@@ -13,7 +13,6 @@ export const SHELL_TEXT = {
     notifications: '通知紀錄',
     audit: '稽核紀錄',
     settings: '系統設定',
-    showcase: '元件展示',
   },
   theme: {
     light: '淺色模式',
@@ -24,6 +23,8 @@ export const SHELL_TEXT = {
     adminBadge: '系統管理員',
     userBadge: '一般使用者',
     logout: '登出',
+    identity: (name: string, isAdmin: boolean) =>
+      `${name}，${isAdmin ? '系統管理員' : '一般使用者'}`,
   },
   actions: {
     close: '關閉',
@@ -43,6 +44,12 @@ export const SHELL_TEXT = {
   /** 純圖示按鈕與徽章的無障礙名稱（aria-label） */
   aria: {
     toggleSidebar: '切換導覽側欄',
+    collapseSidebar: '收合側欄',
+    expandSidebar: '展開側欄',
+    closeSidebar: '關閉導覽側欄',
+    accountActions: '外觀與帳號操作',
+    subnetsLabel: (count: number) => (count > 0 ? `網段，待檢視 ${count} 筆` : '網段'),
+    conflictsLabel: (count: number) => (count > 0 ? `衝突，未處理 ${count} 筆` : '衝突'),
     mainNav: '主導覽',
     pendingSubnetsCount: '待檢視網段數量',
     openConflictsCount: '未處理衝突數量',
