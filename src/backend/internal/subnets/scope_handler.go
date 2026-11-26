@@ -130,11 +130,11 @@ func writeScopeError(w http.ResponseWriter, r *http.Request, err error, dbMessag
 	}
 	var me *mysql.MySQLError
 	if errors.As(err, &me) && (me.Number == mysqlErrDeadlock || me.Number == mysqlErrLockWait) {
-		slog.WarnContext(r.Context(), "網段範圍操作遇到鎖衝突，已回滾", "error", err, "path", r.URL.Path)
+		slog.WarnContext(r.Context(), "網段範圍操作遇到鎖衝突，已回滾", "error", err)
 		auth.WriteError(w, http.StatusServiceUnavailable, "scope_busy", "範圍正被其他作業使用，請稍後重試")
 		return
 	}
-	slog.ErrorContext(r.Context(), "網段範圍操作失敗", "error", err, "path", r.URL.Path)
+	slog.ErrorContext(r.Context(), "網段範圍操作失敗", "error", err)
 	auth.WriteError(w, http.StatusInternalServerError, "db_error", dbMessage)
 }
 
