@@ -43,4 +43,8 @@ USER 10001:10001
 
 EXPOSE 8080
 
+# 以 busybox wget 探測 /healthz；埠號隨 WURZBURG_PORT（預設 8080）
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -q -O /dev/null "http://127.0.0.1:${WURZBURG_PORT:-8080}/healthz" || exit 1
+
 ENTRYPOINT ["/app/wurzburg"]
